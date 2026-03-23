@@ -203,7 +203,7 @@ export default function Home() {
       .join('\n');
 
     const textoFinal = `🚀 Pedido HC \n\n${mensagem}\n\nTotal: R$ ${total.toFixed(2)}`;
-    const whatsappUrl = `https://wa.me/5581973909440?text=${encodeURIComponent(textoFinal)}`;
+    const whatsappUrl = `https://wa.me/558197390944?text=${encodeURIComponent(textoFinal)}`;
     window.open(whatsappUrl, '_blank');
   };
 
