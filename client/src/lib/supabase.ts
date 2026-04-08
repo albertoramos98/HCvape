@@ -236,15 +236,20 @@ export const utils = {
     return marcas;
   },
 
-  // Verificar se está no horário de promoção (antes das 16h Brasília)
+  // Verificar se está no horário de promoção (09:00 às 15:25 Brasília)
   estaEmHorarioPromo(): boolean {
     // Criar data em Brasília (UTC-3)
     const agora = new Date();
     const brasilia = new Date(agora.toLocaleString('pt-BR', { timeZone: 'America/Recife' }));
     const hora = brasilia.getHours();
+    const minutos = brasilia.getMinutes();
     
-    // Promoção ativa apenas antes das 16h
-    return hora < 16;
+    // Promoção ativa das 09:00 até as 15:25
+    if (hora < 9) return false;
+    if (hora > 15) return false;
+    if (hora === 15 && minutos > 25) return false;
+    
+    return true;
   },
 
   // Obter hora atual em Brasília (para debug)

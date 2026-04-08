@@ -137,7 +137,7 @@ export default function Home() {
     }
 
     if (produto.is_promo && !horarioPromoAtivo) {
-      alert('⏰ Oferta Exclusiva Encerrada! A promoção está disponível apenas antes das 16h.');
+      alert('⏰ Promoção Encerrada! A promoção está disponível apenas das 09:00 às 15:25.');
       return;
     }
 
@@ -235,14 +235,14 @@ export default function Home() {
 
             <div className="space-y-4 mb-8">
               <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed">
-                <strong>Ofertas Relampago (Promocionais)</strong> so podem ser pedidas ate as <strong className="text-red-400">15:30</strong> (3:30 da tarde).
+                <strong>PROMOÇÃO 🚀🔥✨</strong> só pode ser pedida das <strong className="text-red-400">09:00 até as 15:25</strong>.
               </p>
               <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed">
-                <strong>Pedidos Expressos</strong> Das 10:00 as 22:00 (10 da manha as 10 da noite). Fora desse horario, os pedidos expressos serao processados no dia seguinte a partir das 10:00.
+                <strong>Pedidos Expressos</strong> Das 10:00 às 22:00. Fora desse horário, os pedidos serão processados no dia seguinte a partir das 10:00.
               </p>
               <div className="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
                 <p className="text-red-400 font-['Roboto_Mono'] font-bold">
-                  Horario atual: {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  Horário atual: {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
                 </p>
               </div>
             </div>
@@ -301,96 +301,9 @@ export default function Home() {
           <div className="mb-6 p-4 bg-yellow-500/20 border border-yellow-500 rounded-lg flex items-center gap-3">
             <Clock className="w-5 h-5 text-yellow-500" />
             <p className="text-yellow-400 font-['Roboto_Mono']">
-              ⏰ Ofertas Exclusivas encerradas! Disponível novamente de Segunda a Quinta a partir das 10:00.
+              ⏰ Promoção encerrada! Disponível novamente das 09:00 às 15:25.
             </p>
           </div>
-        )}
-
-        {/* Seção Ofertas Relâmpago */}
-        {produtosPromo.length > 0 && horarioPromoAtivo && (
-          <section className="mb-12">
-            <div className="flex items-center gap-3 mb-6">
-              <Zap className="w-8 h-8 text-red-500 animate-pulse" />
-              <h2 className="text-3xl font-bold text-red-500 font-['Orbitron']">
-                OFERTAS RELÂMPAGO
-              </h2>
-              <Zap className="w-8 h-8 text-red-500 animate-pulse" />
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {produtosPromo.map(produto => (
-                <div
-                  key={produto.id}
-                  className="relative glass-morphism rounded-xl border-2 border-red-500 shadow-[0_0_20px_rgba(255,0,0,0.3)] hover:shadow-[0_0_30px_rgba(255,0,0,0.5)] transition-all duration-300 animate-pulse-slow overflow-hidden"
-                >
-                  {/* Badge Oferta */}
-                  <div className="absolute top-3 right-3 z-10 bg-red-500 text-white px-3 py-1 rounded-full font-['Orbitron'] font-bold text-sm shadow-lg">
-                    🔥 OFERTA
-                  </div>
-
-                  {/* Imagem do produto */}
-                  <ProdutoImagem
-                    src={produto.imagem_url}
-                    alt={produto.nome}
-                    className="w-full h-44 border-b border-red-500/30"
-                  />
-
-                  {/* Conteúdo do card */}
-                  <div className="p-5">
-                    <h3 className="text-lg font-bold text-[#E0E0E0] mb-1 font-['Orbitron']">
-                      {produto.nome}
-                    </h3>
-
-                    <p className="text-xs text-[#C0C0C0] mb-3 font-['Roboto_Mono']">
-                      {produto.marca}
-                    </p>
-
-                    {/* Preços */}
-                    <div className="mb-4">
-                      <p className="text-sm text-[#808080] line-through font-['Roboto_Mono']">
-                        De: R$ {produto.preco.toFixed(2)}
-                      </p>
-                      <p className="text-2xl font-bold text-red-500 font-['Roboto_Mono']">
-                        Por: R$ {produto.preco_promo?.toFixed(2)}
-                      </p>
-                      <p className="text-xs text-green-400 font-['Roboto_Mono'] font-bold">
-                        Economize: R$ {(produto.preco - (produto.preco_promo || 0)).toFixed(2)}
-                      </p>
-                    </div>
-
-                    {/* Sabor */}
-                    <select
-                      value={saborSelecionado[produto.id] || ''}
-                      onChange={(e) =>
-                        setSaborSelecionado({ ...saborSelecionado, [produto.id]: e.target.value })
-                      }
-                      className="w-full bg-black/60 border border-red-500/50 text-[#E0E0E0] px-3 py-2 rounded-lg mb-4 focus:border-red-500 focus:outline-none transition-all duration-300 font-['Roboto_Mono'] text-sm"
-                    >
-                      <option value="">Selecione um sabor</option>
-                      {produto.sabores.map(sabor => (
-                        <option key={sabor} value={sabor}>
-                          {sabor}
-                        </option>
-                      ))}
-                    </select>
-
-                    {/* Botão */}
-                    <button
-                      onClick={() => adicionarAoCarrinho(produto)}
-                      disabled={produto.estoque <= 0 || !horarioPromoAtivo}
-                      className={`w-full py-2 rounded-lg font-['Orbitron'] font-bold transition-all duration-300 ${
-                        produto.estoque <= 0 || !horarioPromoAtivo
-                          ? 'bg-gray-500 text-gray-400 cursor-not-allowed'
-                          : 'bg-red-500 text-white hover:shadow-[0_0_15px_rgba(255,0,0,0.6)]'
-                      }`}
-                    >
-                      {produto.estoque <= 0 ? 'Esgotado' : !horarioPromoAtivo ? 'Oferta Encerrada' : 'Adicionar'}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
         )}
 
         {/* Abas de Seleção */}
@@ -420,7 +333,7 @@ export default function Home() {
                   : 'text-[#C0C0C0] hover:text-red-500'
               }`}
             >
-              🔥 Ofertas Relâmpago
+              🔥 PROMOÇÃO 🚀🔥
             </button>
           </div>
         </section>
@@ -464,7 +377,7 @@ export default function Home() {
           <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg flex items-center gap-3 shadow-[0_0_15px_rgba(255,0,0,0.3)]">
             <Clock className="w-5 h-5 text-red-500" />
             <p className="text-red-400 font-['Roboto_Mono']">
-              ⚠️ Ofertas Relâmpago só podem ser pedidas até as <strong>15:30</strong> para entrega às <strong>19:00</strong> De Segunda a Quinta.
+              ⚠️ PROMOÇÃO 🚀 só pode ser pedida das <strong>09:00 às 15:25</strong>. Entrega às <strong>19:00</strong> de Segunda a Quinta.
             </p>
           </div>
         )}
@@ -474,7 +387,7 @@ export default function Home() {
           <h2 className="text-2xl font-bold text-[#E0E0E0] mb-6 font-['Orbitron']">
             {abaAtiva === 'expressos'
               ? marcaSelecionada ? `${marcaSelecionada}` : 'Pedidos Expressos'
-              : '🔥 Ofertas Relâmpago'}
+              : '🔥 PROMOÇÃO 🚀🔥✨'}
           </h2>
 
           {(abaAtiva === 'expressos' ? produtosFiltrados : produtosPromo).length === 0 ? (
@@ -484,28 +397,32 @@ export default function Home() {
               {(abaAtiva === 'expressos' ? produtosFiltrados : produtosPromo).map(produto => (
                 <div
                   key={produto.id}
-                  className="glass-morphism rounded-xl border border-[#39FF14]/30 hover:border-[#39FF14] hover:shadow-[0_0_20px_rgba(57,255,20,0.3)] transition-all duration-300 overflow-hidden"
+                  className={`glass-morphism rounded-xl border transition-all duration-300 overflow-hidden ${
+                    produto.is_promo 
+                      ? 'border-red-500 shadow-[0_0_20px_rgba(255,0,0,0.3)] hover:shadow-[0_0_30px_rgba(255,0,0,0.5)]' 
+                      : 'border-[#39FF14]/30 hover:border-[#39FF14] hover:shadow-[0_0_20px_rgba(57,255,20,0.3)]'
+                  }`}
                 >
                   {/* Imagem do produto */}
-                  <div className="relative">
+                  <div className="relative h-48 bg-black/40 border-b border-inherit">
                     <ProdutoImagem
                       src={produto.imagem_url}
                       alt={produto.nome}
-                      className="w-full h-44 border-b border-[#39FF14]/20"
+                      className="w-full h-full object-cover"
                     />
 
                     {/* Badge Promoção sobre a imagem */}
                     {produto.is_promo && (
-                      <div className="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-['Orbitron'] font-bold shadow-lg">
-                        🔥 PROMO
+                      <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-['Orbitron'] font-bold shadow-[0_0_10px_rgba(255,0,0,0.5)] animate-pulse">
+                        🔥 PROMOÇÃO 🚀
                       </div>
                     )}
                   </div>
 
                   {/* Conteúdo do card */}
-                  <div className="p-5">
+                  <div className="p-5 relative z-10 bg-black/20">
                     <h3 className="text-lg font-bold text-[#E0E0E0] mb-1 font-['Orbitron']">
-                      {produto.nome}
+                      {produto.is_promo && '⚡ '} {produto.nome}
                     </h3>
 
                     <p className="text-xs text-[#C0C0C0] mb-4 font-['Roboto_Mono']">
@@ -515,14 +432,14 @@ export default function Home() {
                     {/* Preço */}
                     <div className="mb-4">
                       {produto.is_promo && produto.preco_promo ? (
-                        <>
+                        <div className="flex flex-col">
                           <p className="text-sm text-[#808080] line-through font-['Roboto_Mono']">
                             R$ {produto.preco.toFixed(2)}
                           </p>
-                          <p className="text-2xl font-bold text-red-500 font-['Roboto_Mono']">
-                            R$ {produto.preco_promo.toFixed(2)}
+                          <p className="text-2xl font-bold text-red-500 font-['Roboto_Mono'] flex items-center gap-2">
+                            R$ {produto.preco_promo.toFixed(2)} <span className="text-sm bg-red-500/20 px-2 py-0.5 rounded text-red-400">-{Math.round((1 - produto.preco_promo/produto.preco) * 100)}%</span>
                           </p>
-                        </>
+                        </div>
                       ) : (
                         <p className="text-2xl font-bold neon-glow font-['Roboto_Mono']">
                           R$ {produto.preco.toFixed(2)}
@@ -531,38 +448,45 @@ export default function Home() {
                     </div>
 
                     {/* Sabor */}
-                    <select
-                      value={saborSelecionado[produto.id] || ''}
-                      onChange={(e) =>
-                        setSaborSelecionado({ ...saborSelecionado, [produto.id]: e.target.value })
-                      }
-                      className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-3 py-2 rounded-lg mb-4 focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono'] text-sm"
-                    >
-                      <option value="">Selecione um sabor</option>
-                      {produto.sabores.map(sabor => (
-                        <option key={sabor} value={sabor}>
-                          {sabor}
-                        </option>
-                      ))}
-                    </select>
+                    <div className="space-y-2 mb-4">
+                      <label className="text-[10px] text-[#808080] uppercase font-bold font-['Roboto_Mono']">Selecione o Sabor:</label>
+                      <select
+                        value={saborSelecionado[produto.id] || ''}
+                        onChange={(e) =>
+                          setSaborSelecionado({ ...saborSelecionado, [produto.id]: e.target.value })
+                        }
+                        className={`w-full bg-black/60 border text-[#E0E0E0] px-3 py-2 rounded-lg focus:outline-none transition-all duration-300 font-['Roboto_Mono'] text-sm ${
+                          produto.is_promo ? 'border-red-500/50 focus:border-red-500' : 'border-[#39FF14]/50 focus:border-[#39FF14]'
+                        }`}
+                      >
+                        <option value="">Escolha uma opção...</option>
+                        {produto.sabores.map(sabor => (
+                          <option key={sabor} value={sabor}>
+                            {sabor}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
                     {/* Botão */}
                     <button
                       onClick={() => adicionarAoCarrinho(produto)}
                       disabled={produto.estoque <= 0 || (produto.is_promo && !horarioPromoAtivo)}
-                      className={`w-full py-2 rounded-lg font-['Orbitron'] font-bold transition-all duration-300 ${
+                      className={`w-full py-3 rounded-lg font-['Orbitron'] font-bold transition-all duration-300 ${
                         produto.estoque <= 0
                           ? 'bg-gray-500 text-gray-400 cursor-not-allowed'
                           : produto.is_promo && !horarioPromoAtivo
-                          ? 'bg-gray-500 text-gray-400 cursor-not-allowed'
-                          : 'bg-[#39FF14] text-black hover:shadow-[0_0_15px_rgba(57,255,20,0.5)]'
+                          ? 'bg-gray-500/50 text-gray-500 cursor-not-allowed border border-gray-500/30'
+                          : produto.is_promo 
+                          ? 'bg-red-500 text-white hover:bg-red-600 hover:shadow-[0_0_20px_rgba(255,0,0,0.5)]'
+                          : 'bg-[#39FF14] text-black hover:shadow-[0_0_20px_rgba(57,255,20,0.5)]'
                       }`}
                     >
                       {produto.estoque <= 0
-                        ? 'Esgotado'
+                        ? '🚫 ESGOTADO'
                         : produto.is_promo && !horarioPromoAtivo
-                        ? 'Oferta Encerrada'
-                        : 'Adicionar'}
+                        ? '⏰ ENCERRADO'
+                        : produto.is_promo ? '🔥 ADICIONAR' : '🚀 ADICIONAR'}
                     </button>
                   </div>
                 </div>
