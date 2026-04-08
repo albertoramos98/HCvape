@@ -200,7 +200,7 @@ export default function Home() {
         const badge = item.is_promo ? '🔥 ' : '';
         return `${badge}${item.nome} x${item.quantidade} - ${item.sabor} (R$ ${(preco * item.quantidade).toFixed(2)})`;
       })
-      .join('\n');
+      .join('\n'); 
 
     const textoFinal = `🚀 Pedido HC \n\n${mensagem}\n\nTotal: R$ ${total.toFixed(2)}`;
     const whatsappUrl = `https://wa.me/558197390944?text=${encodeURIComponent(textoFinal)}`;
