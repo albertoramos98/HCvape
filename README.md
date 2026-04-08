@@ -59,8 +59,8 @@ pnpm install
 Crie um arquivo `.env.local` na raiz do projeto:
 
 ```env
-VITE_SUPABASE_URL=https://lmhtptakvzpzftcygxmo.supabase.co
-VITE_SUPABASE_ANON_KEY=sb_publishable_4Y7jeM4fEfLH4UMMYNR5Bw_dzUAuK0J
+VITE_SUPABASE_URL=https
+VITE_SUPABASE_ANON_KEY=
 ```
 
 ### 4. Configurar Banco de Dados (Supabase)
