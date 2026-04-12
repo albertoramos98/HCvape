@@ -559,7 +559,7 @@ export default function Admin() {
     }
 
     // CABEÇALHOS RIGOROSOS PARA IMPORTAÇÃO SQL
-    const headers = ['MARCA', 'MODELO', 'PUXADAS', 'SABOR', 'QUANTIDADE', 'VL. PRODUTO', 'DESCONTO', 'VL. FINAL', 'VL. TOT. VENDA'];
+    const headers = ['MARCA', 'PUXADAS', 'SABOR', 'QUANTIDADE', 'VL. PRODUTO', 'DESCONTO', 'VL. FINAL', 'VL. TOT. VENDA'];
     
     const rows: any[] = [];
 
@@ -589,45 +589,14 @@ export default function Admin() {
         }
       }
 
-      // 2. TRADUÇÃO DO MODELO COMERCIAL (Limpeza Total)
-      let modeloComercial = '';
-      
-      if (marcaLimpa === 'IGNITE') {
-        if (puxadasBrutas >= 40000) modeloComercial = nomeOriginal.toUpperCase().includes('ICE') ? 'V400ICE' : 'SWEET';
-        else if (puxadasBrutas >= 30000) modeloComercial = 'V300';
-        else if (puxadasBrutas >= 25000) modeloComercial = 'V250';
-        else if (puxadasBrutas >= 15500) modeloComercial = 'V155';
-        else if (puxadasBrutas >= 8000) modeloComercial = 'V80';
-        else if (puxadasBrutas >= 5500) modeloComercial = 'V55';
-        else if (nomeOriginal.toUpperCase().includes('NANO')) modeloComercial = 'NANO';
-        else modeloComercial = nomeBase.split('-')[0].trim() || 'V-SERIES';
-      } else {
-        // Para BLACK SHEEP, ELF BAR, WAKA, etc., usa o padrão "30K", "40K"
-        if (puxadasBrutas > 0) {
-          modeloComercial = `${Math.floor(puxadasBrutas / 1000)}K`;
-        } else {
-          modeloComercial = nomeBase.split('-')[0].trim();
-        }
-      }
-
-      // Limpeza final do modelo: remover puxadas do texto se elas ainda estiverem lá
-      // Ex: "30.000" ou "30000"
-      modeloComercial = modeloComercial.replace(/[\d\.]+/g, '').trim() || modeloComercial;
-      // Se após a limpeza o modelo ficou vazio (acontece se o modelo era só o número), 
-      // e for Ignite, garantimos o código V.
-      if (!modeloComercial && marcaLimpa === 'IGNITE') {
-         if (puxadasBrutas === 8000) modeloComercial = 'V80';
-         else if (puxadasBrutas === 15500) modeloComercial = 'V155';
-      }
-
-      // 3. CÁLCULOS FINANCEIROS
+      // 2. CÁLCULOS FINANCEIROS
       const vlProduto = p.preco || 0;
       const desconto = 0;
       const vlFinal = vlProduto - desconto;
       const quantidade = p.estoque > 0 ? p.estoque : 20;
       const vlTotVenda = quantidade * vlProduto;
 
-      // 4. EXTRAÇÃO DE SABOR (Pós hífen ou lista)
+      // 3. EXTRAÇÃO DE SABOR (Pós hífen ou lista)
       let saboresParaExportar = p.sabores.length > 0 ? [...p.sabores] : [];
       
       // Se o nome tem hífen, o que vem depois é sabor
@@ -643,7 +612,6 @@ export default function Admin() {
       saboresParaExportar.forEach(sabor => {
         rows.push([
           marcaLimpa,
-          modeloComercial.toUpperCase(),
           puxadasBrutas,
           sabor.trim().toUpperCase(),
           quantidade,
