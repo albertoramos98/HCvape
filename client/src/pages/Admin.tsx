@@ -31,7 +31,9 @@ export default function Admin() {
   const [sucesso, setSucesso] = useState<string | null>(null);
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [pedidosExcluidos, setPedidosExcluidos] = useState<Pedido[]>([]);
   const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos'>('produtos');
+  const [subAbaPedidos, setSubAbaPedidos] = useState<'ativos' | 'excluidos'>('ativos');
   const [marcas, setMarcas] = useState<string[]>([]);
   const [estoqueEditado, setEstoqueEditado] = useState<EstoqueEditado>({});
   const [salvando, setSalvando] = useState(false);
@@ -86,13 +88,15 @@ export default function Admin() {
   const carregarTudo = async () => {
     try {
       setErro(null);
-      const [produtosData, pedidosData, marcasData] = await Promise.all([
+      const [produtosData, pedidosData, pedidosExcluidosData, marcasData] = await Promise.all([
         produtosService.obterTodos(),
         pedidosService.obterTodos(),
+        pedidosService.obterExcluidos(),
         utils.obterMarcas()
       ]);
       setProdutos(produtosData);
       setPedidos(pedidosData);
+      setPedidosExcluidos(pedidosExcluidosData);
       setMarcas(marcasData);
       setEstoqueEditado({});
     } catch (err) {
@@ -157,6 +161,7 @@ export default function Admin() {
       setUsuarioEmail('');
       setProdutos([]);
       setPedidos([]);
+      setPedidosExcluidos([]);
       setMarcas([]);
       setEstoqueEditado({});
       setErro(null);
@@ -853,76 +858,127 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between">
-              <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Lista de Pedidos</h2>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-6">
+                <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Lista de Pedidos</h2>
+                <div className="flex bg-black/40 p-1 rounded-lg border border-[#39FF14]/20">
+                  <button 
+                    onClick={() => setSubAbaPedidos('ativos')}
+                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${subAbaPedidos === 'ativos' ? 'bg-[#39FF14] text-black shadow-[0_0_10px_rgba(57,255,20,0.3)]' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
+                  >
+                    Ativos ({pedidos.length})
+                  </button>
+                  <button 
+                    onClick={() => setSubAbaPedidos('excluidos')}
+                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${subAbaPedidos === 'excluidos' ? 'bg-red-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
+                  >
+                    <Trash2 className="w-3 h-3" /> Lixeira ({pedidosExcluidos.length})
+                  </button>
+                </div>
+              </div>
               <button onClick={handleExportarPedidos} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold hover:bg-[#39FF14]/30 transition-all duration-300">
-                <Download className="w-4 h-4" /> Exportar Vendas
+                <Download className="w-4 h-4" /> Exportar {subAbaPedidos === 'ativos' ? 'Vendas' : 'Lixeira'}
               </button>
             </div>
 
             <div className="grid gap-6">
-              {pedidos.map((pedido) => (
-                <div key={pedido.id} className={`glass-morphism p-6 rounded-xl border transition-all duration-300 ${pedido.status_checklist ? 'border-[#39FF14]/20 opacity-80' : 'border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.1)]'}`}>
-                  <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-4">
-                      <div className={`p-3 rounded-lg ${pedido.status_checklist ? 'bg-[#39FF14]/20' : 'bg-yellow-500/20'}`}>
-                        <ShoppingBag className={`w-6 h-6 ${pedido.status_checklist ? 'text-[#39FF14]' : 'text-yellow-500'}`} />
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-xl font-bold text-[#E0E0E0] font-['Orbitron']">Pedido #{pedido.numero_pedido}</h3>
-                          {pedido.status_checklist ? <span className="px-2 py-0.5 bg-[#39FF14]/20 text-[#39FF14] rounded text-[10px] font-bold">CONCLUÍDO</span> : <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded text-[10px] font-bold">PENDENTE</span>}
+              {(subAbaPedidos === 'ativos' ? pedidos : pedidosExcluidos).length === 0 ? (
+                <div className="glass-morphism p-12 rounded-xl text-center border border-dashed border-[#39FF14]/20">
+                  <p className="text-[#808080] font-['Roboto_Mono']">
+                    {subAbaPedidos === 'ativos' ? 'Nenhum pedido ativo encontrado' : 'A lixeira está vazia'}
+                  </p>
+                </div>
+              ) : (
+                (subAbaPedidos === 'ativos' ? pedidos : pedidosExcluidos).map((pedido) => (
+                  <div key={pedido.id} className={`glass-morphism p-6 rounded-xl border transition-all duration-300 ${pedido.status_checklist ? 'border-[#39FF14]/20 opacity-80' : 'border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.1)]'} ${subAbaPedidos === 'excluidos' ? 'border-red-500/30 grayscale-[0.5]' : ''}`}>
+                    <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
+                      <div className="flex items-center gap-4">
+                        <div className={`p-3 rounded-lg ${pedido.status_checklist ? 'bg-[#39FF14]/20' : 'bg-yellow-500/20'} ${subAbaPedidos === 'excluidos' ? 'bg-red-500/20' : ''}`}>
+                          <ShoppingBag className={`w-6 h-6 ${pedido.status_checklist ? 'text-[#39FF14]' : 'text-yellow-500'} ${subAbaPedidos === 'excluidos' ? 'text-red-400' : ''}`} />
                         </div>
-                        <p className="text-xs text-[#808080] font-['Roboto_Mono']">{pedido.created_at ? new Date(pedido.created_at).toLocaleString('pt-BR') : '-'}</p>
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleAtualizarStatusPedido(pedido.id, !pedido.status_checklist)} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-['Orbitron'] font-bold text-xs transition-all duration-300 ${pedido.status_checklist ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' : 'bg-[#39FF14] text-black'}`}>
-                        {pedido.status_checklist ? 'Reabrir' : 'Checklist'}
-                      </button>
-                      <button onClick={() => handleDeletarPedido(pedido.id, pedido.numero_pedido)} className="p-2 bg-red-500/20 border border-red-500 text-red-400 rounded-lg"><Trash2 className="w-4 h-4" /></button>
-                    </div>
-                  </div>
-
-                  <div className="grid md:grid-cols-2 gap-8">
-                    <div className="space-y-4 text-sm font-['Roboto_Mono']">
-                      <div className="bg-black/30 p-4 rounded-lg border border-[#39FF14]/10">
-                        <h4 className="text-[10px] font-bold text-[#39FF14] uppercase mb-2">Itens</h4>
-                        {pedido.itens.map((item, idx) => (
-                          <div key={idx} className="flex justify-between border-b border-[#39FF14]/5 py-1">
-                            <span>{item.quantidade}x {item.nome} ({item.sabor})</span>
-                            <span className="text-[#39FF14]">R$ {(item.preco_unitario * item.quantidade).toFixed(2)}</span>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-xl font-bold text-[#E0E0E0] font-['Orbitron']">Pedido #{pedido.numero_pedido}</h3>
+                            {pedido.status_checklist ? (
+                              <span className="px-2 py-0.5 bg-[#39FF14]/20 text-[#39FF14] rounded text-[10px] font-bold">CONCLUÍDO</span>
+                            ) : (
+                              <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded text-[10px] font-bold">PENDENTE</span>
+                            )}
+                            {subAbaPedidos === 'excluidos' && (
+                              <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px] font-bold flex items-center gap-1">
+                                <Trash2 className="w-2 h-2" /> EXCLUÍDO
+                              </span>
+                            )}
                           </div>
-                        ))}
+                          <p className="text-xs text-[#808080] font-['Roboto_Mono']">{pedido.created_at ? new Date(pedido.created_at).toLocaleString('pt-BR') : '-'}</p>
+                        </div>
                       </div>
-                      <div className="flex justify-between px-2">
-                        <div><h4 className="text-[10px] text-[#808080] uppercase">Cliente</h4><p className="text-[#E0E0E0]">{pedido.nome_cliente}</p></div>
-                        <div className="text-right"><h4 className="text-[10px] text-[#808080] uppercase">WhatsApp</h4><p className="text-[#39FF14]">{pedido.telefone_cliente}</p></div>
-                      </div>
-                      <div className="px-2">
-                        <h4 className="text-[10px] text-[#808080] uppercase">Indicação</h4>
-                        <p className="text-blue-400 font-bold">{pedido.indicacao || 'Nenhuma'}</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-black/30 p-4 rounded-lg border border-[#39FF14]/20 flex flex-col justify-center space-y-2">
-                      <div className="flex justify-between text-xs"><span>Subtotal</span><span>R$ {pedido.total.toFixed(2)}</span></div>
-                      <div className="flex justify-between items-center text-xs">
-                        <span>Desconto</span>
-                        {editandoFinanceiro?.id === pedido.id ? (
-                          <div className="flex gap-1"><input type="number" value={editandoFinanceiro.desconto} onChange={(e) => setEditandoFinanceiro({ ...editandoFinanceiro, desconto: e.target.value })} className="w-16 bg-black border border-[#39FF14]/50 px-1 py-0.5 text-right outline-none" /><button onClick={() => handleAtualizarFinanceiroPedido(pedido.id)} className="p-0.5 bg-[#39FF14] text-black rounded"><Save className="w-3 h-3" /></button></div>
+                      <div className="flex gap-2">
+                        {subAbaPedidos === 'ativos' ? (
+                          <>
+                            <button onClick={() => handleAtualizarStatusPedido(pedido.id, !pedido.status_checklist)} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-['Orbitron'] font-bold text-xs transition-all duration-300 ${pedido.status_checklist ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' : 'bg-[#39FF14] text-black'}`}>
+                              {pedido.status_checklist ? 'Reabrir' : 'Checklist'}
+                            </button>
+                            <button onClick={() => handleDeletarPedido(pedido.id, pedido.numero_pedido)} className="p-2 bg-red-500/20 border border-red-500 text-red-400 rounded-lg hover:bg-red-500/40 transition-all"><Trash2 className="w-4 h-4" /></button>
+                          </>
                         ) : (
-                          <div className="flex gap-1 text-red-400"><span>- R$ {pedido.desconto.toFixed(2)}</span><button onClick={() => setEditandoFinanceiro({ id: pedido.id, desconto: pedido.desconto.toString() })}><Edit2 className="w-3 h-3" /></button></div>
+                          <button 
+                            onClick={() => handleRestaurarPedido(pedido.id, pedido.numero_pedido)} 
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg font-['Orbitron'] font-bold text-xs hover:bg-blue-600 transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                          >
+                            Restaurar Pedido
+                          </button>
                         )}
                       </div>
-                      <div className="pt-2 border-t border-[#39FF14]/20 flex justify-between font-bold text-[#39FF14]"><span className="font-['Orbitron']">TOTAL</span><span className="text-2xl font-['Roboto_Mono']">R$ {pedido.total_final.toFixed(2)}</span></div>
+                    </div>
+
+                    <div className="grid md:grid-cols-2 gap-8">
+                      <div className="space-y-4 text-sm font-['Roboto_Mono']">
+                        <div className={`bg-black/30 p-4 rounded-lg border ${subAbaPedidos === 'excluidos' ? 'border-red-500/10' : 'border-[#39FF14]/10'}`}>
+                          <h4 className={`text-[10px] font-bold uppercase mb-2 ${subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#39FF14]'}`}>Itens</h4>
+                          {pedido.itens.map((item, idx) => (
+                            <div key={idx} className={`flex justify-between border-b py-1 ${subAbaPedidos === 'excluidos' ? 'border-red-500/5' : 'border-[#39FF14]/5'}`}>
+                              <span>{item.quantidade}x {item.nome} ({item.sabor})</span>
+                              <span className={subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#39FF14]'}>R$ {(item.preco_unitario * item.quantidade).toFixed(2)}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="flex justify-between px-2">
+                          <div><h4 className="text-[10px] text-[#808080] uppercase">Cliente</h4><p className="text-[#E0E0E0]">{pedido.nome_cliente}</p></div>
+                          <div className="text-right"><h4 className="text-[10px] text-[#808080] uppercase">WhatsApp</h4><p className={subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#39FF14]'}>{pedido.telefone_cliente}</p></div>
+                        </div>
+                        <div className="px-2">
+                          <h4 className="text-[10px] text-[#808080] uppercase">Indicação</h4>
+                          <p className="text-blue-400 font-bold">{pedido.indicacao || 'Nenhuma'}</p>
+                        </div>
+                      </div>
+
+                      <div className={`bg-black/30 p-4 rounded-lg border flex flex-col justify-center space-y-2 ${subAbaPedidos === 'excluidos' ? 'border-red-500/20' : 'border-[#39FF14]/20'}`}>
+                        <div className="flex justify-between text-xs"><span>Subtotal</span><span>R$ {pedido.total.toFixed(2)}</span></div>
+                        <div className="flex justify-between items-center text-xs">
+                          <span>Desconto</span>
+                          {editandoFinanceiro?.id === pedido.id && subAbaPedidos === 'ativos' ? (
+                            <div className="flex gap-1"><input type="number" value={editandoFinanceiro.desconto} onChange={(e) => setEditandoFinanceiro({ ...editandoFinanceiro, desconto: e.target.value })} className="w-16 bg-black border border-[#39FF14]/50 px-1 py-0.5 text-right outline-none" /><button onClick={() => handleAtualizarFinanceiroPedido(pedido.id)} className="p-0.5 bg-[#39FF14] text-black rounded"><Save className="w-3 h-3" /></button></div>
+                          ) : (
+                            <div className="flex gap-1 text-red-400">
+                              <span>- R$ {pedido.desconto.toFixed(2)}</span>
+                              {subAbaPedidos === 'ativos' && <button onClick={() => setEditandoFinanceiro({ id: pedido.id, desconto: pedido.desconto.toString() })}><Edit2 className="w-3 h-3" /></button>}
+                            </div>
+                          )}
+                        </div>
+                        <div className={`pt-2 border-t flex justify-between font-bold ${subAbaPedidos === 'excluidos' ? 'border-red-500/20 text-red-400' : 'border-[#39FF14]/20 text-[#39FF14]'}`}>
+                          <span className="font-['Orbitron']">TOTAL</span>
+                          <span className="text-2xl font-['Roboto_Mono']">R$ {pedido.total_final.toFixed(2)}</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </section>
-        )}
+        )
+      }
       </main>
 
       {/* Modal Produto */}

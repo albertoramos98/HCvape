@@ -48,6 +48,7 @@ export interface Pedido {
   status_checklist: boolean;
   indicacao?: string;
   notas?: string;
+  excluido?: boolean;
   created_at?: string;
 }
 
@@ -142,11 +143,24 @@ export const produtosService = {
 };
 
 export const pedidosService = {
-  // Buscar todos os pedidos
+  // Buscar todos os pedidos ativos
   async obterTodos(): Promise<Pedido[]> {
     const { data, error } = await supabase
       .from('pedidos')
       .select('*')
+      .or('excluido.is.null,excluido.eq.false')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Buscar todos os pedidos excluídos (Lixeira)
+  async obterExcluidos(): Promise<Pedido[]> {
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select('*')
+      .eq('excluido', true)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -154,10 +168,10 @@ export const pedidosService = {
   },
 
   // Criar novo pedido
-  async criar(pedido: Omit<Pedido, 'id' | 'numero_pedido' | 'created_at'>): Promise<Pedido> {
+  async criar(pedido: Omit<Pedido, 'id' | 'numero_pedido' | 'created_at' | 'excluido'>): Promise<Pedido> {
     const { data, error } = await supabase
       .from('pedidos')
-      .insert([pedido])
+      .insert([{ ...pedido, excluido: false }])
       .select()
       .single();
 
@@ -185,11 +199,21 @@ export const pedidosService = {
     if (error) throw error;
   },
 
-  // Deletar pedido
+  // Mover para lixeira (soft delete)
   async deletar(id: string): Promise<void> {
     const { error } = await supabase
       .from('pedidos')
-      .delete()
+      .update({ excluido: true })
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  // Restaurar da lixeira
+  async restaurar(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('pedidos')
+      .update({ excluido: false })
       .eq('id', id);
 
     if (error) throw error;
