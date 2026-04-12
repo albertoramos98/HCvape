@@ -248,19 +248,18 @@ export default function Home() {
       const textoFinal = `Olá! Acabei de fazer um pedido pelo site: 🛒✨\n\n🆔 *Pedido:* #${novoPedido.numero_pedido}\n👤 *Cliente:* ${nomeCliente}\n📞 *WhatsApp:* ${telefoneCliente}\n${indicacao ? `💡 *Vim por:* ${indicacao}\n` : ''}\n---\n📦 *MEUS ITENS:*\n\n${mensagemItens}\n\n---\n💰 *TOTAL:* R$ ${novoPedido.total_final.toFixed(2)}\n\nHC Vape agradece a preferência! 🌬️💨`;
       const whatsappUrl = `https://wa.me/558197390944?text=${encodeURIComponent(textoFinal)}`;
       
-      // Redirecionamento instantâneo
-      window.open(whatsappUrl, '_blank');
+      // Definir pedido concluído para mostrar link de fallback se necessário
+      setPedidoConcluido({ numero: novoPedido.numero_pedido, total: novoPedido.total_final });
       
-      // Limpar estados imediatamente após abrir o WPP
+      // Tentar redirecionar imediatamente usando location.href (mais seguro contra bloqueadores de pop-up)
+      window.location.href = whatsappUrl;
+
+      // Limpar carrinho
       setCarrinho([]);
-      setCheckoutAberto(false);
-      setNomeCliente('');
-      setTelefoneCliente('');
-      setIndicacao('');
 
     } catch (err) {
       console.error('Erro ao salvar pedido:', err);
-      alert('Erro ao processar pedido. Tente novamente.');
+      alert('Erro ao processar pedido. Por favor, verifique sua conexão e tente novamente.');
     } finally {
       setEnviandoPedido(false);
     }
