@@ -558,7 +558,7 @@ export default function Admin() {
       return;
     }
 
-    const headers = ['Marca', 'Modelo/Puxadas', 'Quantidade', 'Valor Unitário', 'Valor Total Item'];
+    const headers = ['Marca', 'Modelo', 'Puxadas', 'Quantidade', 'Valor Unitário', 'Valor Total Item'];
     
     // Calcular consolidado por marca
     const consolidadoPorMarca: { [key: string]: number } = {};
@@ -573,9 +573,15 @@ export default function Admin() {
       totalGeralItens += p.estoque;
       valorTotalGeral += valorTotalItem;
 
+      // Tentar separar Modelo de Puxadas (ex: "V80 8.000" -> ["V80", "8.000"])
+      const partes = p.nome.trim().split(/\s+/);
+      const puxadas = partes.length > 1 ? partes[partes.length - 1] : '-';
+      const modelo = partes.length > 1 ? partes.slice(0, partes.length - 1).join(' ') : p.nome;
+
       return [
         p.marca,
-        p.nome,
+        modelo,
+        p.is_promo ? `${puxadas} (PROMO)` : puxadas,
         p.estoque,
         `R$ ${p.preco.toFixed(2).replace('.', ',')}`,
         `R$ ${valorTotalItem.toFixed(2).replace('.', ',')}`
@@ -584,12 +590,13 @@ export default function Admin() {
 
     // Criar linhas de resumo por marca
     const resumoMarcaRows = Object.entries(consolidadoPorMarca).map(([marca, total]) => {
-      return ['', '', '', `TOTAL ${marca}`, `R$ ${total.toFixed(2).replace('.', ',')}`];
+      return ['', '', '', '', `TOTAL ${marca}`, `R$ ${total.toFixed(2).replace('.', ',')}`];
     });
 
     // Linha de total geral
     const totalGeralRow = [
       '', 
+      '',
       'RESUMO GERAL', 
       `${totalGeralItens} unidades`, 
       'VALOR TOTAL', 
@@ -617,28 +624,42 @@ export default function Admin() {
   };
 
   const handleExportarPedidos = () => {
-    if (pedidos.length === 0) {
-      alert('Nenhum pedido para exportar');
+    // Definir quais pedidos exportar (Ativos ou Lixeira)
+    const pedidosParaExportar = subAbaPedidos === 'ativos' ? pedidos : pedidosExcluidos;
+    
+    if (pedidosParaExportar.length === 0) {
+      alert('Nenhum pedido para exportar nesta aba');
       return;
     }
 
-    const headers = ['Data', 'Pedido #', 'Cliente', 'Telefone', 'Indicação', 'Itens', 'Total Original', 'Desconto', 'Total Final', 'Status Checklist'];
+    const headers = ['Data', 'Pedido #', 'Cliente', 'Telefone', 'Indicação', 'Modelo', 'Puxadas', 'Sabor', 'Quantidade', 'Total Original', 'Desconto', 'Total Final', 'Status Checklist'];
     
-    const rows = pedidos.map(p => {
+    const rows: any[] = [];
+    pedidosParaExportar.forEach(p => {
       const data = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
-      const itensStr = p.itens.map(i => `${i.nome} x${i.quantidade} (${i.sabor})`).join(' | ');
-      return [
-        data,
-        p.numero_pedido,
-        p.nome_cliente,
-        p.telefone_cliente,
-        p.indicacao || '-',
-        itensStr,
-        p.total.toFixed(2).replace('.', ','),
-        p.desconto.toFixed(2).replace('.', ','),
-        p.total_final.toFixed(2).replace('.', ','),
-        p.status_checklist ? 'CONCLUÍDO' : 'PENDENTE'
-      ];
+      
+      p.itens.forEach(item => {
+        // Tentar separar Modelo de Puxadas (ex: "V80 8.000" -> ["V80", "8.000"])
+        const partes = item.nome.trim().split(/\s+/);
+        const puxadas = partes.length > 1 ? partes[partes.length - 1] : '-';
+        const modelo = partes.length > 1 ? partes.slice(0, partes.length - 1).join(' ') : item.nome;
+
+        rows.push([
+          data,
+          p.numero_pedido,
+          p.nome_cliente,
+          p.telefone_cliente,
+          p.indicacao || '-',
+          modelo,
+          puxadas,
+          item.sabor,
+          item.quantidade,
+          p.total.toFixed(2).replace('.', ','),
+          p.desconto.toFixed(2).replace('.', ','),
+          p.total_final.toFixed(2).replace('.', ','),
+          p.status_checklist ? 'CONCLUÍDO' : 'PENDENTE'
+        ]);
+      });
     });
 
     const csvContent = [
@@ -650,7 +671,8 @@ export default function Admin() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `pedidos_hc_vape_${new Date().toISOString().split('T')[0]}.csv`);
+    const prefixo = subAbaPedidos === 'ativos' ? 'pedidos' : 'lixeira_pedidos';
+    link.setAttribute('download', `${prefixo}_hc_vape_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
