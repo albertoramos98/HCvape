@@ -237,8 +237,6 @@ export default function Home() {
         notas: ''
       });
 
-      setPedidoConcluido({ numero: novoPedido.numero_pedido, total: novoPedido.total_final });
-      
       // Gerar link WhatsApp com formato amigável e preços
       const mensagemItens = carrinho
         .map(item => {
@@ -250,16 +248,15 @@ export default function Home() {
       const textoFinal = `Olá! Acabei de fazer um pedido pelo site: 🛒✨\n\n🆔 *Pedido:* #${novoPedido.numero_pedido}\n👤 *Cliente:* ${nomeCliente}\n📞 *WhatsApp:* ${telefoneCliente}\n${indicacao ? `💡 *Vim por:* ${indicacao}\n` : ''}\n---\n📦 *MEUS ITENS:*\n\n${mensagemItens}\n\n---\n💰 *TOTAL:* R$ ${novoPedido.total_final.toFixed(2)}\n\nHC Vape agradece a preferência! 🌬️💨`;
       const whatsappUrl = `https://wa.me/558197390944?text=${encodeURIComponent(textoFinal)}`;
       
-      // Limpar carrinho e fechar modais após pequeno delay
-      setTimeout(() => {
-        window.open(whatsappUrl, '_blank');
-        setCarrinho([]);
-        setCheckoutAberto(false);
-        setNomeCliente('');
-        setTelefoneCliente('');
-        setIndicacao('');
-        setPedidoConcluido(null);
-      }, 2000);
+      // Redirecionamento instantâneo
+      window.open(whatsappUrl, '_blank');
+      
+      // Limpar estados imediatamente após abrir o WPP
+      setCarrinho([]);
+      setCheckoutAberto(false);
+      setNomeCliente('');
+      setTelefoneCliente('');
+      setIndicacao('');
 
     } catch (err) {
       console.error('Erro ao salvar pedido:', err);
@@ -658,96 +655,78 @@ export default function Home() {
               </button>
             </div>
 
-            {pedidoConcluido ? (
-              <div className="text-center py-8 space-y-6 animate-in fade-in zoom-in duration-500">
-                <div className="w-20 h-20 bg-[#39FF14]/20 rounded-full flex items-center justify-center mx-auto border-2 border-[#39FF14] shadow-[0_0_20px_rgba(57,255,20,0.4)]">
-                  <CheckCircle2 className="w-12 h-12 text-[#39FF14]" />
-                </div>
+            <form onSubmit={confirmarPedido} className="space-y-6">
+              <div className="space-y-4">
                 <div>
-                  <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Orbitron'] mb-2">Pedido Enviado!</h3>
-                  <p className="text-[#39FF14] font-['Roboto_Mono'] text-lg font-bold">#{pedidoConcluido.numero}</p>
+                  <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">
+                    <User className="w-4 h-4 text-[#39FF14]" />
+                    Seu Nome
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={nomeCliente}
+                    onChange={(e) => setNomeCliente(e.target.value)}
+                    className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
+                    placeholder="Ex: João Silva"
+                  />
                 </div>
-                <p className="text-[#C0C0C0] font-['Roboto_Mono']">
-                  Abrindo WhatsApp para enviar os detalhes...
-                </p>
-                <div className="w-full bg-[#39FF14]/10 h-1 rounded-full overflow-hidden">
-                  <div className="bg-[#39FF14] h-full animate-progress-bar"></div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">
+                    <Phone className="w-4 h-4 text-[#39FF14]" />
+                    WhatsApp (com DDD)
+                  </label>
+                  <input
+                    type="tel"
+                    required
+                    value={telefoneCliente}
+                    onChange={(e) => setTelefoneCliente(e.target.value)}
+                    className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
+                    placeholder="Ex: 81 99999-9999"
+                  />
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">
+                    <Zap className="w-4 h-4 text-[#39FF14]" />
+                    Indicação (Opcional)
+                  </label>
+                  <input
+                    type="text"
+                    value={indicacao}
+                    onChange={(e) => setIndicacao(e.target.value)}
+                    className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
+                    placeholder="Ex: Breno, Instagram, etc."
+                  />
                 </div>
               </div>
-            ) : (
-              <form onSubmit={confirmarPedido} className="space-y-6">
-                <div className="space-y-4">
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">
-                      <User className="w-4 h-4 text-[#39FF14]" />
-                      Seu Nome
-                    </label>
-                    <input
-                      type="text"
-                      required
-                      value={nomeCliente}
-                      onChange={(e) => setNomeCliente(e.target.value)}
-                      className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
-                      placeholder="Ex: João Silva"
-                    />
-                  </div>
 
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">
-                      <Phone className="w-4 h-4 text-[#39FF14]" />
-                      WhatsApp (com DDD)
-                    </label>
-                    <input
-                      type="tel"
-                      required
-                      value={telefoneCliente}
-                      onChange={(e) => setTelefoneCliente(e.target.value)}
-                      className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
-                      placeholder="Ex: 81 99999-9999"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">
-                      <Zap className="w-4 h-4 text-[#39FF14]" />
-                      Indicação (Opcional)
-                    </label>
-                    <input
-                      type="text"
-                      value={indicacao}
-                      onChange={(e) => setIndicacao(e.target.value)}
-                      className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
-                      placeholder="Ex: Breno, Instagram, etc."
-                    />
-                  </div>
+              <div className="p-4 bg-black/40 rounded-lg border border-[#39FF14]/20 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-[#808080] font-['Roboto_Mono']">Total do Pedido:</span>
+                  <span className="text-[#39FF14] font-bold font-['Roboto_Mono']">R$ {total.toFixed(2)}</span>
                 </div>
+              </div>
 
-                <div className="p-4 bg-black/40 rounded-lg border border-[#39FF14]/20 space-y-2">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#808080] font-['Roboto_Mono']">Total do Pedido:</span>
-                    <span className="text-[#39FF14] font-bold font-['Roboto_Mono']">R$ {total.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={enviandoPedido}
-                  className="w-full py-4 bg-[#39FF14] text-black rounded-lg font-['Orbitron'] font-bold text-lg hover:shadow-[0_0_25px_rgba(57,255,20,0.6)] transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50"
-                >
-                  {enviandoPedido ? (
-                    <>
-                      <Loader2 className="w-6 h-6 animate-spin" />
-                      PROCESSANDO...
-                    </>
-                  ) : (
-                    <>
-                      <Phone className="w-6 h-6" />
-                      CONFIRMAR E ENVIAR
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
+              <button
+                type="submit"
+                disabled={enviandoPedido}
+                className="w-full py-4 bg-[#39FF14] text-black rounded-lg font-['Orbitron'] font-bold text-lg hover:shadow-[0_0_25px_rgba(57,255,20,0.6)] transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50"
+              >
+                {enviandoPedido ? (
+                  <>
+                    <Loader2 className="w-6 h-6 animate-spin" />
+                    ENVIANDO...
+                  </>
+                ) : (
+                  <>
+                    <Phone className="w-6 h-6" />
+                    CONFIRMAR E IR PARA WHATSAPP
+                  </>
+                )}
+              </button>
+            </form>
           </div>
         </div>
       )}
