@@ -558,61 +558,63 @@ export default function Admin() {
       return;
     }
 
-    // Cabeçalhos rigorosos para SQL
+    // CABEÇALHOS RIGOROSOS PARA IMPORTAÇÃO SQL
     const headers = ['MARCA', 'MODELO', 'PUXADAS', 'SABOR', 'QUANTIDADE', 'VL. PRODUTO', 'DESCONTO', 'VL. FINAL', 'VL. TOT. VENDA'];
     
     const rows: any[] = [];
 
     produtos.forEach(p => {
       const marcaLimpa = p.marca.toUpperCase().trim();
-      const nomeLimpo = p.nome.trim();
+      const nomeOriginal = p.nome.trim();
       
-      // 1. Extrair número bruto de puxadas
+      // 1. EXTRAÇÃO DE PUXADAS (Número bruto)
+      // Remove pontos e busca o maior número na string
+      const nomeSemPontos = nomeOriginal.replace(/\./g, '');
+      const matchNumeros = nomeSemPontos.match(/(\d+)/g);
       let puxadasBrutas = 0;
-      const matchPuxadas = nomeLimpo.match(/(\d+)/);
-      if (matchPuxadas) {
-        puxadasBrutas = parseInt(matchPuxadas[0]);
-        if (nomeLimpo.toLowerCase().includes('k')) {
-          puxadasBrutas *= 1000;
-        }
-      }
-
-      // 2. Traduzir Modelo Comercial
-      let modeloComercial = nomeLimpo.toUpperCase();
       
-      if (marcaLimpa === 'IGNITE') {
-        if (puxadasBrutas >= 40000) {
-          modeloComercial = nomeLimpo.toUpperCase().includes('ICE') ? 'V400ICE' : 'SWEET';
-        } else if (puxadasBrutas >= 30000) {
-          modeloComercial = 'V300';
-        } else if (puxadasBrutas >= 25000) {
-          modeloComercial = 'V250';
-        } else if (puxadasBrutas >= 15500) {
-          modeloComercial = 'V155';
-        } else if (puxadasBrutas >= 8000) {
-          modeloComercial = 'V80';
-        } else if (puxadasBrutas >= 5500) {
-          modeloComercial = 'V55';
+      if (matchNumeros) {
+        // Pega o maior número encontrado (geralmente as puxadas)
+        puxadasBrutas = Math.max(...matchNumeros.map(n => parseInt(n)));
+        if (nomeSemPontos.toLowerCase().includes('k')) {
+          // Se tiver "k" mas o número for pequeno (ex: 30k), multiplica
+          if (puxadasBrutas < 1000) puxadasBrutas *= 1000;
         }
-      } else if (marcaLimpa === 'BLACK SHEEP') {
-        if (puxadasBrutas >= 40000) modeloComercial = '40K';
-        else if (puxadasBrutas >= 30000) modeloComercial = '30K';
-      } else if (marcaLimpa === 'ELF BAR') {
-        if (puxadasBrutas >= 40000) modeloComercial = '40K';
-        else if (puxadasBrutas >= 23000) modeloComercial = '23K';
       }
 
-      // 3. Cálculos Financeiros
+      // 2. TRADUÇÃO DO MODELO COMERCIAL (IGNITE, BLACK SHEEP, ELF BAR)
+      let modeloComercial = nomeOriginal.toUpperCase();
+      if (marcaLimpa === 'IGNITE') {
+        if (puxadasBrutas >= 40000) modeloComercial = nomeOriginal.toUpperCase().includes('ICE') ? 'V400ICE' : 'SWEET';
+        else if (puxadasBrutas >= 30000) modeloComercial = 'V300';
+        else if (puxadasBrutas >= 25000) modeloComercial = 'V250';
+        else if (puxadasBrutas >= 15500) modeloComercial = 'V155';
+        else if (puxadasBrutas >= 8000) modeloComercial = 'V80';
+        else if (puxadasBrutas >= 5500) modeloComercial = 'V55';
+      } else if (marcaLimpa === 'BLACK SHEEP' || marcaLimpa === 'ELF BAR') {
+        const kValue = Math.floor(puxadasBrutas / 1000);
+        modeloComercial = `${kValue}K`;
+      }
+
+      // 3. CÁLCULOS FINANCEIROS (Rigorosos)
       const vlProduto = p.preco || 0;
-      const desconto = 0; // Conforme regra: DESCONTO: 0.00
+      const desconto = 0; // Regra: DESCONTO sempre 0.00
       const vlFinal = vlProduto - desconto;
-      const quantidade = p.estoque || 20; // Valor padrão 20 se não informado
+      const quantidade = p.estoque > 0 ? p.estoque : 20; // Padrão 20 se não informado/zero
       const vlTotVenda = quantidade * vlProduto;
 
-      // 4. Gerar uma linha para cada sabor (Essencial para importação SQL de estoque)
-      const listaSabores = p.sabores.length > 0 ? p.sabores : ['Original'];
+      // 4. EXTRAÇÃO DE SABOR (Pós hífen ou lista)
+      let saboresParaExportar = p.sabores.length > 0 ? p.sabores : ['Original'];
       
-      listaSabores.forEach(sabor => {
+      // Se o nome tiver hífen, tenta extrair o sabor do nome também
+      if (nomeOriginal.includes('-')) {
+        const saborDoNome = nomeOriginal.split('-')[1].trim();
+        if (saborDoNome && !saboresParaExportar.includes(saborDoNome)) {
+          saboresParaExportar = [saborDoNome];
+        }
+      }
+
+      saboresParaExportar.forEach(sabor => {
         rows.push([
           marcaLimpa,
           modeloComercial,
@@ -636,7 +638,7 @@ export default function Admin() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `estoque_hc_vape_sql_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `estoque_hc_sql_import_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
