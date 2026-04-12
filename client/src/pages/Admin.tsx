@@ -678,34 +678,14 @@ export default function Admin() {
       return;
     }
 
-    // Adaptando vendas para o mesmo rigor de colunas
-    const headers = ['DATA', 'PEDIDO #', 'CLIENTE', 'WHATSAPP', 'MARCA', 'MODELO', 'PUXADAS', 'SABOR', 'QUANTIDADE', 'VL. UNIT', 'DESCONTO', 'VL. TOTAL', 'STATUS'];
+    // Simplificando relatório de vendas: removendo modelos e puxadas
+    const headers = ['DATA', 'PEDIDO #', 'CLIENTE', 'WHATSAPP', 'MARCA', 'SABOR', 'QUANTIDADE', 'VL. UNIT', 'DESCONTO', 'VL. TOTAL', 'STATUS'];
     
     const rows: any[] = [];
     pedidosParaExportar.forEach(p => {
       const data = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
       
       p.itens.forEach(item => {
-        // ... (limpeza de modelo e puxadas idêntica)
-        const nomeLimpo = item.nome.trim();
-        const partes = nomeLimpo.split(/\s+/);
-        let modelo = nomeLimpo;
-        let puxadas = '0';
-
-        if (partes.length > 1) {
-          const ultimaParte = partes[partes.length - 1].toLowerCase();
-          if (/[0-9]/.test(ultimaParte)) {
-            let pStr = ultimaParte.replace('puffs', '').replace('puff', '');
-            if (pStr.includes('k')) {
-              const n = parseFloat(pStr.replace('k', '').replace(',', '.'));
-              puxadas = isNaN(n) ? '0' : (n * 1000).toString();
-            } else {
-              puxadas = pStr.replace(/[^0-9]/g, '');
-            }
-            modelo = partes.slice(0, partes.length - 1).join(' ');
-          }
-        }
-
         const produtoOriginal = produtos.find(prod => prod.id === item.id);
         const marca = produtoOriginal ? produtoOriginal.marca : 'N/A';
 
@@ -715,8 +695,6 @@ export default function Admin() {
           p.nome_cliente.toUpperCase(),
           p.telefone_cliente,
           marca.toUpperCase(),
-          modelo.toUpperCase(),
-          puxadas,
           item.sabor.toUpperCase(),
           item.quantidade,
           item.preco_unitario.toFixed(2).replace('.', ','),
