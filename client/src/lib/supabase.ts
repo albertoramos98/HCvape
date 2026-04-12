@@ -27,6 +27,30 @@ export interface Produto {
   updated_at?: string;
 }
 
+export interface PedidoItem {
+  id: string;
+  nome: string;
+  sabor: string;
+  quantidade: number;
+  preco_unitario: number;
+  is_promo?: boolean;
+}
+
+export interface Pedido {
+  id: string;
+  numero_pedido: number;
+  nome_cliente: string;
+  telefone_cliente: string;
+  itens: PedidoItem[];
+  total: number;
+  desconto: number;
+  total_final: number;
+  status_checklist: boolean;
+  indicacao?: string;
+  notas?: string;
+  created_at?: string;
+}
+
 // Funções auxiliares
 export const produtosService = {
   // Buscar todos os produtos
@@ -114,6 +138,61 @@ export const produtosService = {
 
     if (error) throw error;
     return data;
+  },
+};
+
+export const pedidosService = {
+  // Buscar todos os pedidos
+  async obterTodos(): Promise<Pedido[]> {
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+    return data || [];
+  },
+
+  // Criar novo pedido
+  async criar(pedido: Omit<Pedido, 'id' | 'numero_pedido' | 'created_at'>): Promise<Pedido> {
+    const { data, error } = await supabase
+      .from('pedidos')
+      .insert([pedido])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  // Atualizar status checklist
+  async atualizarStatus(id: string, status: boolean): Promise<void> {
+    const { error } = await supabase
+      .from('pedidos')
+      .update({ status_checklist: status })
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  // Atualizar financeiro (desconto e total final)
+  async atualizarFinanceiro(id: string, desconto: number, totalFinal: number): Promise<void> {
+    const { error } = await supabase
+      .from('pedidos')
+      .update({ desconto, total_final: totalFinal })
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  // Deletar pedido
+  async deletar(id: string): Promise<void> {
+    const { error } = await supabase
+      .from('pedidos')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
   },
 };
 

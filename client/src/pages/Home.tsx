@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff } from 'lucide-react';
-import { produtosService, Produto, utils } from '@/lib/supabase';
+import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff, Phone, User, CheckCircle2, Loader2 } from 'lucide-react';
+import { produtosService, pedidosService, Produto, utils, PedidoItem } from '@/lib/supabase';
 
 /**
  * HC - Desde 2020 | Catálogo Digital
@@ -57,6 +57,14 @@ export default function Home() {
   const [horarioPromoAtivo, setHorarioPromoAtivo] = useState(true);
   const [abaAtiva, setAbaAtiva] = useState<'expressos' | 'promocionais'>('expressos');
   const [popupAviso, setPopupAviso] = useState(true);
+
+  // Estados do Checkout
+  const [checkoutAberto, setCheckoutAberto] = useState(false);
+  const [nomeCliente, setNomeCliente] = useState('');
+  const [telefoneCliente, setTelefoneCliente] = useState('');
+  const [indicacao, setIndicacao] = useState('');
+  const [enviandoPedido, setEnviandoPedido] = useState(false);
+  const [pedidoConcluido, setPedidoConcluido] = useState<{ numero: number; total: number } | null>(null);
 
   // Fechar pop-up de aviso
   const fecharPopupAviso = () => {
@@ -187,24 +195,78 @@ export default function Home() {
     ));
   };
 
-  // Gerar link WhatsApp
-  const gerarLinkWhatsApp = () => {
+  // Iniciar checkout
+  const iniciarCheckout = () => {
     if (carrinho.length === 0) {
       alert('Carrinho vazio!');
       return;
     }
+    setCheckoutAberto(true);
+    setCarrinhoAberto(false);
+  };
 
-    const mensagem = carrinho
-      .map(item => {
-        const preco = item.is_promo && item.preco_promo ? item.preco_promo : item.preco;
-        const badge = item.is_promo ? '🔥 ' : '';
-        return `${badge}${item.nome} x${item.quantidade} - ${item.sabor} (R$ ${(preco * item.quantidade).toFixed(2)})`;
-      })
-      .join('\n'); 
+  // Confirmar e salvar pedido
+  const confirmarPedido = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!nomeCliente || !telefoneCliente) {
+      alert('Por favor, preencha seu nome e telefone!');
+      return;
+    }
 
-    const textoFinal = `🚀 Pedido HC \n\n${mensagem}\n\nTotal: R$ ${total.toFixed(2)}`;
-    const whatsappUrl = `https://wa.me/558197390944?text=${encodeURIComponent(textoFinal)}`;
-    window.open(whatsappUrl, '_blank');
+    try {
+      setEnviandoPedido(true);
+      
+      const itensPedido: PedidoItem[] = carrinho.map(item => ({
+        id: item.id,
+        nome: item.nome,
+        sabor: item.sabor,
+        quantidade: item.quantidade,
+        preco_unitario: item.is_promo && item.preco_promo ? item.preco_promo : item.preco,
+        is_promo: item.is_promo
+      }));
+
+      const novoPedido = await pedidosService.criar({
+        nome_cliente: nomeCliente,
+        telefone_cliente: telefoneCliente,
+        indicacao: indicacao,
+        itens: itensPedido,
+        total: total,
+        desconto: 0,
+        total_final: total,
+        status_checklist: false,
+        notas: ''
+      });
+
+      setPedidoConcluido({ numero: novoPedido.numero_pedido, total: novoPedido.total_final });
+      
+      // Gerar link WhatsApp com formato amigável e preços
+      const mensagemItens = carrinho
+        .map(item => {
+          const preco = item.is_promo && item.preco_promo ? item.preco_promo : item.preco;
+          return `• ${item.quantidade}x ${item.nome} (${item.sabor}) — R$ ${(preco * item.quantidade).toFixed(2)}`;
+        })
+        .join('\n');
+
+      const textoFinal = `Olá! Acabei de fazer um pedido pelo site: 🛒✨\n\n🆔 *Pedido:* #${novoPedido.numero_pedido}\n👤 *Cliente:* ${nomeCliente}\n📞 *WhatsApp:* ${telefoneCliente}\n${indicacao ? `💡 *Vim por:* ${indicacao}\n` : ''}\n---\n📦 *MEUS ITENS:*\n\n${mensagemItens}\n\n---\n💰 *TOTAL:* R$ ${novoPedido.total_final.toFixed(2)}\n\nHC Vape agradece a preferência! 🌬️💨`;
+      const whatsappUrl = `https://wa.me/558197390944?text=${encodeURIComponent(textoFinal)}`;
+      
+      // Limpar carrinho e fechar modais após pequeno delay
+      setTimeout(() => {
+        window.open(whatsappUrl, '_blank');
+        setCarrinho([]);
+        setCheckoutAberto(false);
+        setNomeCliente('');
+        setTelefoneCliente('');
+        setIndicacao('');
+        setPedidoConcluido(null);
+      }, 2000);
+
+    } catch (err) {
+      console.error('Erro ao salvar pedido:', err);
+      alert('Erro ao processar pedido. Tente novamente.');
+    } finally {
+      setEnviandoPedido(false);
+    }
   };
 
   if (carregando) {
@@ -570,12 +632,121 @@ export default function Home() {
                 </div>
 
                 <button
-                  onClick={gerarLinkWhatsApp}
+                  onClick={iniciarCheckout}
                   className="w-full py-3 bg-green-500 text-white rounded-lg font-['Orbitron'] font-bold hover:bg-green-600 hover:shadow-[0_0_15px_rgba(34,197,94,0.5)] transition-all duration-300"
                 >
                   📱 Pedir pelo WhatsApp
                 </button>
               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de Checkout */}
+      {checkoutAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-md glass-morphism p-8 rounded-xl border border-[#39FF14]/30 shadow-[0_0_50px_rgba(57,255,20,0.2)]">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Finalizar Pedido</h2>
+              <button
+                onClick={() => setCheckoutAberto(false)}
+                disabled={enviandoPedido}
+                className="p-2 hover:bg-[#39FF14]/20 rounded-lg transition-all duration-300 disabled:opacity-50"
+              >
+                <X className="w-6 h-6 text-[#39FF14]" />
+              </button>
+            </div>
+
+            {pedidoConcluido ? (
+              <div className="text-center py-8 space-y-6 animate-in fade-in zoom-in duration-500">
+                <div className="w-20 h-20 bg-[#39FF14]/20 rounded-full flex items-center justify-center mx-auto border-2 border-[#39FF14] shadow-[0_0_20px_rgba(57,255,20,0.4)]">
+                  <CheckCircle2 className="w-12 h-12 text-[#39FF14]" />
+                </div>
+                <div>
+                  <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Orbitron'] mb-2">Pedido Enviado!</h3>
+                  <p className="text-[#39FF14] font-['Roboto_Mono'] text-lg font-bold">#{pedidoConcluido.numero}</p>
+                </div>
+                <p className="text-[#C0C0C0] font-['Roboto_Mono']">
+                  Abrindo WhatsApp para enviar os detalhes...
+                </p>
+                <div className="w-full bg-[#39FF14]/10 h-1 rounded-full overflow-hidden">
+                  <div className="bg-[#39FF14] h-full animate-progress-bar"></div>
+                </div>
+              </div>
+            ) : (
+              <form onSubmit={confirmarPedido} className="space-y-6">
+                <div className="space-y-4">
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">
+                      <User className="w-4 h-4 text-[#39FF14]" />
+                      Seu Nome
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={nomeCliente}
+                      onChange={(e) => setNomeCliente(e.target.value)}
+                      className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
+                      placeholder="Ex: João Silva"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">
+                      <Phone className="w-4 h-4 text-[#39FF14]" />
+                      WhatsApp (com DDD)
+                    </label>
+                    <input
+                      type="tel"
+                      required
+                      value={telefoneCliente}
+                      onChange={(e) => setTelefoneCliente(e.target.value)}
+                      className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
+                      placeholder="Ex: 81 99999-9999"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">
+                      <Zap className="w-4 h-4 text-[#39FF14]" />
+                      Indicação (Opcional)
+                    </label>
+                    <input
+                      type="text"
+                      value={indicacao}
+                      onChange={(e) => setIndicacao(e.target.value)}
+                      className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
+                      placeholder="Ex: Breno, Instagram, etc."
+                    />
+                  </div>
+                </div>
+
+                <div className="p-4 bg-black/40 rounded-lg border border-[#39FF14]/20 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-[#808080] font-['Roboto_Mono']">Total do Pedido:</span>
+                    <span className="text-[#39FF14] font-bold font-['Roboto_Mono']">R$ {total.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  disabled={enviandoPedido}
+                  className="w-full py-4 bg-[#39FF14] text-black rounded-lg font-['Orbitron'] font-bold text-lg hover:shadow-[0_0_25px_rgba(57,255,20,0.6)] transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50"
+                >
+                  {enviandoPedido ? (
+                    <>
+                      <Loader2 className="w-6 h-6 animate-spin" />
+                      PROCESSANDO...
+                    </>
+                  ) : (
+                    <>
+                      <Phone className="w-6 h-6" />
+                      CONFIRMAR E ENVIAR
+                    </>
+                  )}
+                </button>
+              </form>
             )}
           </div>
         </div>
