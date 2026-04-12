@@ -567,23 +567,26 @@ export default function Admin() {
       const marcaLimpa = p.marca.toUpperCase().trim();
       const nomeOriginal = p.nome.trim();
       
+      // Preparar nome para processamento (remover a marca do início para não confundir)
+      let nomeBase = nomeOriginal.toUpperCase().replace(marcaLimpa, '').trim();
+      
       // 1. EXTRAÇÃO DE PUXADAS (Número bruto)
-      // Remove pontos e busca o maior número na string
-      const nomeSemPontos = nomeOriginal.replace(/\./g, '');
+      const nomeSemPontos = nomeBase.replace(/\./g, '');
       const matchNumeros = nomeSemPontos.match(/(\d+)/g);
       let puxadasBrutas = 0;
       
       if (matchNumeros) {
-        // Pega o maior número encontrado (geralmente as puxadas)
+        // Pega o maior número (puxadas)
         puxadasBrutas = Math.max(...matchNumeros.map(n => parseInt(n)));
-        if (nomeSemPontos.toLowerCase().includes('k')) {
-          // Se tiver "k" mas o número for pequeno (ex: 30k), multiplica
-          if (puxadasBrutas < 1000) puxadasBrutas *= 1000;
+        // Se tiver "K" e for número baixo (ex: 30K), converte para milhar
+        if (nomeSemPontos.includes('K') && puxadasBrutas < 1000) {
+          puxadasBrutas *= 1000;
         }
       }
 
-      // 2. TRADUÇÃO DO MODELO COMERCIAL (IGNITE, BLACK SHEEP, ELF BAR)
-      let modeloComercial = nomeOriginal.toUpperCase();
+      // 2. TRADUÇÃO DO MODELO COMERCIAL (Limpeza Total)
+      let modeloComercial = '';
+      
       if (marcaLimpa === 'IGNITE') {
         if (puxadasBrutas >= 40000) modeloComercial = nomeOriginal.toUpperCase().includes('ICE') ? 'V400ICE' : 'SWEET';
         else if (puxadasBrutas >= 30000) modeloComercial = 'V300';
@@ -591,33 +594,51 @@ export default function Admin() {
         else if (puxadasBrutas >= 15500) modeloComercial = 'V155';
         else if (puxadasBrutas >= 8000) modeloComercial = 'V80';
         else if (puxadasBrutas >= 5500) modeloComercial = 'V55';
-      } else if (marcaLimpa === 'BLACK SHEEP' || marcaLimpa === 'ELF BAR') {
-        const kValue = Math.floor(puxadasBrutas / 1000);
-        modeloComercial = `${kValue}K`;
+        else if (nomeOriginal.toUpperCase().includes('NANO')) modeloComercial = 'NANO';
+        else modeloComercial = nomeBase.split('-')[0].trim() || 'V-SERIES';
+      } else {
+        // Para BLACK SHEEP, ELF BAR, WAKA, etc., usa o padrão "30K", "40K"
+        if (puxadasBrutas > 0) {
+          modeloComercial = `${Math.floor(puxadasBrutas / 1000)}K`;
+        } else {
+          modeloComercial = nomeBase.split('-')[0].trim();
+        }
       }
 
-      // 3. CÁLCULOS FINANCEIROS (Rigorosos)
+      // Limpeza final do modelo: remover puxadas do texto se elas ainda estiverem lá
+      // Ex: "30.000" ou "30000"
+      modeloComercial = modeloComercial.replace(/[\d\.]+/g, '').trim() || modeloComercial;
+      // Se após a limpeza o modelo ficou vazio (acontece se o modelo era só o número), 
+      // e for Ignite, garantimos o código V.
+      if (!modeloComercial && marcaLimpa === 'IGNITE') {
+         if (puxadasBrutas === 8000) modeloComercial = 'V80';
+         else if (puxadasBrutas === 15500) modeloComercial = 'V155';
+      }
+
+      // 3. CÁLCULOS FINANCEIROS
       const vlProduto = p.preco || 0;
-      const desconto = 0; // Regra: DESCONTO sempre 0.00
+      const desconto = 0;
       const vlFinal = vlProduto - desconto;
-      const quantidade = p.estoque > 0 ? p.estoque : 20; // Padrão 20 se não informado/zero
+      const quantidade = p.estoque > 0 ? p.estoque : 20;
       const vlTotVenda = quantidade * vlProduto;
 
       // 4. EXTRAÇÃO DE SABOR (Pós hífen ou lista)
-      let saboresParaExportar = p.sabores.length > 0 ? p.sabores : ['Original'];
+      let saboresParaExportar = p.sabores.length > 0 ? [...p.sabores] : [];
       
-      // Se o nome tiver hífen, tenta extrair o sabor do nome também
+      // Se o nome tem hífen, o que vem depois é sabor
       if (nomeOriginal.includes('-')) {
-        const saborDoNome = nomeOriginal.split('-')[1].trim();
-        if (saborDoNome && !saboresParaExportar.includes(saborDoNome)) {
-          saboresParaExportar = [saborDoNome];
+        const saborExtraido = nomeOriginal.split('-')[1].trim();
+        if (saborExtraido && !saboresParaExportar.some(s => s.toUpperCase() === saborExtraido.toUpperCase())) {
+          saboresParaExportar = [saborExtraido]; // Prioriza o sabor específico do nome
         }
       }
+      
+      if (saboresParaExportar.length === 0) saboresParaExportar = ['ORIGINAL'];
 
       saboresParaExportar.forEach(sabor => {
         rows.push([
           marcaLimpa,
-          modeloComercial,
+          modeloComercial.toUpperCase(),
           puxadasBrutas,
           sabor.trim().toUpperCase(),
           quantidade,
@@ -653,14 +674,14 @@ export default function Admin() {
     }
 
     // Adaptando vendas para o mesmo rigor de colunas
-    const headers = ['DATA', 'PEDIDO #', 'CLIENTE', 'MARCA', 'MODELO', 'PUXADAS', 'SABOR', 'QUANTIDADE', 'VL. UNIT', 'DESCONTO', 'VL. TOTAL', 'STATUS'];
+    const headers = ['DATA', 'PEDIDO #', 'CLIENTE', 'WHATSAPP', 'MARCA', 'MODELO', 'PUXADAS', 'SABOR', 'QUANTIDADE', 'VL. UNIT', 'DESCONTO', 'VL. TOTAL', 'STATUS'];
     
     const rows: any[] = [];
     pedidosParaExportar.forEach(p => {
       const data = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
       
       p.itens.forEach(item => {
-        // Mesma lógica de extração para manter consistência
+        // ... (limpeza de modelo e puxadas idêntica)
         const nomeLimpo = item.nome.trim();
         const partes = nomeLimpo.split(/\s+/);
         let modelo = nomeLimpo;
@@ -680,7 +701,6 @@ export default function Admin() {
           }
         }
 
-        // Buscar a marca do produto original se possível, ou usar o nome
         const produtoOriginal = produtos.find(prod => prod.id === item.id);
         const marca = produtoOriginal ? produtoOriginal.marca : 'N/A';
 
@@ -688,10 +708,11 @@ export default function Admin() {
           data,
           p.numero_pedido,
           p.nome_cliente.toUpperCase(),
+          p.telefone_cliente,
           marca.toUpperCase(),
           modelo.toUpperCase(),
           puxadas,
-          item.sabor,
+          item.sabor.toUpperCase(),
           item.quantidade,
           item.preco_unitario.toFixed(2).replace('.', ','),
           p.desconto.toFixed(2).replace('.', ','),
