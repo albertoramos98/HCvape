@@ -565,7 +565,12 @@ export default function Admin() {
 
     produtos.forEach(p => {
       const marcaLimpa = p.marca.toUpperCase().trim();
-      const nomeOriginal = p.nome.trim();
+      // Limpeza agressiva do nome para remover termos de marketing
+      const nomeOriginal = p.nome
+        .replace(/⚡/g, '')
+        .replace(/PROMOÇÃO/gi, '')
+        .replace(/PROMO/gi, '')
+        .trim();
       
       // Preparar nome para processamento (remover a marca do início para não confundir)
       let nomeBase = nomeOriginal.toUpperCase().replace(marcaLimpa, '').trim();
