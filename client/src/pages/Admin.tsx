@@ -449,13 +449,55 @@ export default function Admin() {
   const handleAtualizarStatusPedido = async (id: string, status: boolean) => {
     try {
       setSalvando(true);
+      
+      const pedido = pedidos.find(p => p.id === id);
+      if (!pedido) return;
+
+      // Se o status não mudou, não faz nada (evita cliques duplos)
+      if (pedido.status_checklist === status) return;
+
+      // 1. Atualizar o status do pedido no banco
       await pedidosService.atualizarStatus(id, status);
+
+      // 2. Lógica de Estoque: Baixa ou Reposição
+      // Buscamos os produtos atuais para garantir valores reais
+      const produtosAtuais = await produtosService.obterTodos();
+      
+      const promessasEstoque = pedido.itens.map(async (item) => {
+        const produto = produtosAtuais.find(p => p.id === item.id);
+        
+        if (produto) {
+          // Se status for true (Checklist), subtrai. Se for false (Reabrir), soma.
+          const fator = status ? -1 : 1;
+          const novoEstoque = Math.max(0, produto.estoque + (item.quantidade * fator));
+          
+          await produtosService.atualizarEstoque(item.id, novoEstoque);
+          return { id: item.id, estoque: novoEstoque };
+        }
+        return null;
+      });
+
+      const resultadosEstoque = await Promise.all(promessasEstoque);
+      
+      // 3. Atualizar estados locais para refletir a mudança imediatamente
+      const novosProdutos = [...produtos];
+      resultadosEstoque.forEach(res => {
+        if (res) {
+          const index = novosProdutos.findIndex(p => p.id === res.id);
+          if (index !== -1) {
+            novosProdutos[index].estoque = res.estoque;
+          }
+        }
+      });
+      setProdutos(novosProdutos);
+
       setPedidos(pedidos.map(p => p.id === id ? { ...p, status_checklist: status } : p));
-      setSucesso('Status do pedido atualizado!');
+      setSucesso(status ? 'Checklist concluído e estoque baixado!' : 'Pedido reaberto e estoque reposto!');
+      
       setTimeout(() => setSucesso(null), 3000);
     } catch (err) {
       console.error('Erro ao atualizar status do pedido:', err);
-      setErro('Erro ao atualizar status do pedido');
+      setErro('Erro ao atualizar status do pedido e estoque');
     } finally {
       setSalvando(false);
     }
@@ -503,6 +545,70 @@ export default function Admin() {
     } finally {
       setSalvando(false);
     }
+  };
+
+  const handleExportarProdutos = () => {
+    if (produtos.length === 0) {
+      alert('Nenhum produto para exportar');
+      return;
+    }
+
+    const headers = ['Marca', 'Modelo/Puxadas', 'Quantidade', 'Valor Unitário', 'Valor Total Item'];
+    
+    // Calcular consolidado por marca
+    const consolidadoPorMarca: { [key: string]: number } = {};
+    let totalGeralItens = 0;
+    let valorTotalGeral = 0;
+
+    const rows = produtos.map(p => {
+      const valorTotalItem = p.preco * p.estoque;
+      
+      // Somar para o consolidado
+      consolidadoPorMarca[p.marca] = (consolidadoPorMarca[p.marca] || 0) + valorTotalItem;
+      totalGeralItens += p.estoque;
+      valorTotalGeral += valorTotalItem;
+
+      return [
+        p.marca,
+        p.nome,
+        p.estoque,
+        `R$ ${p.preco.toFixed(2).replace('.', ',')}`,
+        `R$ ${valorTotalItem.toFixed(2).replace('.', ',')}`
+      ];
+    });
+
+    // Criar linhas de resumo por marca
+    const resumoMarcaRows = Object.entries(consolidadoPorMarca).map(([marca, total]) => {
+      return ['', '', '', `TOTAL ${marca}`, `R$ ${total.toFixed(2).replace('.', ',')}`];
+    });
+
+    // Linha de total geral
+    const totalGeralRow = [
+      '', 
+      'RESUMO GERAL', 
+      `${totalGeralItens} unidades`, 
+      'VALOR TOTAL', 
+      `R$ ${valorTotalGeral.toFixed(2).replace('.', ',')}`
+    ];
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(r => r.join(';')),
+      '',
+      '--- RESUMO POR MARCA ---',
+      ...resumoMarcaRows.map(r => r.join(';')),
+      '',
+      totalGeralRow.join(';')
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `estoque_hc_pods_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   const handleExportarPedidos = () => {
@@ -643,9 +749,14 @@ export default function Admin() {
             <section>
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Produtos ({produtos.length})</h2>
-                <button onClick={abrirModalNovo} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14] text-black rounded-lg font-['Orbitron'] font-bold hover:shadow-[0_0_15px_rgba(57,255,20,0.5)] transition-all duration-300">
-                  <Plus className="w-4 h-4" /> Novo Produto
-                </button>
+                <div className="flex gap-3">
+                  <button onClick={handleExportarProdutos} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold hover:bg-[#39FF14]/30 transition-all duration-300">
+                    <Download className="w-4 h-4" /> Exportar Estoque
+                  </button>
+                  <button onClick={abrirModalNovo} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14] text-black rounded-lg font-['Orbitron'] font-bold hover:shadow-[0_0_15px_rgba(57,255,20,0.5)] transition-all duration-300">
+                    <Plus className="w-4 h-4" /> Novo Produto
+                  </button>
+                </div>
               </div>
 
               {produtos.length === 0 ? (
@@ -697,12 +808,55 @@ export default function Admin() {
             </section>
           </>
         ) : (
-          /* SEÇÃO DE PEDIDOS */
-          <section className="space-y-6">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Pedidos ({pedidos.length})</h2>
+          /* SEÇÃO DE PEDIDOS COM DASHBOARD */
+          <section className="space-y-8">
+            {/* Dashboard de Estatísticas */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="glass-morphism p-5 rounded-xl border border-[#39FF14]/20 bg-[#39FF14]/5">
+                <p className="text-[10px] font-bold text-[#39FF14] uppercase font-['Orbitron'] mb-1">Faturamento Total</p>
+                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  R$ {pedidos.reduce((acc, p) => acc + p.total_final, 0).toFixed(2)}
+                </h3>
+                <p className="text-[10px] text-[#808080] mt-1">Líquido (após descontos)</p>
+              </div>
+
+              <div className="glass-morphism p-5 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                <p className="text-[10px] font-bold text-blue-400 uppercase font-['Orbitron'] mb-1">Itens Vendidos</p>
+                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  {pedidos.reduce((acc, p) => acc + p.itens.reduce((sum, i) => sum + i.quantidade, 0), 0)} un
+                </h3>
+                <p className="text-[10px] text-[#808080] mt-1">Total de pods em pedidos</p>
+              </div>
+
+              <div className="glass-morphism p-5 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
+                <p className="text-[10px] font-bold text-yellow-500 uppercase font-['Orbitron'] mb-1">Status Pedidos</p>
+                <div className="flex gap-3 items-baseline">
+                  <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                    {pedidos.filter(p => !p.status_checklist).length}
+                  </h3>
+                  <span className="text-xs text-yellow-500 font-bold">Pendentes</span>
+                </div>
+                <p className="text-[10px] text-[#808080] mt-1">{pedidos.filter(p => p.status_checklist).length} Concluídos</p>
+              </div>
+
+              <div className="glass-morphism p-5 rounded-xl border border-red-500/20 bg-red-500/5">
+                <p className="text-[10px] font-bold text-red-400 uppercase font-['Orbitron'] mb-1">Top Indicação</p>
+                <h3 className="text-xl font-bold text-[#E0E0E0] font-['Roboto_Mono'] truncate">
+                  {(() => {
+                    const counts: { [key: string]: number } = {};
+                    pedidos.forEach(p => { if(p.indicacao) counts[p.indicacao] = (counts[p.indicacao] || 0) + 1 });
+                    const top = Object.entries(counts).sort((a,b) => b[1] - a[1])[0];
+                    return top ? `${top[0]} (${top[1]})` : 'Nenhuma';
+                  })()}
+                </h3>
+                <p className="text-[10px] text-[#808080] mt-1">Origem com mais vendas</p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Lista de Pedidos</h2>
               <button onClick={handleExportarPedidos} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold hover:bg-[#39FF14]/30 transition-all duration-300">
-                <Download className="w-4 h-4" /> Exportar Excel
+                <Download className="w-4 h-4" /> Exportar Vendas
               </button>
             </div>
 
