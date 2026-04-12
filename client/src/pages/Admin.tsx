@@ -558,73 +558,79 @@ export default function Admin() {
       return;
     }
 
-    const headers = ['Marca', 'Modelo', 'Puxadas', 'Quantidade', 'Valor Unitário', 'Valor Total Item'];
+    // Cabeçalhos exatamente como solicitado para SQL
+    const headers = ['MARCA', 'MODELO', 'PUXADAS', 'SABOR', 'QUANTIDADE', 'VL. PRODUTO', 'DESCONTO', 'VL. FINAL', 'VL. TOT. VENDA'];
     
-    // Calcular consolidado por marca
-    const consolidadoPorMarca: { [key: string]: number } = {};
-    let totalGeralItens = 0;
-    let valorTotalGeral = 0;
-
     const rows = produtos.map(p => {
-      const valorTotalItem = p.preco * p.estoque;
-      
-      // Somar para o consolidado
-      consolidadoPorMarca[p.marca] = (consolidadoPorMarca[p.marca] || 0) + valorTotalItem;
-      totalGeralItens += p.estoque;
-      valorTotalGeral += valorTotalItem;
+      // Cálculos Financeiros
+      const vlProduto = p.preco;
+      const desconto = p.is_promo && p.preco_promo ? (p.preco - p.preco_promo) : 0;
+      const vlFinal = vlProduto - desconto;
+      const vlTotVenda = p.estoque * vlProduto;
 
-      // Tentar separar Modelo de Puxadas (ex: "V80 8.000" -> ["V80", "8.000"])
-      const partes = p.nome.trim().split(/\s+/);
-      const puxadas = partes.length > 1 ? partes[partes.length - 1] : '-';
-      const modelo = partes.length > 1 ? partes.slice(0, partes.length - 1).join(' ') : p.nome;
+      // Lógica de Separação de Modelo e Puxadas
+      const nomeLimpo = p.nome.trim();
+      const partes = nomeLimpo.split(/\s+/);
+      
+      let modelo = nomeLimpo;
+      let puxadas = '0';
+
+      if (partes.length > 1) {
+        const ultimaParte = partes[partes.length - 1].toLowerCase();
+        // Se a última parte contém números, tratamos como puxadas
+        if (/[0-9]/.test(ultimaParte)) {
+          let pStr = ultimaParte.replace('puffs', '').replace('puff', '').replace('puxadas', '');
+          
+          if (pStr.includes('k')) {
+            const n = parseFloat(pStr.replace('k', '').replace(',', '.'));
+            puxadas = isNaN(n) ? '0' : (n * 1000).toString();
+          } else {
+            puxadas = pStr.replace(/[^0-9]/g, '');
+          }
+          
+          modelo = partes.slice(0, partes.length - 1).join(' ');
+        }
+      } else {
+        // Caso de palavra única ex: "BC5000" ou "30K"
+        const match = nomeLimpo.match(/(\d+)/);
+        if (match) {
+          puxadas = match[0];
+          if (nomeLimpo.toLowerCase().includes('k')) {
+            const kMatch = nomeLimpo.toLowerCase().match(/(\d+)k/);
+            if (kMatch) puxadas = (parseInt(kMatch[1]) * 1000).toString();
+          }
+        }
+      }
 
       return [
-        p.marca,
-        modelo,
-        p.is_promo ? `${puxadas} (PROMO)` : puxadas,
+        p.marca.toUpperCase(),
+        modelo.toUpperCase(),
+        puxadas,
+        p.sabores.length > 0 ? p.sabores.join(' + ') : 'Original',
         p.estoque,
-        `R$ ${p.preco.toFixed(2).replace('.', ',')}`,
-        `R$ ${valorTotalItem.toFixed(2).replace('.', ',')}`
+        vlProduto.toFixed(2).replace('.', ','),
+        desconto.toFixed(2).replace('.', ','),
+        vlFinal.toFixed(2).replace('.', ','),
+        vlTotVenda.toFixed(2).replace('.', ',')
       ];
     });
 
-    // Criar linhas de resumo por marca
-    const resumoMarcaRows = Object.entries(consolidadoPorMarca).map(([marca, total]) => {
-      return ['', '', '', '', `TOTAL ${marca}`, `R$ ${total.toFixed(2).replace('.', ',')}`];
-    });
-
-    // Linha de total geral
-    const totalGeralRow = [
-      '', 
-      '',
-      'RESUMO GERAL', 
-      `${totalGeralItens} unidades`, 
-      'VALOR TOTAL', 
-      `R$ ${valorTotalGeral.toFixed(2).replace('.', ',')}`
-    ];
-
     const csvContent = [
       headers.join(';'),
-      ...rows.map(r => r.join(';')),
-      '',
-      '--- RESUMO POR MARCA ---',
-      ...resumoMarcaRows.map(r => r.join(';')),
-      '',
-      totalGeralRow.join(';')
+      ...rows.map(r => r.join(';'))
     ].join('\n');
 
     const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `estoque_hc_pods_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `estoque_hc_sql_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
   };
 
   const handleExportarPedidos = () => {
-    // Definir quais pedidos exportar (Ativos ou Lixeira)
     const pedidosParaExportar = subAbaPedidos === 'ativos' ? pedidos : pedidosExcluidos;
     
     if (pedidosParaExportar.length === 0) {
@@ -632,32 +638,51 @@ export default function Admin() {
       return;
     }
 
-    const headers = ['Data', 'Pedido #', 'Cliente', 'Telefone', 'Indicação', 'Modelo', 'Puxadas', 'Sabor', 'Quantidade', 'Total Original', 'Desconto', 'Total Final', 'Status Checklist'];
+    // Adaptando vendas para o mesmo rigor de colunas
+    const headers = ['DATA', 'PEDIDO #', 'CLIENTE', 'MARCA', 'MODELO', 'PUXADAS', 'SABOR', 'QUANTIDADE', 'VL. UNIT', 'DESCONTO', 'VL. TOTAL', 'STATUS'];
     
     const rows: any[] = [];
     pedidosParaExportar.forEach(p => {
       const data = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
       
       p.itens.forEach(item => {
-        // Tentar separar Modelo de Puxadas (ex: "V80 8.000" -> ["V80", "8.000"])
-        const partes = item.nome.trim().split(/\s+/);
-        const puxadas = partes.length > 1 ? partes[partes.length - 1] : '-';
-        const modelo = partes.length > 1 ? partes.slice(0, partes.length - 1).join(' ') : item.nome;
+        // Mesma lógica de extração para manter consistência
+        const nomeLimpo = item.nome.trim();
+        const partes = nomeLimpo.split(/\s+/);
+        let modelo = nomeLimpo;
+        let puxadas = '0';
+
+        if (partes.length > 1) {
+          const ultimaParte = partes[partes.length - 1].toLowerCase();
+          if (/[0-9]/.test(ultimaParte)) {
+            let pStr = ultimaParte.replace('puffs', '').replace('puff', '');
+            if (pStr.includes('k')) {
+              const n = parseFloat(pStr.replace('k', '').replace(',', '.'));
+              puxadas = isNaN(n) ? '0' : (n * 1000).toString();
+            } else {
+              puxadas = pStr.replace(/[^0-9]/g, '');
+            }
+            modelo = partes.slice(0, partes.length - 1).join(' ');
+          }
+        }
+
+        // Buscar a marca do produto original se possível, ou usar o nome
+        const produtoOriginal = produtos.find(prod => prod.id === item.id);
+        const marca = produtoOriginal ? produtoOriginal.marca : 'N/A';
 
         rows.push([
           data,
           p.numero_pedido,
-          p.nome_cliente,
-          p.telefone_cliente,
-          p.indicacao || '-',
-          modelo,
+          p.nome_cliente.toUpperCase(),
+          marca.toUpperCase(),
+          modelo.toUpperCase(),
           puxadas,
           item.sabor,
           item.quantidade,
-          p.total.toFixed(2).replace('.', ','),
+          item.preco_unitario.toFixed(2).replace('.', ','),
           p.desconto.toFixed(2).replace('.', ','),
           p.total_final.toFixed(2).replace('.', ','),
-          p.status_checklist ? 'CONCLUÍDO' : 'PENDENTE'
+          p.status_checklist ? 'CONCLUIDO' : 'PENDENTE'
         ]);
       });
     });
@@ -671,8 +696,8 @@ export default function Admin() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    const prefixo = subAbaPedidos === 'ativos' ? 'pedidos' : 'lixeira_pedidos';
-    link.setAttribute('download', `${prefixo}_hc_vape_${new Date().toISOString().split('T')[0]}.csv`);
+    const prefixo = subAbaPedidos === 'ativos' ? 'vendas' : 'lixeira';
+    link.setAttribute('download', `${prefixo}_hc_sql_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -773,8 +798,8 @@ export default function Admin() {
 
         {abaAtiva === 'produtos' ? (
           <>
-            <section>
-              <div className="flex items-center justify-between mb-6">
+            <section className="space-y-6">
+              <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Produtos ({produtos.length})</h2>
                 <div className="flex gap-3">
                   <button onClick={handleExportarProdutos} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold hover:bg-[#39FF14]/30 transition-all duration-300">
@@ -783,6 +808,69 @@ export default function Admin() {
                   <button onClick={abrirModalNovo} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14] text-black rounded-lg font-['Orbitron'] font-bold hover:shadow-[0_0_15px_rgba(57,255,20,0.5)] transition-all duration-300">
                     <Plus className="w-4 h-4" /> Novo Produto
                   </button>
+                </div>
+              </div>
+
+              {/* RESUMO DE ESTOQUE POR PRODUTO E SABOR */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Resumo por Produto/Modelo */}
+                <div className="glass-morphism p-5 rounded-xl border border-[#39FF14]/20 bg-black/40">
+                  <h3 className="text-sm font-bold text-[#39FF14] uppercase font-['Orbitron'] mb-4 flex items-center gap-2">
+                    <Box className="w-4 h-4" /> Estoque por Modelo
+                  </h3>
+                  <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                    {(() => {
+                      const resumoModelo: { [key: string]: number } = {};
+                      produtos.forEach(p => {
+                        const chave = `${p.marca} ${p.nome}`;
+                        resumoModelo[chave] = (resumoModelo[chave] || 0) + p.estoque;
+                      });
+                      
+                      const modelosOrdenados = Object.entries(resumoModelo).sort((a, b) => b[1] - a[1]);
+                      
+                      if (modelosOrdenados.length === 0) return <p className="text-xs text-[#808080]">Nenhum dado disponível</p>;
+                      
+                      return modelosOrdenados.map(([modelo, total]) => (
+                        <div key={modelo} className="flex justify-between items-center text-xs font-['Roboto_Mono'] border-b border-[#39FF14]/5 pb-1">
+                          <span className="text-[#C0C0C0] truncate pr-4">{modelo}</span>
+                          <span className={`font-bold ${total > 0 ? 'text-[#39FF14]' : 'text-red-500'}`}>{total} un</span>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+
+                {/* Resumo por Sabor */}
+                <div className="glass-morphism p-5 rounded-xl border border-blue-500/20 bg-black/40">
+                  <h3 className="text-sm font-bold text-blue-400 uppercase font-['Orbitron'] mb-4 flex items-center gap-2">
+                    <Zap className="w-4 h-4" /> Estoque por Sabor
+                  </h3>
+                  <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                    {(() => {
+                      const resumoSabor: { [key: string]: number } = {};
+                      produtos.forEach(p => {
+                        p.sabores.forEach(s => {
+                          const sabor = s.trim();
+                          if (sabor) {
+                            // Nota: Como o estoque é por produto e não por sabor individualmente no banco,
+                            // aqui mostramos a soma total de produtos que possuem este sabor.
+                            resumoSabor[sabor] = (resumoSabor[sabor] || 0) + p.estoque;
+                          }
+                        });
+                      });
+                      
+                      const saboresOrdenados = Object.entries(resumoSabor).sort((a, b) => b[1] - a[1]);
+                      
+                      if (saboresOrdenados.length === 0) return <p className="text-xs text-[#808080]">Nenhum dado disponível</p>;
+                      
+                      return saboresOrdenados.map(([sabor, total]) => (
+                        <div key={sabor} className="flex justify-between items-center text-xs font-['Roboto_Mono'] border-b border-blue-500/5 pb-1">
+                          <span className="text-[#C0C0C0] truncate pr-4">{sabor}</span>
+                          <span className={`font-bold ${total > 0 ? 'text-blue-400' : 'text-red-500'}`}>{total} un</span>
+                        </div>
+                      ));
+                    })()}
+                  </div>
                 </div>
               </div>
 
