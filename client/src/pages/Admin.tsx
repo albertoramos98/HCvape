@@ -562,6 +562,7 @@ export default function Admin() {
     const headers = ['MARCA', 'PUXADAS', 'SABOR', 'QUANTIDADE', 'VL. PRODUTO', 'DESCONTO', 'VL. FINAL', 'VL. TOT. VENDA'];
     
     const rows: any[] = [];
+    let totalGeralEstoque = 0;
 
     produtos.forEach(p => {
       const marcaLimpa = p.marca.toUpperCase().trim();
@@ -610,6 +611,7 @@ export default function Admin() {
       if (saboresParaExportar.length === 0) saboresParaExportar = ['ORIGINAL'];
 
       saboresParaExportar.forEach(sabor => {
+        totalGeralEstoque += quantidade;
         rows.push([
           marcaLimpa,
           puxadasBrutas,
@@ -622,6 +624,10 @@ export default function Admin() {
         ]);
       });
     });
+
+    // Adicionar linha de Total Geral ao fim
+    rows.push(['', '', '', '', '', '', '', '']); // Linha em branco para separar
+    rows.push(['TOTAL GERAL', '', '', totalGeralEstoque, '', '', '', '']);
 
     const csvContent = [
       headers.join(';'),
