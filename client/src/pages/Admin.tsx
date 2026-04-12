@@ -558,61 +558,73 @@ export default function Admin() {
       return;
     }
 
-    // Cabeçalhos exatamente como solicitado para SQL
+    // Cabeçalhos rigorosos para SQL
     const headers = ['MARCA', 'MODELO', 'PUXADAS', 'SABOR', 'QUANTIDADE', 'VL. PRODUTO', 'DESCONTO', 'VL. FINAL', 'VL. TOT. VENDA'];
     
-    const rows = produtos.map(p => {
-      // Cálculos Financeiros
-      const vlProduto = p.preco;
-      const desconto = p.is_promo && p.preco_promo ? (p.preco - p.preco_promo) : 0;
-      const vlFinal = vlProduto - desconto;
-      const vlTotVenda = p.estoque * vlProduto;
+    const rows: any[] = [];
 
-      // Lógica de Separação de Modelo e Puxadas
+    produtos.forEach(p => {
+      const marcaLimpa = p.marca.toUpperCase().trim();
       const nomeLimpo = p.nome.trim();
-      const partes = nomeLimpo.split(/\s+/);
       
-      let modelo = nomeLimpo;
-      let puxadas = '0';
-
-      if (partes.length > 1) {
-        const ultimaParte = partes[partes.length - 1].toLowerCase();
-        // Se a última parte contém números, tratamos como puxadas
-        if (/[0-9]/.test(ultimaParte)) {
-          let pStr = ultimaParte.replace('puffs', '').replace('puff', '').replace('puxadas', '');
-          
-          if (pStr.includes('k')) {
-            const n = parseFloat(pStr.replace('k', '').replace(',', '.'));
-            puxadas = isNaN(n) ? '0' : (n * 1000).toString();
-          } else {
-            puxadas = pStr.replace(/[^0-9]/g, '');
-          }
-          
-          modelo = partes.slice(0, partes.length - 1).join(' ');
-        }
-      } else {
-        // Caso de palavra única ex: "BC5000" ou "30K"
-        const match = nomeLimpo.match(/(\d+)/);
-        if (match) {
-          puxadas = match[0];
-          if (nomeLimpo.toLowerCase().includes('k')) {
-            const kMatch = nomeLimpo.toLowerCase().match(/(\d+)k/);
-            if (kMatch) puxadas = (parseInt(kMatch[1]) * 1000).toString();
-          }
+      // 1. Extrair número bruto de puxadas
+      let puxadasBrutas = 0;
+      const matchPuxadas = nomeLimpo.match(/(\d+)/);
+      if (matchPuxadas) {
+        puxadasBrutas = parseInt(matchPuxadas[0]);
+        if (nomeLimpo.toLowerCase().includes('k')) {
+          puxadasBrutas *= 1000;
         }
       }
 
-      return [
-        p.marca.toUpperCase(),
-        modelo.toUpperCase(),
-        puxadas,
-        p.sabores.length > 0 ? p.sabores.join(' + ') : 'Original',
-        p.estoque,
-        vlProduto.toFixed(2).replace('.', ','),
-        desconto.toFixed(2).replace('.', ','),
-        vlFinal.toFixed(2).replace('.', ','),
-        vlTotVenda.toFixed(2).replace('.', ',')
-      ];
+      // 2. Traduzir Modelo Comercial
+      let modeloComercial = nomeLimpo.toUpperCase();
+      
+      if (marcaLimpa === 'IGNITE') {
+        if (puxadasBrutas >= 40000) {
+          modeloComercial = nomeLimpo.toUpperCase().includes('ICE') ? 'V400ICE' : 'SWEET';
+        } else if (puxadasBrutas >= 30000) {
+          modeloComercial = 'V300';
+        } else if (puxadasBrutas >= 25000) {
+          modeloComercial = 'V250';
+        } else if (puxadasBrutas >= 15500) {
+          modeloComercial = 'V155';
+        } else if (puxadasBrutas >= 8000) {
+          modeloComercial = 'V80';
+        } else if (puxadasBrutas >= 5500) {
+          modeloComercial = 'V55';
+        }
+      } else if (marcaLimpa === 'BLACK SHEEP') {
+        if (puxadasBrutas >= 40000) modeloComercial = '40K';
+        else if (puxadasBrutas >= 30000) modeloComercial = '30K';
+      } else if (marcaLimpa === 'ELF BAR') {
+        if (puxadasBrutas >= 40000) modeloComercial = '40K';
+        else if (puxadasBrutas >= 23000) modeloComercial = '23K';
+      }
+
+      // 3. Cálculos Financeiros
+      const vlProduto = p.preco || 0;
+      const desconto = 0; // Conforme regra: DESCONTO: 0.00
+      const vlFinal = vlProduto - desconto;
+      const quantidade = p.estoque || 20; // Valor padrão 20 se não informado
+      const vlTotVenda = quantidade * vlProduto;
+
+      // 4. Gerar uma linha para cada sabor (Essencial para importação SQL de estoque)
+      const listaSabores = p.sabores.length > 0 ? p.sabores : ['Original'];
+      
+      listaSabores.forEach(sabor => {
+        rows.push([
+          marcaLimpa,
+          modeloComercial,
+          puxadasBrutas,
+          sabor.trim().toUpperCase(),
+          quantidade,
+          vlProduto.toFixed(2).replace('.', ','),
+          desconto.toFixed(2).replace('.', ','),
+          vlFinal.toFixed(2).replace('.', ','),
+          vlTotVenda.toFixed(2).replace('.', ',')
+        ]);
+      });
     });
 
     const csvContent = [
@@ -624,7 +636,7 @@ export default function Admin() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `estoque_hc_sql_${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `estoque_hc_vape_sql_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
