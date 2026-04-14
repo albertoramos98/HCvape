@@ -1,5 +1,5 @@
-import { useState, useEffect, useRef } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter } from 'lucide-react';
 import { authService, produtosService, pedidosService, imagemService, Produto, Pedido, utils } from '@/lib/supabase';
 
 /**
@@ -34,6 +34,7 @@ export default function Admin() {
   const [pedidosExcluidos, setPedidosExcluidos] = useState<Pedido[]>([]);
   const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos'>('produtos');
   const [subAbaPedidos, setSubAbaPedidos] = useState<'ativos' | 'excluidos'>('ativos');
+  const [filtroData, setFiltroData] = useState<string>('');
   const [marcas, setMarcas] = useState<string[]>([]);
   const [estoqueEditado, setEstoqueEditado] = useState<EstoqueEditado>({});
   const [salvando, setSalvando] = useState(false);
@@ -41,6 +42,19 @@ export default function Admin() {
 
   // Estados para financeiro (desconto)
   const [editandoFinanceiro, setEditandoFinanceiro] = useState<{ id: string; desconto: string } | null>(null);
+
+  // Memo para pedidos filtrados por data
+  const pedidosFiltrados = useMemo(() => {
+    const lista = subAbaPedidos === 'ativos' ? pedidos : pedidosExcluidos;
+    if (!filtroData) return lista;
+    
+    return lista.filter(p => {
+      if (!p.created_at) return false;
+      // Compara apenas a parte da data (YYYY-MM-DD)
+      const dataPedido = new Date(p.created_at).toISOString().split('T')[0];
+      return dataPedido === filtroData;
+    });
+  }, [pedidos, pedidosExcluidos, subAbaPedidos, filtroData]);
 
   // Estados para modal de criar/editar
   const [modalAberto, setModalAberto] = useState(false);
@@ -552,6 +566,28 @@ export default function Admin() {
     }
   };
 
+  const handleRestaurarPedido = async (id: string, numero: number) => {
+    try {
+      setSalvando(true);
+      await pedidosService.restaurar(id);
+      
+      // Mover o pedido da lista de excluídos para a lista de ativos
+      const pedidoRestaurado = pedidosExcluidos.find(p => p.id === id);
+      if (pedidoRestaurado) {
+        setPedidos([...pedidos, { ...pedidoRestaurado, excluido: false }]);
+        setPedidosExcluidos(pedidosExcluidos.filter(p => p.id !== id));
+      }
+      
+      setSucesso(`Pedido #${numero} restaurado com sucesso!`);
+      setTimeout(() => setSucesso(null), 3000);
+    } catch (err) {
+      console.error('Erro ao restaurar pedido:', err);
+      setErro('Erro ao restaurar pedido');
+    } finally {
+      setSalvando(false);
+    }
+  };
+
   const handleExportarProdutos = () => {
     if (produtos.length === 0) {
       alert('Nenhum produto para exportar');
@@ -920,9 +956,9 @@ export default function Admin() {
             {/* Dashboard de Estatísticas */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="glass-morphism p-5 rounded-xl border border-[#39FF14]/20 bg-[#39FF14]/5">
-                <p className="text-[10px] font-bold text-[#39FF14] uppercase font-['Orbitron'] mb-1">Faturamento Total</p>
+                <p className="text-[10px] font-bold text-[#39FF14] uppercase font-['Orbitron'] mb-1">Faturamento {filtroData ? 'do Dia' : 'Total'}</p>
                 <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
-                  R$ {pedidos.reduce((acc, p) => acc + p.total_final, 0).toFixed(2)}
+                  R$ {pedidosFiltrados.reduce((acc, p) => acc + p.total_final, 0).toFixed(2)}
                 </h3>
                 <p className="text-[10px] text-[#808080] mt-1">Líquido (após descontos)</p>
               </div>
@@ -930,7 +966,7 @@ export default function Admin() {
               <div className="glass-morphism p-5 rounded-xl border border-blue-500/20 bg-blue-500/5">
                 <p className="text-[10px] font-bold text-blue-400 uppercase font-['Orbitron'] mb-1">Itens Vendidos</p>
                 <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
-                  {pedidos.reduce((acc, p) => acc + p.itens.reduce((sum, i) => sum + i.quantidade, 0), 0)} un
+                  {pedidosFiltrados.reduce((acc, p) => acc + p.itens.reduce((sum, i) => sum + i.quantidade, 0), 0)} un
                 </h3>
                 <p className="text-[10px] text-[#808080] mt-1">Total de pods em pedidos</p>
               </div>
@@ -939,11 +975,11 @@ export default function Admin() {
                 <p className="text-[10px] font-bold text-yellow-500 uppercase font-['Orbitron'] mb-1">Status Pedidos</p>
                 <div className="flex gap-3 items-baseline">
                   <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
-                    {pedidos.filter(p => !p.status_checklist).length}
+                    {pedidosFiltrados.filter(p => !p.status_checklist).length}
                   </h3>
                   <span className="text-xs text-yellow-500 font-bold">Pendentes</span>
                 </div>
-                <p className="text-[10px] text-[#808080] mt-1">{pedidos.filter(p => p.status_checklist).length} Concluídos</p>
+                <p className="text-[10px] text-[#808080] mt-1">{pedidosFiltrados.filter(p => p.status_checklist).length} Concluídos</p>
               </div>
 
               <div className="glass-morphism p-5 rounded-xl border border-red-500/20 bg-red-500/5">
@@ -951,7 +987,7 @@ export default function Admin() {
                 <h3 className="text-xl font-bold text-[#E0E0E0] font-['Roboto_Mono'] truncate">
                   {(() => {
                     const counts: { [key: string]: number } = {};
-                    pedidos.forEach(p => { if(p.indicacao) counts[p.indicacao] = (counts[p.indicacao] || 0) + 1 });
+                    pedidosFiltrados.forEach(p => { if(p.indicacao) counts[p.indicacao] = (counts[p.indicacao] || 0) + 1 });
                     const top = Object.entries(counts).sort((a,b) => b[1] - a[1])[0];
                     return top ? `${top[0]} (${top[1]})` : 'Nenhuma';
                   })()}
@@ -960,10 +996,10 @@ export default function Admin() {
               </div>
             </div>
 
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex items-center gap-6">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
+              <div className="flex flex-col md:flex-row md:items-center gap-6">
                 <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Lista de Pedidos</h2>
-                <div className="flex bg-black/40 p-1 rounded-lg border border-[#39FF14]/20">
+                <div className="flex bg-black/40 p-1 rounded-lg border border-[#39FF14]/20 self-start">
                   <button 
                     onClick={() => setSubAbaPedidos('ativos')}
                     className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${subAbaPedidos === 'ativos' ? 'bg-[#39FF14] text-black shadow-[0_0_10px_rgba(57,255,20,0.3)]' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
@@ -978,20 +1014,46 @@ export default function Admin() {
                   </button>
                 </div>
               </div>
-              <button onClick={handleExportarPedidos} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold hover:bg-[#39FF14]/30 transition-all duration-300">
-                <Download className="w-4 h-4" /> Exportar {subAbaPedidos === 'ativos' ? 'Vendas' : 'Lixeira'}
-              </button>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative flex items-center">
+                  <div className="absolute left-3 text-[#39FF14]/60">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <input 
+                    type="date" 
+                    value={filtroData}
+                    onChange={(e) => setFiltroData(e.target.value)}
+                    className="bg-black/40 border border-[#39FF14]/30 text-[#39FF14] pl-10 pr-4 py-2 rounded-lg font-['Roboto_Mono'] text-sm focus:border-[#39FF14] outline-none transition-all"
+                  />
+                  {filtroData && (
+                    <button 
+                      onClick={() => setFiltroData('')}
+                      className="absolute right-3 text-red-400 hover:text-red-500 transition-colors"
+                      title="Limpar filtro"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
+
+                <button onClick={handleExportarPedidos} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold hover:bg-[#39FF14]/30 transition-all duration-300">
+                  <Download className="w-4 h-4" /> Exportar {subAbaPedidos === 'ativos' ? 'Vendas' : 'Lixeira'}
+                </button>
+              </div>
             </div>
 
             <div className="grid gap-6">
-              {(subAbaPedidos === 'ativos' ? pedidos : pedidosExcluidos).length === 0 ? (
+              {pedidosFiltrados.length === 0 ? (
                 <div className="glass-morphism p-12 rounded-xl text-center border border-dashed border-[#39FF14]/20">
                   <p className="text-[#808080] font-['Roboto_Mono']">
-                    {subAbaPedidos === 'ativos' ? 'Nenhum pedido ativo encontrado' : 'A lixeira está vazia'}
+                    {filtroData 
+                      ? `Nenhum pedido encontrado para o dia ${new Date(filtroData + 'T12:00:00').toLocaleDateString('pt-BR')}`
+                      : subAbaPedidos === 'ativos' ? 'Nenhum pedido ativo encontrado' : 'A lixeira está vazia'}
                   </p>
                 </div>
               ) : (
-                (subAbaPedidos === 'ativos' ? pedidos : pedidosExcluidos).map((pedido) => (
+                pedidosFiltrados.map((pedido) => (
                   <div key={pedido.id} className={`glass-morphism p-6 rounded-xl border transition-all duration-300 ${pedido.status_checklist ? 'border-[#39FF14]/20 opacity-80' : 'border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.1)]'} ${subAbaPedidos === 'excluidos' ? 'border-red-500/30 grayscale-[0.5]' : ''}`}>
                     <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
                       <div className="flex items-center gap-4">
