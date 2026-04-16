@@ -34,7 +34,7 @@ export default function Admin() {
   const [pedidosExcluidos, setPedidosExcluidos] = useState<Pedido[]>([]);
   const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos'>('produtos');
   const [subAbaPedidos, setSubAbaPedidos] = useState<'ativos' | 'excluidos'>('ativos');
-  const [filtroData, setFiltroData] = useState<string>('');
+  const [filtroData, setFiltroData] = useState<string>(new Date().toLocaleDateString('en-CA'));
   const [marcas, setMarcas] = useState<string[]>([]);
   const [estoqueEditado, setEstoqueEditado] = useState<EstoqueEditado>({});
   const [salvando, setSalvando] = useState(false);
@@ -50,8 +50,8 @@ export default function Admin() {
     
     return lista.filter(p => {
       if (!p.created_at) return false;
-      // Compara apenas a parte da data (YYYY-MM-DD)
-      const dataPedido = new Date(p.created_at).toISOString().split('T')[0];
+      // Compara apenas a parte da data (YYYY-MM-DD) usando o horário local
+      const dataPedido = new Date(p.created_at).toLocaleDateString('en-CA');
       return dataPedido === filtroData;
     });
   }, [pedidos, pedidosExcluidos, subAbaPedidos, filtroData]);
