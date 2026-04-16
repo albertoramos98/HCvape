@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter } from 'lucide-react';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail } from 'lucide-react';
 import { authService, produtosService, pedidosService, imagemService, Produto, Pedido, utils } from '@/lib/supabase';
 
 /**
@@ -1144,6 +1144,38 @@ export default function Admin() {
         )
       }
       </main>
+
+      {/* Footer Discreto - Portfolio */}
+      <footer className="py-8 mt-12 border-t border-[#39FF14]/10">
+        <div className="container flex flex-col items-center justify-center gap-4">
+          <p className="text-[#606060] font-['Roboto_Mono'] text-[10px] tracking-widest uppercase text-center">
+            Desenvolvido por <span className="text-[#808080]">Alberto Ramos</span>
+          </p>
+          <div className="flex items-center gap-6">
+            <a 
+              href="https://github.com/albertoramos98" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="group flex items-center gap-2 text-[#606060] hover:text-[#39FF14] transition-all duration-300"
+              title="GitHub"
+            >
+              <Github className="w-4 h-4" />
+              <span className="text-[10px] font-['Orbitron'] font-bold opacity-0 group-hover:opacity-100 transition-opacity">GITHUB</span>
+            </a>
+            <a 
+              href="mailto:alpemc.dev@gmail.com" 
+              className="group flex items-center gap-2 text-[#606060] hover:text-[#39FF14] transition-all duration-300"
+              title="Email para contato"
+            >
+              <Mail className="w-4 h-4" />
+              <span className="text-[10px] font-['Orbitron'] font-bold opacity-0 group-hover:opacity-100 transition-opacity">CONTATO</span>
+            </a>
+          </div>
+          <p className="text-[#404040] font-['Roboto_Mono'] text-[8px]">
+            &copy; {new Date().getFullYear()} — Fullstack Developer
+          </p>
+        </div>
+      </footer>
 
       {/* Modal Produto */}
       {modalAberto && (
