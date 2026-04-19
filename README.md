@@ -235,5 +235,4 @@ MIT
 
 ---
 
-**Desenvolvido com ❤️ para HC - Desde 2020**
-"# HCvape" 
+
