@@ -689,30 +689,32 @@ export default function Admin() {
     }
 
     // Simplificando relatório de vendas: removendo modelos e puxadas
-    const headers = ['DATA', 'PEDIDO #', 'CLIENTE', 'WHATSAPP', 'MARCA', 'SABOR', 'QUANTIDADE', 'VL. UNIT', 'DESCONTO', 'VL. TOTAL', 'STATUS'];
+    const headers = ['DATA', 'PEDIDO #', 'CLIENTE', 'WHATSAPP', 'INDICAÇÃO', 'ITENS', 'QTD TOTAL', 'DESCONTO', 'VALOR TOTAL', 'STATUS'];
     
     const rows: any[] = [];
     pedidosParaExportar.forEach(p => {
       const data = p.created_at ? new Date(p.created_at).toLocaleDateString('pt-BR') : '-';
       
-      p.itens.forEach(item => {
+      const itensFormatados = p.itens.map(item => {
         const produtoOriginal = produtos.find(prod => prod.id === item.id);
         const marca = produtoOriginal ? produtoOriginal.marca : 'N/A';
+        return `${item.quantidade}x ${marca.toUpperCase()} (${item.sabor.toUpperCase()})`;
+      }).join(' | ');
 
-        rows.push([
-          data,
-          p.numero_pedido,
-          p.nome_cliente.toUpperCase(),
-          p.telefone_cliente,
-          marca.toUpperCase(),
-          item.sabor.toUpperCase(),
-          item.quantidade,
-          item.preco_unitario.toFixed(2).replace('.', ','),
-          p.desconto.toFixed(2).replace('.', ','),
-          p.total_final.toFixed(2).replace('.', ','),
-          p.status_checklist ? 'CONCLUIDO' : 'PENDENTE'
-        ]);
-      });
+      const qtdTotal = p.itens.reduce((acc, item) => acc + item.quantidade, 0);
+
+      rows.push([
+        data,
+        p.numero_pedido,
+        p.nome_cliente.toUpperCase(),
+        p.telefone_cliente,
+        (p.indicacao || 'NENHUMA').toUpperCase(),
+        itensFormatados,
+        qtdTotal,
+        p.desconto.toFixed(2).replace('.', ','),
+        p.total_final.toFixed(2).replace('.', ','),
+        p.status_checklist ? 'CONCLUIDO' : 'PENDENTE'
+      ]);
     });
 
     const csvContent = [
