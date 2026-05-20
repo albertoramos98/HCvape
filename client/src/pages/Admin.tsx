@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail } from 'lucide-react';
-import { authService, produtosService, pedidosService, imagemService, Produto, Pedido, utils } from '@/lib/supabase';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users } from 'lucide-react';
+import { authService, produtosService, pedidosService, imagemService, visitasService, Produto, Pedido, utils } from '@/lib/supabase';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 /**
  * Página Admin - Gerenciamento Completo de Estoque + Promoções + Imagens + Pedidos
@@ -32,7 +33,8 @@ export default function Admin() {
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [pedidosExcluidos, setPedidosExcluidos] = useState<Pedido[]>([]);
-  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos'>('produtos');
+  const [metricasVisitas, setMetricasVisitas] = useState<{ data: string; acessos: number }[]>([]);
+  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos' | 'metricas'>('produtos');
   const [subAbaPedidos, setSubAbaPedidos] = useState<'ativos' | 'excluidos'>('ativos');
   const [filtroData, setFiltroData] = useState<string>(new Date().toLocaleDateString('en-CA'));
   const [marcas, setMarcas] = useState<string[]>([]);
@@ -102,16 +104,18 @@ export default function Admin() {
   const carregarTudo = async () => {
     try {
       setErro(null);
-      const [produtosData, pedidosData, pedidosExcluidosData, marcasData] = await Promise.all([
+      const [produtosData, pedidosData, pedidosExcluidosData, marcasData, metricasData] = await Promise.all([
         produtosService.obterTodos(),
         pedidosService.obterTodos(),
         pedidosService.obterExcluidos(),
-        utils.obterMarcas()
+        utils.obterMarcas(),
+        visitasService.obterMetricas()
       ]);
       setProdutos(produtosData);
       setPedidos(pedidosData);
       setPedidosExcluidos(pedidosExcluidosData);
       setMarcas(marcasData);
+      setMetricasVisitas(metricasData);
       setEstoqueEditado({});
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
@@ -824,6 +828,9 @@ export default function Admin() {
               </span>
             )}
           </button>
+          <button onClick={() => setAbaAtiva('metricas')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'metricas' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
+            <BarChart3 className="w-4 h-4" /> Métricas
+          </button>
         </div>
 
         {abaAtiva === 'produtos' ? (
@@ -952,7 +959,7 @@ export default function Admin() {
               )}
             </section>
           </>
-        ) : (
+        ) : abaAtiva === 'pedidos' ? (
           /* SEÇÃO DE PEDIDOS COM DASHBOARD */
           <section className="space-y-8">
             {/* Dashboard de Estatísticas */}
@@ -1140,6 +1147,110 @@ export default function Admin() {
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          </section>
+        ) : (
+          /* SEÇÃO DE MÉTRICAS */
+          <section className="space-y-8 animate-in fade-in duration-500">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Métricas de Acesso</h2>
+              <button onClick={carregarTudo} className="p-2 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-lg hover:bg-[#39FF14]/20 transition-all">
+                <Zap className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="glass-morphism p-6 rounded-xl border border-[#39FF14]/20 bg-[#39FF14]/5">
+                <div className="flex items-center gap-3 mb-2">
+                  <Users className="w-5 h-5 text-[#39FF14]" />
+                  <p className="text-xs font-bold text-[#39FF14] uppercase font-['Orbitron']">Total de Acessos</p>
+                </div>
+                <h3 className="text-3xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  {metricasVisitas.reduce((acc, v) => acc + v.acessos, 0)}
+                </h3>
+              </div>
+              <div className="glass-morphism p-6 rounded-xl border border-blue-500/20 bg-blue-500/5">
+                <div className="flex items-center gap-3 mb-2">
+                  <TrendingUp className="w-5 h-5 text-blue-400" />
+                  <p className="text-xs font-bold text-blue-400 uppercase font-['Orbitron']">Média Diária</p>
+                </div>
+                <h3 className="text-3xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  {metricasVisitas.length > 0 
+                    ? (metricasVisitas.reduce((acc, v) => acc + v.acessos, 0) / metricasVisitas.length).toFixed(1)
+                    : 0}
+                </h3>
+              </div>
+              <div className="glass-morphism p-6 rounded-xl border border-purple-500/20 bg-purple-500/5">
+                <div className="flex items-center gap-3 mb-2">
+                  <Zap className="w-5 h-5 text-purple-400" />
+                  <p className="text-xs font-bold text-purple-400 uppercase font-['Orbitron']">Pico de Acesso</p>
+                </div>
+                <h3 className="text-3xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  {metricasVisitas.length > 0 
+                    ? Math.max(...metricasVisitas.map(v => v.acessos))
+                    : 0}
+                </h3>
+              </div>
+            </div>
+
+            <div className="glass-morphism p-8 rounded-xl border border-[#39FF14]/10 bg-black/40 min-h-[400px]">
+              <h3 className="text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] mb-8 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-[#39FF14]" /> Histórico de Visitas (Cliques por Dia)
+              </h3>
+              
+              {metricasVisitas.length === 0 ? (
+                <div className="h-64 flex items-center justify-center">
+                  <p className="text-[#808080] font-['Roboto_Mono']">Nenhum dado de visita registrado ainda</p>
+                </div>
+              ) : (
+                <div className="h-[350px] w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={metricasVisitas}>
+                      <defs>
+                        <linearGradient id="colorAcessos" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#39FF14" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#39FF14" stopOpacity={0}/>
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
+                      <XAxis 
+                        dataKey="data" 
+                        stroke="#666" 
+                        fontSize={10} 
+                        tickLine={false} 
+                        axisLine={false}
+                        dy={10}
+                      />
+                      <YAxis 
+                        stroke="#666" 
+                        fontSize={10} 
+                        tickLine={false} 
+                        axisLine={false}
+                        tickFormatter={(value) => `${value}`}
+                      />
+                      <RechartsTooltip 
+                        contentStyle={{ 
+                          backgroundColor: 'rgba(0, 0, 0, 0.8)', 
+                          border: '1px solid #39FF14',
+                          borderRadius: '8px',
+                          fontSize: '12px',
+                          fontFamily: 'Roboto Mono'
+                        }}
+                        itemStyle={{ color: '#39FF14' }}
+                      />
+                      <Area 
+                        type="monotone" 
+                        dataKey="acessos" 
+                        stroke="#39FF14" 
+                        strokeWidth={3}
+                        fillOpacity={1} 
+                        fill="url(#colorAcessos)" 
+                        animationDuration={1500}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
               )}
             </div>
           </section>

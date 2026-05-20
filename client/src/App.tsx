@@ -1,16 +1,26 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { Route, Switch } from "wouter";
+import { Route, Switch, useLocation } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Admin from "./pages/Admin";
 import HowItWorks from "./pages/HowItWorks";
+import { useEffect } from "react";
+import { visitasService } from "./lib/supabase";
 
 
 
 function Router() {
+  const [location] = useLocation();
+
+  useEffect(() => {
+    // Registrar visita apenas na Home ou quando o caminho mudar (opcional)
+    // Para simplificar, registramos toda vez que o app monta ou muda de rota
+    visitasService.registrarVisita(location);
+  }, [location]);
+
   return (
     <Switch>
       <Route path={"/"} component={Home} />

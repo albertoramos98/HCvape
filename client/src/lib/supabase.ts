@@ -52,6 +52,13 @@ export interface Pedido {
   created_at?: string;
 }
 
+export interface Visita {
+  id: string;
+  created_at: string;
+  user_agent: string;
+  path: string;
+}
+
 // Funções auxiliares
 export const produtosService = {
   // Buscar todos os produtos
@@ -280,6 +287,45 @@ export const imagemService = {
     }
     return this.upload(novoArquivo, produtoId);
   },
+};
+
+export const visitasService = {
+  // Registrar uma nova visita
+  async registrarVisita(path: string): Promise<void> {
+    try {
+      const userAgent = navigator.userAgent;
+      await supabase.from('visitas').insert([
+        { path, user_agent: userAgent }
+      ]);
+    } catch (err) {
+      console.error('Erro ao registrar visita:', err);
+    }
+  },
+
+  // Obter métricas de visitas agrupadas por dia
+  async obterMetricas(): Promise<{ data: string; acessos: number }[]> {
+    const { data, error } = await supabase
+      .from('visitas')
+      .select('created_at');
+
+    if (error) throw error;
+
+    // Agrupar por dia no frontend (mais simples para Supabase sem edge functions complexas)
+    const agrupado: { [key: string]: number } = {};
+    data.forEach((v: { created_at: string }) => {
+      const dia = new Date(v.created_at).toLocaleDateString('pt-BR');
+      agrupado[dia] = (agrupado[dia] || 0) + 1;
+    });
+
+    // Converter para array ordenado por data
+    return Object.entries(agrupado)
+      .map(([dia, acessos]) => ({ data: dia, acessos }))
+      .sort((a, b) => {
+        const dateA = new Date(a.data.split('/').reverse().join('-'));
+        const dateB = new Date(b.data.split('/').reverse().join('-'));
+        return dateA.getTime() - dateB.getTime();
+      });
+  }
 };
 
 // Autenticação
