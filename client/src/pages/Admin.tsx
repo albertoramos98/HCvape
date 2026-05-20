@@ -34,7 +34,15 @@ export default function Admin() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [pedidosExcluidos, setPedidosExcluidos] = useState<Pedido[]>([]);
   const [metricasVisitas, setMetricasVisitas] = useState<{ data: string; acessos: number }[]>([]);
+  const [filtroDiasMetricas, setFiltroDiasMetricas] = useState<number>(7);
   const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos' | 'metricas'>('produtos');
+
+  // Memo para métricas filtradas por dias
+  const metricasFiltradas = useMemo(() => {
+    if (filtroDiasMetricas === 0) return metricasVisitas;
+    return metricasVisitas.slice(-filtroDiasMetricas);
+  }, [metricasVisitas, filtroDiasMetricas]);
+
   const [subAbaPedidos, setSubAbaPedidos] = useState<'ativos' | 'excluidos'>('ativos');
   const [filtroData, setFiltroData] = useState<string>(new Date().toLocaleDateString('en-CA'));
   const [marcas, setMarcas] = useState<string[]>([]);
@@ -1153,11 +1161,26 @@ export default function Admin() {
         ) : (
           /* SEÇÃO DE MÉTRICAS */
           <section className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Métricas de Acesso</h2>
-              <button onClick={carregarTudo} className="p-2 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-lg hover:bg-[#39FF14]/20 transition-all">
-                <Zap className="w-4 h-4" />
-              </button>
+              
+              <div className="flex items-center gap-3">
+                <div className="flex bg-black/40 p-1 rounded-lg border border-[#39FF14]/20">
+                  {[7, 15, 30, 0].map((dias) => (
+                    <button 
+                      key={dias}
+                      onClick={() => setFiltroDiasMetricas(dias)}
+                      className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${filtroDiasMetricas === dias ? 'bg-[#39FF14] text-black' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
+                    >
+                      {dias === 0 ? 'Tudo' : `${dias}D`}
+                    </button>
+                  ))}
+                </div>
+                
+                <button onClick={carregarTudo} className="p-2 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-lg hover:bg-[#39FF14]/20 transition-all">
+                  <Zap className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -1167,8 +1190,9 @@ export default function Admin() {
                   <p className="text-xs font-bold text-[#39FF14] uppercase font-['Orbitron']">Total de Acessos</p>
                 </div>
                 <h3 className="text-3xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
-                  {metricasVisitas.reduce((acc, v) => acc + v.acessos, 0)}
+                  {metricasFiltradas.reduce((acc, v) => acc + v.acessos, 0)}
                 </h3>
+                <p className="text-[10px] text-[#808080] mt-1">No período selecionado</p>
               </div>
               <div className="glass-morphism p-6 rounded-xl border border-blue-500/20 bg-blue-500/5">
                 <div className="flex items-center gap-3 mb-2">
@@ -1176,10 +1200,11 @@ export default function Admin() {
                   <p className="text-xs font-bold text-blue-400 uppercase font-['Orbitron']">Média Diária</p>
                 </div>
                 <h3 className="text-3xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
-                  {metricasVisitas.length > 0 
-                    ? (metricasVisitas.reduce((acc, v) => acc + v.acessos, 0) / metricasVisitas.length).toFixed(1)
+                  {metricasFiltradas.length > 0 
+                    ? (metricasFiltradas.reduce((acc, v) => acc + v.acessos, 0) / metricasFiltradas.length).toFixed(1)
                     : 0}
                 </h3>
+                <p className="text-[10px] text-[#808080] mt-1">Acessos por dia</p>
               </div>
               <div className="glass-morphism p-6 rounded-xl border border-purple-500/20 bg-purple-500/5">
                 <div className="flex items-center gap-3 mb-2">
@@ -1187,10 +1212,11 @@ export default function Admin() {
                   <p className="text-xs font-bold text-purple-400 uppercase font-['Orbitron']">Pico de Acesso</p>
                 </div>
                 <h3 className="text-3xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
-                  {metricasVisitas.length > 0 
-                    ? Math.max(...metricasVisitas.map(v => v.acessos))
+                  {metricasFiltradas.length > 0 
+                    ? Math.max(...metricasFiltradas.map(v => v.acessos))
                     : 0}
                 </h3>
+                <p className="text-[10px] text-[#808080] mt-1">Máximo em um único dia</p>
               </div>
             </div>
 
@@ -1199,14 +1225,14 @@ export default function Admin() {
                 <TrendingUp className="w-4 h-4 text-[#39FF14]" /> Histórico de Visitas (Cliques por Dia)
               </h3>
               
-              {metricasVisitas.length === 0 ? (
+              {metricasFiltradas.length === 0 ? (
                 <div className="h-64 flex items-center justify-center">
                   <p className="text-[#808080] font-['Roboto_Mono']">Nenhum dado de visita registrado ainda</p>
                 </div>
               ) : (
                 <div className="h-[350px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={metricasVisitas}>
+                    <AreaChart data={metricasFiltradas}>
                       <defs>
                         <linearGradient id="colorAcessos" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#39FF14" stopOpacity={0.3}/>
