@@ -7,10 +7,9 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import Admin from "./pages/Admin";
 import HowItWorks from "./pages/HowItWorks";
+import PromocionalInfo from "./pages/PromocionalInfo";
 import { useEffect } from "react";
 import { visitasService } from "./lib/supabase";
-
-
 
 function Router() {
   const [location] = useLocation();
@@ -26,6 +25,7 @@ function Router() {
       <Route path={"/"} component={Home} />
       <Route path={"/admin"} component={Admin} />
       <Route path={"/como-funciona"} component={HowItWorks} />
+      <Route path={"/promocional-info"} component={PromocionalInfo} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
