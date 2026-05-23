@@ -389,7 +389,8 @@ export const utils = {
   estaEmHorarioPromo(): boolean {
     // Criar data em Brasília (UTC-3)
     const agora = new Date();
-    const brasilia = new Date(agora.toLocaleString('pt-BR', { timeZone: 'America/Recife' }));
+    // Use en-US to ensure the resulting string (MM/DD/YYYY) is valid for new Date() parsing
+    const brasilia = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
     
     const dia = brasilia.getDay(); // 0 = Domingo, 1 = Segunda, 2 = Terça, 3 = Quarta, 4 = Quinta, 5 = Sexta, 6 = Sábado
     const hora = brasilia.getHours();
@@ -409,7 +410,7 @@ export const utils = {
   // Obter hora atual em Brasília (para debug)
   obterHoraBrasilia(): string {
     const agora = new Date();
-    const brasilia = new Date(agora.toLocaleString('pt-BR', { timeZone: 'America/Recife' }));
+    const brasilia = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
     return brasilia.toLocaleTimeString('pt-BR');
   },
 };
