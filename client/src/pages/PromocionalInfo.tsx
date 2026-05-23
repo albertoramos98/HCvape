@@ -39,7 +39,7 @@ export default function PromocionalInfo() {
               <h3 className="text-xl font-bold font-['Orbitron']">DIAS</h3>
             </div>
             <p className="text-gray-400 font-['Roboto_Mono']">
-              As ofertas ficam disponíveis de <span className="text-[#39FF14] font-bold">Segunda a Quinta-feira</span>.
+              As ofertas ficam disponíveis de <span className="text-[#39FF14] font-bold">Terça a Quinta-feira</span>.
             </p>
           </div>
 
