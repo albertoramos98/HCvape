@@ -29,6 +29,7 @@ export interface Produto {
 
 export interface PedidoItem {
   id: string;
+  marca?: string;
   nome: string;
   sabor: string;
   quantidade: number;

@@ -709,8 +709,9 @@ export default function Admin() {
       
       const itensFormatados = p.itens.map(item => {
         const produtoOriginal = produtos.find(prod => prod.id === item.id);
-        const marca = produtoOriginal ? produtoOriginal.marca : 'N/A';
-        return `${item.quantidade}x ${marca.toUpperCase()} (${item.sabor.toUpperCase()})`;
+        const marca = item.marca || (produtoOriginal ? produtoOriginal.marca : 'N/A');
+        const nome = item.nome || (produtoOriginal ? produtoOriginal.nome : 'PRODUTO');
+        return `${item.quantidade}x ${marca.toUpperCase()} ${nome.toUpperCase()} (${item.sabor.toUpperCase()})`;
       }).join(' | ');
 
       const qtdTotal = p.itens.reduce((acc, item) => acc + item.quantidade, 0);
@@ -1117,12 +1118,16 @@ export default function Admin() {
                       <div className="space-y-4 text-sm font-['Roboto_Mono']">
                         <div className={`bg-black/30 p-4 rounded-lg border ${subAbaPedidos === 'excluidos' ? 'border-red-500/10' : 'border-[#39FF14]/10'}`}>
                           <h4 className={`text-[10px] font-bold uppercase mb-2 ${subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#39FF14]'}`}>Itens</h4>
-                          {pedido.itens.map((item, idx) => (
-                            <div key={idx} className={`flex justify-between border-b py-1 ${subAbaPedidos === 'excluidos' ? 'border-red-500/5' : 'border-[#39FF14]/5'}`}>
-                              <span>{item.quantidade}x {item.nome} ({item.sabor})</span>
-                              <span className={subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#39FF14]'}>R$ {(item.preco_unitario * item.quantidade).toFixed(2)}</span>
-                            </div>
-                          ))}
+                          {pedido.itens.map((item, idx) => {
+                            const produtoOriginal = produtos.find(prod => prod.id === item.id);
+                            const marca = item.marca || (produtoOriginal ? produtoOriginal.marca : '');
+                            return (
+                              <div key={idx} className={`flex justify-between border-b py-1 ${subAbaPedidos === 'excluidos' ? 'border-red-500/5' : 'border-[#39FF14]/5'}`}>
+                                <span>{item.quantidade}x {marca ? marca.toUpperCase() + ' ' : ''}{item.nome} ({item.sabor})</span>
+                                <span className={subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#39FF14]'}>R$ {(item.preco_unitario * item.quantidade).toFixed(2)}</span>
+                              </div>
+                            );
+                          })}
                         </div>
                         <div className="flex justify-between px-2">
                           <div><h4 className="text-[10px] text-[#808080] uppercase">Cliente</h4><p className="text-[#E0E0E0]">{pedido.nome_cliente}</p></div>

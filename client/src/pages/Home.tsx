@@ -14,6 +14,7 @@ import { useLocation } from "wouter";
 
 interface CartItem {
   id: string;
+  marca: string;
   nome: string;
   preco: number;
   sabor: string;
@@ -166,6 +167,7 @@ export default function Home() {
         ...carrinho,
         {
           id: produto.id,
+          marca: produto.marca,
           nome: produto.nome,
           preco: produto.preco,
           sabor,
@@ -220,6 +222,7 @@ export default function Home() {
       
       const itensPedido: PedidoItem[] = carrinho.map(item => ({
         id: item.id,
+        marca: item.marca,
         nome: item.nome,
         sabor: item.sabor,
         quantidade: item.quantidade,
