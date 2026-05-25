@@ -386,7 +386,7 @@ export const utils = {
     return marcas;
   },
 
-  // Verificar se está no horário de promoção (09:00 às 15:25 Brasília, Terça a Quinta)
+  // Verificar se está no horário de promoção (09:00 às 15:25 Brasília, Segunda a Quinta)
   estaEmHorarioPromo(): boolean {
     // Criar data em Brasília (UTC-3)
     const agora = new Date();
@@ -397,8 +397,8 @@ export const utils = {
     const hora = brasilia.getHours();
     const minutos = brasilia.getMinutes();
     
-    // Terça (2) a Quinta (4)
-    if (dia < 2 || dia > 4) return false;
+    // Segunda (1) a Quinta (4)
+    if (dia < 1 || dia > 4) return false;
 
     // Promoção ativa das 09:00 até as 15:25
     if (hora < 9) return false;
