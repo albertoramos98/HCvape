@@ -69,6 +69,13 @@ export default function Home() {
   const [enviandoPedido, setEnviandoPedido] = useState(false);
   const [pedidoConcluido, setPedidoConcluido] = useState<{ numero: number; total: number } | null>(null);
 
+  // Verificar se hoje é o dia do bloqueio manual (03/06/2026)
+  const isBlockedDay = useMemo(() => {
+    const agora = new Date();
+    const brasilia = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
+    return brasilia.toLocaleDateString('pt-BR') === '03/06/2026';
+  }, []);
+
   // Fechar pop-up de aviso
   const fecharPopupAviso = () => {
     setPopupAviso(false);
@@ -297,9 +304,15 @@ export default function Home() {
             </div>
 
             <div className="space-y-4 mb-8">
-              <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed">
-                <strong>PROMOÇÃO 🚀🔥✨</strong> só pode ser pedida das <strong className="text-red-400">09:00 até as 15:25</strong>.
-              </p>
+              {isBlockedDay ? (
+                <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed border-l-2 border-red-500 pl-4">
+                  Pedimos desculpas, mas devido a problemas internos, <strong className="text-red-400">não poderemos realizar a venda de promocionais excepcionalmente no dia de hoje (03/06)</strong>.
+                </p>
+              ) : (
+                <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed">
+                  <strong>PROMOÇÃO 🚀🔥✨</strong> só pode ser pedida das <strong className="text-red-400">09:00 até as 15:25</strong>.
+                </p>
+              )}
               <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed">
                 <strong>Pedidos Expressos</strong> Das 10:00 às 22:00. Fora desse horário, os pedidos serão processados no dia seguinte a partir das 10:00.
               </p>

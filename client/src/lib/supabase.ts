@@ -393,6 +393,10 @@ export const utils = {
     // Use en-US to ensure the resulting string (MM/DD/YYYY) is valid for new Date() parsing
     const brasilia = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
     
+    // BLOQUEIO MANUAL - APENAS HOJE (03/06/2026)
+    const diaMesAno = brasilia.toLocaleDateString('pt-BR');
+    if (diaMesAno === '03/06/2026') return false;
+
     const dia = brasilia.getDay(); // 0 = Domingo, 1 = Segunda, 2 = Terça, 3 = Quarta, 4 = Quinta, 5 = Sexta, 6 = Sábado
     const hora = brasilia.getHours();
     const minutos = brasilia.getMinutes();
