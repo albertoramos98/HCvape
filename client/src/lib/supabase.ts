@@ -151,13 +151,14 @@ export const produtosService = {
 };
 
 export const pedidosService = {
-  // Buscar todos os pedidos ativos
+  // Buscar todos os pedidos ativos (limitado aos últimos 500 para performance)
   async obterTodos(): Promise<Pedido[]> {
     const { data, error } = await supabase
       .from('pedidos')
       .select('*')
       .or('excluido.is.null,excluido.eq.false')
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false })
+      .limit(500);
 
     if (error) throw error;
     return data || [];
@@ -239,7 +240,7 @@ export const imagemService = {
     const { error: uploadError } = await supabase.storage
       .from(BUCKET_IMAGENS)
       .upload(caminho, arquivo, {
-        cacheControl: '3600',
+        cacheControl: '31536000', // 1 ano de cache para imagens
         upsert: true,
         contentType: arquivo.type,
       });
@@ -291,23 +292,39 @@ export const imagemService = {
 };
 
 export const visitasService = {
-  // Registrar uma nova visita
+  // Registrar uma nova visita (com proteção básica contra bots/spam)
   async registrarVisita(path: string): Promise<void> {
+    // Não registrar visitas a rotas administrativas ou de erro
+    if (path.startsWith('/admin') || path.startsWith('/404')) return;
+    
+    // Proteção básica: não registrar se for um bot conhecido
+    const userAgent = navigator.userAgent.toLowerCase();
+    const isBot = /bot|googlebot|crawler|spider|robot|crawling/i.test(userAgent);
+    if (isBot) return;
+
+    // Usar sessionStorage para registrar apenas uma vez por sessão
+    const jaRegistrado = sessionStorage.getItem(`visit_reg_${path}`);
+    if (jaRegistrado) return;
+
     try {
-      const userAgent = navigator.userAgent;
       await supabase.from('visitas').insert([
-        { path, user_agent: userAgent }
+        { path, user_agent: navigator.userAgent }
       ]);
+      sessionStorage.setItem(`visit_reg_${path}`, 'true');
     } catch (err) {
       console.error('Erro ao registrar visita:', err);
     }
   },
 
-  // Obter métricas de visitas agrupadas por dia
+  // Obter métricas de visitas agrupadas por dia (apenas últimos 30 dias para evitar egress alto)
   async obterMetricas(): Promise<{ data: string; acessos: number }[]> {
+    const trintaDiasAtras = new Date();
+    trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+
     const { data, error } = await supabase
       .from('visitas')
-      .select('created_at');
+      .select('created_at')
+      .gte('created_at', trintaDiasAtras.toISOString());
 
     if (error) throw error;
 

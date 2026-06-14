@@ -1285,6 +1285,69 @@ export default function Admin() {
               )}
             </div>
           </section>
+        ) : (
+          /* SEÇÃO DE SAÚDE E EDUCAÇÃO */
+          <section className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
+            <div className="flex flex-col gap-2">
+              <h2 className="text-3xl font-bold neon-glow font-['Orbitron']">Saúde do Sistema</h2>
+              <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-sm">Cartilha de boas práticas para mitigação de custos e performance.</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Checklist de Mitigação */}
+              <div className="glass-morphism p-8 rounded-xl border border-[#39FF14]/30 space-y-6">
+                <h3 className="text-xl font-bold text-[#39FF14] font-['Orbitron'] flex items-center gap-3">
+                  <CheckCircle2 className="w-6 h-6" /> Checklist de Mitigação
+                </h3>
+                
+                <div className="space-y-4">
+                  {[
+                    { title: "Compressão de Imagens", desc: "Sempre suba imagens abaixo de 200KB. Use ferramentas como TinyPNG antes do upload.", status: "Importante" },
+                    { title: "Cache de Longo Prazo", desc: "O sistema agora força 1 ano de cache no CDN para evitar downloads repetidos.", status: "Ativo" },
+                    { title: "Filtro de Métricas", desc: "Consultas de acesso agora são limitadas aos últimos 30 dias para economizar banda.", status: "Ativo" },
+                    { title: "Proteção contra Bots", desc: "O registro de visitas agora ignora crawlers conhecidos e evita duplicatas por sessão.", status: "Ativo" },
+                    { title: "Limites de Query", desc: "Listagem de pedidos agora possui limite de 500 registros para evitar sobrecarga.", status: "Ativo" }
+                  ].map((item, i) => (
+                    <div key={i} className="flex gap-4 p-4 bg-black/40 rounded-lg border border-[#39FF14]/10 hover:border-[#39FF14]/30 transition-all">
+                      <div className="mt-1">
+                        <div className={`w-3 h-3 rounded-full ${item.status === 'Ativo' ? 'bg-[#39FF14]' : 'bg-yellow-500'}`} />
+                      </div>
+                      <div>
+                        <h4 className="text-[#E0E0E0] font-bold text-sm font-['Orbitron']">{item.title}</h4>
+                        <p className="text-[#808080] text-xs font-['Roboto_Mono'] mt-1">{item.desc}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Educação sobre Egress */}
+              <div className="space-y-6">
+                <div className="glass-morphism p-8 rounded-xl border border-blue-500/30 bg-blue-500/5">
+                  <h3 className="text-xl font-bold text-blue-400 font-['Orbitron'] flex items-center gap-3 mb-4">
+                    <TrendingUp className="w-6 h-6" /> O que é Cached Egress?
+                  </h3>
+                  <p className="text-[#C0C0C0] text-sm font-['Roboto_Mono'] leading-relaxed">
+                    É o tráfego de dados que sai do Supabase para o navegador do cliente, mas que passou pelo cache do CDN. 
+                    <br /><br />
+                    No plano gratuito, o limite é de **5GB/mês**. Ultrapassar esse limite pode causar o bloqueio temporário do projeto.
+                  </p>
+                </div>
+
+                <div className="glass-morphism p-8 rounded-xl border border-red-500/30 bg-red-500/5">
+                  <h3 className="text-xl font-bold text-red-400 font-['Orbitron'] flex items-center gap-3 mb-4">
+                    <AlertCircle className="w-6 h-6" /> Alerta Vermelho
+                  </h3>
+                  <ul className="text-[#C0C0C0] text-xs font-['Roboto_Mono'] space-y-3 list-disc pl-4">
+                    <li>**Nunca** suba vídeos diretamente no Storage (use YouTube/Vimeo).</li>
+                    <li>**Evite** abrir o Admin repetidamente sem necessidade (cada abertura consome dados).</li>
+                    <li>**Monitore** o dashboard do Supabase semanalmente.</li>
+                    <li>Se o Egress subir sem motivo, avise o desenvolvedor imediatamente.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </section>
         )
       }
       </main>
