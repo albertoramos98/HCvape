@@ -35,7 +35,7 @@ export default function Admin() {
   const [pedidosExcluidos, setPedidosExcluidos] = useState<Pedido[]>([]);
   const [metricasVisitas, setMetricasVisitas] = useState<{ data: string; acessos: number }[]>([]);
   const [filtroDiasMetricas, setFiltroDiasMetricas] = useState<number>(7);
-  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos' | 'metricas'>('produtos');
+  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos' | 'metricas' | 'saude'>('produtos');
 
   // Memo para métricas filtradas por dias
   const metricasFiltradas = useMemo(() => {
@@ -839,6 +839,9 @@ export default function Admin() {
           </button>
           <button onClick={() => setAbaAtiva('metricas')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'metricas' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
             <BarChart3 className="w-4 h-4" /> Métricas
+          </button>
+          <button onClick={() => setAbaAtiva('saude')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'saude' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
+            <CheckCircle2 className="w-4 h-4" /> Saúde
           </button>
         </div>
 
