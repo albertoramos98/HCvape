@@ -7,11 +7,6 @@ export default function PromocionalInfo() {
   const [, setLocation] = useLocation();
   const [horaAtual, setHoraAtual] = useState(utils.obterHoraBrasilia());
 
-  // Verificar se hoje é o dia do bloqueio manual (03/06/2026)
-  const agora = new Date();
-  const brasilia = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-  const isBlockedDay = brasilia.toLocaleDateString('pt-BR') === '03/06/2026';
-
   useEffect(() => {
     const timer = setInterval(() => {
       setHoraAtual(utils.obterHoraBrasilia());
@@ -23,21 +18,6 @@ export default function PromocionalInfo() {
     <div className="min-h-screen bg-black text-white p-4 md:p-8 flex flex-col items-center justify-center">
       <div className="max-w-2xl w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
         
-        {/* Mensagem de Bloqueio Manual */}
-        {isBlockedDay && (
-          <div className="bg-red-500/10 border-2 border-red-500 p-6 rounded-2xl text-center space-y-3 shadow-[0_0_30px_rgba(255,0,0,0.2)]">
-            <h2 className="text-2xl font-bold font-['Orbitron'] text-red-500">
-              AVISO IMPORTANTE
-            </h2>
-            <p className="text-gray-300 font-['Roboto_Mono']">
-              Pedimos desculpas aos nossos clientes, mas devido a problemas internos, <strong>não poderemos realizar a venda de promocionais excepcionalmente no dia de hoje (03/06)</strong>.
-            </p>
-            <p className="text-sm text-red-400/70 font-['Roboto_Mono']">
-              Agradecemos a compreensão. Amanhã retornaremos ao horário normal.
-            </p>
-          </div>
-        )}
-
         {/* Header */}
         <div className="text-center space-y-4">
           <div className="inline-flex items-center justify-center p-3 bg-[#39FF14]/10 rounded-full mb-4">

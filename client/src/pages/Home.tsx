@@ -297,15 +297,9 @@ export default function Home() {
             </div>
 
             <div className="space-y-4 mb-8">
-              {isBlockedDay ? (
-                <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed border-l-2 border-red-500 pl-4">
-                  Pedimos desculpas, mas devido a problemas internos, <strong className="text-red-400">não poderemos realizar a venda de promocionais excepcionalmente no dia de hoje (03/06)</strong>.
-                </p>
-              ) : (
-                <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed">
-                  <strong>PROMOÇÃO 🚀🔥✨</strong> só pode ser pedida das <strong className="text-red-400">09:00 até as 15:25</strong>.
-                </p>
-              )}
+              <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed">
+                <strong>PROMOÇÃO 🚀🔥✨</strong> só pode ser pedida das <strong className="text-red-400">09:00 até as 15:25</strong>.
+              </p>
               <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed">
                 <strong>Pedidos Expressos</strong> Das 10:00 às 22:00. Fora desse horário, os pedidos serão processados no dia seguinte a partir das 10:00.
               </p>
