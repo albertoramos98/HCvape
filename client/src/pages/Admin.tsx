@@ -1163,7 +1163,7 @@ export default function Admin() {
               )}
             </div>
           </section>
-        ) : (
+        ) : abaAtiva === 'metricas' ? (
           /* SEÇÃO DE MÉTRICAS */
           <section className="space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1291,6 +1291,28 @@ export default function Admin() {
             <div className="flex flex-col gap-2">
               <h2 className="text-3xl font-bold neon-glow font-['Orbitron']">Saúde do Sistema</h2>
               <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-sm">Cartilha de boas práticas para mitigação de custos e performance.</p>
+            </div>
+
+            {/* Resumo de Carga Real */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="glass-morphism p-4 rounded-xl border border-[#39FF14]/20 bg-black/40">
+                <p className="text-[10px] font-bold text-[#39FF14] uppercase font-['Orbitron']">Peso do Banco (Linhas)</p>
+                <h3 className="text-xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  {produtos.length + pedidos.length + metricasVisitas.length} <span className="text-[10px] text-[#808080] font-normal">registros</span>
+                </h3>
+              </div>
+              <div className="glass-morphism p-4 rounded-xl border border-blue-500/20 bg-black/40">
+                <p className="text-[10px] font-bold text-blue-400 uppercase font-['Orbitron']">Arquivos de Imagem</p>
+                <h3 className="text-xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  {produtos.filter(p => p.imagem_url).length} <span className="text-[10px] text-[#808080] font-normal">no storage</span>
+                </h3>
+              </div>
+              <div className="glass-morphism p-4 rounded-xl border border-yellow-500/20 bg-black/40">
+                <p className="text-[10px] font-bold text-yellow-500 uppercase font-['Orbitron']">Pressão de Egress</p>
+                <h3 className="text-xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  {metricasVisitas.reduce((acc, v) => acc + v.acessos, 0)} <span className="text-[10px] text-[#808080] font-normal">visitas totais</span>
+                </h3>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">

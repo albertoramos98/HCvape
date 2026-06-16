@@ -69,13 +69,6 @@ export default function Home() {
   const [enviandoPedido, setEnviandoPedido] = useState(false);
   const [pedidoConcluido, setPedidoConcluido] = useState<{ numero: number; total: number } | null>(null);
 
-  // Verificar se hoje é o dia do bloqueio manual (03/06/2026)
-  const isBlockedDay = useMemo(() => {
-    const agora = new Date();
-    const brasilia = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
-    return brasilia.toLocaleDateString('pt-BR') === '03/06/2026';
-  }, []);
-
   // Fechar pop-up de aviso
   const fecharPopupAviso = () => {
     setPopupAviso(false);
