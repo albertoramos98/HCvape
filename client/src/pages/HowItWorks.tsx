@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Zap, Truck, Clock, CheckCircle2, AlertCircle, DollarSign } from 'lucide-react';
+import { configService, utils, PromoSchedule } from '@/lib/supabase';
 
 /**
  * Página: Como Funciona
@@ -9,6 +10,15 @@ import { Zap, Truck, Clock, CheckCircle2, AlertCircle, DollarSign } from 'lucide
 
 export default function HowItWorks() {
   const [modeloSelecionado, setModeloSelecionado] = useState<'promocional' | 'estoque'>('promocional');
+  const [promoConfig, setPromoConfig] = useState<PromoSchedule>({
+    dias_semana: [1, 2, 3],
+    hora_inicio: "09:00",
+    hora_fim: "15:25"
+  });
+
+  useEffect(() => {
+    configService.obterPromoSchedule().then(setPromoConfig).catch(console.error);
+  }, []);
 
   return (
     <div className="min-h-screen bg-black asphalt-texture">
@@ -121,7 +131,7 @@ export default function HowItWorks() {
                   <div className="flex gap-4 items-start">
                     <CheckCircle2 className="w-6 h-6 text-red-400 flex-shrink-0 mt-1" />
                     <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                      <strong>Funciona de segunda a quinta</strong>
+                      <strong>Funciona de {utils.formatarDiasSemana(promoConfig.dias_semana).toLowerCase()}</strong>
                     </p>
                   </div>
                 </div>
@@ -243,7 +253,7 @@ export default function HowItWorks() {
               <tbody>
                 <tr className="border-b border-[#39FF14]/20 hover:bg-[#39FF14]/5 transition-all">
                   <td className="py-4 px-4 text-[#C0C0C0] font-['Roboto_Mono'] text-lg font-bold">Horário de Pedido</td>
-                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">Até 15h</td>
+                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">Até {promoConfig.hora_fim.split(':')[0]}h</td>
                   <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">24h</td>
                 </tr>
                 <tr className="border-b border-[#39FF14]/20 hover:bg-[#39FF14]/5 transition-all">
@@ -258,7 +268,7 @@ export default function HowItWorks() {
                 </tr>
                 <tr className="border-b border-[#39FF14]/20 hover:bg-[#39FF14]/5 transition-all">
                   <td className="py-4 px-4 text-[#C0C0C0] font-['Roboto_Mono'] text-lg font-bold">Dias de Funcionamento</td>
-                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">Seg a Sex</td>
+                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">{utils.formatarDiasSemanaAbreviado(promoConfig.dias_semana)}</td>
                   <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">Todos os dias</td>
                 </tr>
                 <tr className="border-b border-[#39FF14]/20 hover:bg-[#39FF14]/5 transition-all">

@@ -60,6 +60,12 @@ export interface Visita {
   path: string;
 }
 
+export interface PromoSchedule {
+  dias_semana: number[];
+  hora_inicio: string;
+  hora_fim: string;
+}
+
 // Funções auxiliares
 export const produtosService = {
   // Buscar todos os produtos
@@ -346,6 +352,42 @@ export const visitasService = {
   }
 };
 
+export const configService = {
+  // Obter a configuração do horário promocional
+  async obterPromoSchedule(): Promise<PromoSchedule> {
+    try {
+      const { data, error } = await supabase
+        .from('configuracoes')
+        .select('valor')
+        .eq('chave', 'promo_schedule')
+        .single();
+      
+      if (error) throw error;
+      return data.valor as PromoSchedule;
+    } catch (err) {
+      console.warn('Usando valores padrão para a promoção (tabela configuracoes pode não existir):', err);
+      return {
+        dias_semana: [1, 2, 3], // Segunda a Quarta
+        hora_inicio: "09:00",
+        hora_fim: "15:25"
+      };
+    }
+  },
+
+  // Salvar a configuração do horário promocional
+  async salvarPromoSchedule(schedule: PromoSchedule): Promise<void> {
+    const { error } = await supabase
+      .from('configuracoes')
+      .upsert({
+        chave: 'promo_schedule',
+        valor: schedule,
+        updated_at: new Date().toISOString()
+      });
+    
+    if (error) throw error;
+  }
+};
+
 // Autenticação
 export const authService = {
   // Login com email e senha
@@ -403,26 +445,36 @@ export const utils = {
     return marcas;
   },
 
-  // Verificar se está no horário de promoção (09:00 às 15:25 Brasília, Segunda a Quinta)
-  estaEmHorarioPromo(): boolean {
+  // Verificar se está no horário de promoção baseado em uma configuração dinâmica (com fallback)
+  estaEmHorarioPromo(config?: PromoSchedule): boolean {
+    const schedule = config || {
+      dias_semana: [1, 2, 3],
+      hora_inicio: "09:00",
+      hora_fim: "15:25"
+    };
+
     // Criar data em Brasília (UTC-3)
     const agora = new Date();
     // Use en-US to ensure the resulting string (MM/DD/YYYY) is valid for new Date() parsing
     const brasilia = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
     
     const dia = brasilia.getDay(); // 0 = Domingo, 1 = Segunda, 2 = Terça, 3 = Quarta, 4 = Quinta, 5 = Sexta, 6 = Sábado
+    
+    // Verificar se o dia da semana atual está no cronograma promocional
+    if (!schedule.dias_semana.includes(dia)) return false;
+
     const hora = brasilia.getHours();
     const minutos = brasilia.getMinutes();
     
-    // Segunda (1) a Quinta (4)
-    if (dia < 1 || dia > 4) return false;
+    // Parse hora_inicio e hora_fim (e.g. "09:00", "15:25")
+    const [hInicio, mInicio] = schedule.hora_inicio.split(':').map(Number);
+    const [hFim, mFim] = schedule.hora_fim.split(':').map(Number);
 
-    // Promoção ativa das 09:00 até as 15:25
-    if (hora < 9) return false;
-    if (hora > 15) return false;
-    if (hora === 15 && minutos > 25) return false;
-    
-    return true;
+    const minutosAtual = hora * 60 + minutos;
+    const minutosInicio = hInicio * 60 + mInicio;
+    const minutosFim = hFim * 60 + mFim;
+
+    return minutosAtual >= minutosInicio && minutosAtual <= minutosFim;
   },
 
   // Obter hora atual em Brasília (para debug)
@@ -430,5 +482,49 @@ export const utils = {
     const agora = new Date();
     const brasilia = new Date(agora.toLocaleString('en-US', { timeZone: 'America/Sao_Paulo' }));
     return brasilia.toLocaleTimeString('pt-BR');
+  },
+
+  // Formatar dias da semana por extenso (ex: Segunda a Quarta ou Segunda, Terça)
+  formatarDiasSemana(dias: number[]): string {
+    if (!dias || dias.length === 0) return 'Nenhum dia';
+    const nomes = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
+    
+    // Verificar se é um intervalo contínuo
+    let continuo = true;
+    for (let i = 1; i < dias.length; i++) {
+      if (dias[i] !== dias[i-1] + 1) {
+        continuo = false;
+        break;
+      }
+    }
+    
+    if (continuo && dias.length > 1) {
+      // Remover o "-feira" do primeiro dia se houver mais para encurtar
+      const d1 = nomes[dias[0]].replace('-feira', '');
+      const d2 = nomes[dias[dias.length - 1]];
+      return `${d1} a ${d2}`;
+    }
+    
+    return dias.map(d => nomes[d]).join(', ');
+  },
+
+  // Formatar dias da semana abreviado (ex: Seg a Qua)
+  formatarDiasSemanaAbreviado(dias: number[]): string {
+    if (!dias || dias.length === 0) return 'Nenhum';
+    const nomes = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+    
+    let continuo = true;
+    for (let i = 1; i < dias.length; i++) {
+      if (dias[i] !== dias[i-1] + 1) {
+        continuo = false;
+        break;
+      }
+    }
+    
+    if (continuo && dias.length > 1) {
+      return `${nomes[dias[0]]} a ${nomes[dias[dias.length - 1]]}`;
+    }
+    
+    return dias.map(d => nomes[d]).join(', ');
   },
 };

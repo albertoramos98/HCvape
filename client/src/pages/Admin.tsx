@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users } from 'lucide-react';
-import { authService, produtosService, pedidosService, imagemService, visitasService, Produto, Pedido, utils } from '@/lib/supabase';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings } from 'lucide-react';
+import { authService, produtosService, pedidosService, imagemService, visitasService, Produto, Pedido, utils, configService, PromoSchedule } from '@/lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 /**
@@ -35,7 +35,16 @@ export default function Admin() {
   const [pedidosExcluidos, setPedidosExcluidos] = useState<Pedido[]>([]);
   const [metricasVisitas, setMetricasVisitas] = useState<{ data: string; acessos: number }[]>([]);
   const [filtroDiasMetricas, setFiltroDiasMetricas] = useState<number>(7);
-  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos' | 'metricas' | 'saude'>('produtos');
+  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos' | 'metricas' | 'saude' | 'configuracoes'>('produtos');
+
+  // Estados para configuração do horário promocional
+  const [promoConfig, setPromoConfig] = useState<PromoSchedule>({
+    dias_semana: [1, 2, 3],
+    hora_inicio: "09:00",
+    hora_fim: "15:25"
+  });
+  const [salvandoConfig, setSalvandoConfig] = useState(false);
+  const [tabelaConfigNaoExiste, setTabelaConfigNaoExiste] = useState(false);
 
   // Memo para métricas filtradas por dias
   const metricasFiltradas = useMemo(() => {
@@ -112,18 +121,28 @@ export default function Admin() {
   const carregarTudo = async () => {
     try {
       setErro(null);
-      const [produtosData, pedidosData, pedidosExcluidosData, marcasData, metricasData] = await Promise.all([
+      const [produtosData, pedidosData, pedidosExcluidosData, marcasData, metricasData, configData] = await Promise.all([
         produtosService.obterTodos(),
         pedidosService.obterTodos(),
         pedidosService.obterExcluidos(),
         utils.obterMarcas(),
-        visitasService.obterMetricas()
+        visitasService.obterMetricas(),
+        configService.obterPromoSchedule().catch(err => {
+          console.warn('Erro ao obter promo schedule no carregarTudo (tabela configuracoes pode não existir):', err);
+          setTabelaConfigNaoExiste(true);
+          return {
+            dias_semana: [1, 2, 3],
+            hora_inicio: "09:00",
+            hora_fim: "15:25"
+          };
+        })
       ]);
       setProdutos(produtosData);
       setPedidos(pedidosData);
       setPedidosExcluidos(pedidosExcluidosData);
       setMarcas(marcasData);
       setMetricasVisitas(metricasData);
+      setPromoConfig(configData);
       setEstoqueEditado({});
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
@@ -420,6 +439,30 @@ export default function Admin() {
       setUploadandoImagem(false);
     } finally {
       setSalvando(false);
+    }
+  };
+
+  // Salvar configurações da promoção
+  const handleSalvarConfiguracoes = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErro(null);
+    setSucesso(null);
+    setSalvandoConfig(true);
+    try {
+      await configService.salvarPromoSchedule(promoConfig);
+      setSucesso('Configurações da promoção atualizadas com sucesso!');
+      setTabelaConfigNaoExiste(false);
+      setTimeout(() => setSucesso(null), 3000);
+    } catch (err: any) {
+      console.error('Erro ao salvar configurações:', err);
+      if (err.code === '42P01' || err.message?.includes('relation "configuracoes" does not exist')) {
+        setTabelaConfigNaoExiste(true);
+        setErro('A tabela "configuracoes" não existe no banco de dados. Veja as instruções na aba de Configurações.');
+      } else {
+        setErro(err.message || 'Erro ao salvar configurações da promoção.');
+      }
+    } finally {
+      setSalvandoConfig(false);
     }
   };
 
@@ -842,6 +885,9 @@ export default function Admin() {
           </button>
           <button onClick={() => setAbaAtiva('saude')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'saude' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
             <CheckCircle2 className="w-4 h-4" /> Saúde
+          </button>
+          <button onClick={() => setAbaAtiva('configuracoes')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'configuracoes' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
+            <Settings className="w-4 h-4" /> Promoção
           </button>
         </div>
 
@@ -1288,7 +1334,7 @@ export default function Admin() {
               )}
             </div>
           </section>
-        ) : (
+        ) : abaAtiva === 'saude' ? (
           /* SEÇÃO DE SAÚDE E EDUCAÇÃO */
           <section className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
             <div className="flex flex-col gap-2">
@@ -1372,6 +1418,133 @@ export default function Admin() {
                 </div>
               </div>
             </div>
+          </section>
+        ) : (
+          /* SEÇÃO DE CONFIGURAÇÕES PROMOCIONAIS */
+          <section className="max-w-2xl mx-auto space-y-8 animate-in fade-in duration-500">
+            <div className="flex flex-col gap-2">
+              <h2 className="text-3xl font-bold neon-glow font-['Orbitron']">Configurações da Promoção</h2>
+              <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-sm">Configure o horário e dias da semana em que as promoções ficam ativas no catálogo.</p>
+            </div>
+
+            {tabelaConfigNaoExiste && (
+              <div className="p-6 bg-yellow-500/10 border border-yellow-500/50 rounded-xl space-y-4 shadow-[0_0_20px_rgba(234,179,8,0.15)]">
+                <div className="flex items-center gap-3">
+                  <AlertCircle className="w-6 h-6 text-yellow-500 flex-shrink-0" />
+                  <h3 className="text-lg font-bold text-yellow-500 font-['Orbitron']">Tabela Não Configurada no Supabase</h3>
+                </div>
+                <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-sm leading-relaxed">
+                  A tabela <code>configuracoes</code> não foi encontrada no seu banco de dados Supabase. Execute o script SQL abaixo no **SQL Editor** do seu painel Supabase para habilitar este painel.
+                </p>
+                <div className="relative">
+                  <pre className="bg-black/60 border border-yellow-500/30 p-4 rounded-lg text-xs font-['Roboto_Mono'] text-[#E0E0E0] overflow-x-auto select-all max-h-60">
+{`-- Criar tabela de configuracoes
+CREATE TABLE IF NOT EXISTS configuracoes (
+  chave VARCHAR(50) PRIMARY KEY,
+  valor JSONB NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Inserir valor padrão para horário promocional
+INSERT INTO configuracoes (chave, valor)
+VALUES ('promo_schedule', '{"dias_semana": [1, 2, 3], "hora_inicio": "09:00", "hora_fim": "15:25"}'::jsonb)
+ON CONFLICT (chave) DO NOTHING;
+
+-- Habilitar RLS
+ALTER TABLE configuracoes ENABLE ROW LEVEL SECURITY;
+
+-- Políticas de RLS
+CREATE POLICY "Configurações são públicas para leitura" ON configuracoes FOR SELECT USING (true);
+CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON configuracoes FOR ALL USING (auth.role() = 'authenticated');`}
+                  </pre>
+                </div>
+              </div>
+            )}
+
+            <form onSubmit={handleSalvarConfiguracoes} className="glass-morphism p-8 rounded-xl border border-[#39FF14]/30 bg-black/40 space-y-6">
+              {/* Dias da Semana */}
+              <div className="space-y-3">
+                <label className="block text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] tracking-wider">Dias da Semana</label>
+                <p className="text-xs text-[#808080] font-['Roboto_Mono'] mb-3">Selecione os dias em que a aba promocional estará disponível.</p>
+                
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                  {['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'].map((nomeDia, index) => {
+                    const selecionado = promoConfig.dias_semana.includes(index);
+                    return (
+                      <label 
+                        key={index} 
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer select-none transition-all duration-300 font-['Roboto_Mono'] text-xs ${
+                          selecionado 
+                            ? 'bg-[#39FF14]/20 border-[#39FF14] text-[#39FF14] shadow-[0_0_10px_rgba(57,255,20,0.15)]' 
+                            : 'bg-black/60 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
+                        }`}
+                      >
+                        <input 
+                          type="checkbox" 
+                          checked={selecionado}
+                          onChange={(e) => {
+                            const novosDias = e.target.checked 
+                              ? [...promoConfig.dias_semana, index].sort()
+                              : promoConfig.dias_semana.filter(d => d !== index);
+                            setPromoConfig({ ...promoConfig, dias_semana: novosDias });
+                          }}
+                          className="hidden"
+                        />
+                        <div className={`w-4 h-4 rounded border flex items-center justify-center ${
+                          selecionado ? 'border-[#39FF14] bg-[#39FF14] text-black' : 'border-zinc-700'
+                        }`}>
+                          {selecionado && <span className="text-[10px] font-bold">✓</span>}
+                        </div>
+                        {nomeDia}
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Horários */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron'] tracking-wider">Hora de Início</label>
+                  <input 
+                    type="time" 
+                    value={promoConfig.hora_inicio}
+                    onChange={(e) => setPromoConfig({ ...promoConfig, hora_inicio: e.target.value })}
+                    className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron'] tracking-wider">Hora de Término</label>
+                  <input 
+                    type="time" 
+                    value={promoConfig.hora_fim}
+                    onChange={(e) => setPromoConfig({ ...promoConfig, hora_fim: e.target.value })}
+                    className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-[#39FF14]/10">
+                <button 
+                  type="submit" 
+                  disabled={salvandoConfig} 
+                  className="cyber-button w-full flex items-center justify-center gap-2"
+                >
+                  {salvandoConfig ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" /> Salvar Configurações
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </section>
         )
       }

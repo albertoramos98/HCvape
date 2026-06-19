@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff, Phone, User, CheckCircle2, Loader2, Github, Mail } from 'lucide-react';
-import { produtosService, pedidosService, Produto, utils, PedidoItem } from '@/lib/supabase';
+import { produtosService, pedidosService, Produto, utils, PedidoItem, configService, PromoSchedule } from '@/lib/supabase';
 import { useLocation } from "wouter";
 
 /**
@@ -60,6 +60,11 @@ export default function Home() {
   const [horarioPromoAtivo, setHorarioPromoAtivo] = useState(true);
   const [abaAtiva, setAbaAtiva] = useState<'expressos' | 'promocionais'>('expressos');
   const [popupAviso, setPopupAviso] = useState(true);
+  const [promoConfig, setPromoConfig] = useState<PromoSchedule>({
+    dias_semana: [1, 2, 3],
+    hora_inicio: "09:00",
+    hora_fim: "15:25"
+  });
 
   // Estados do Checkout
   const [checkoutAberto, setCheckoutAberto] = useState(false);
@@ -74,29 +79,42 @@ export default function Home() {
     setPopupAviso(false);
   };
 
-  // Carregar produtos do Supabase
+  // Carregar produtos e configurações promocionais do Supabase
   useEffect(() => {
-    const carregarProdutos = async () => {
+    let configAtiva: PromoSchedule = {
+      dias_semana: [1, 2, 3],
+      hora_inicio: "09:00",
+      hora_fim: "15:25"
+    };
+
+    const carregarDados = async () => {
       try {
         setCarregando(true);
         setErro(null);
-        const dados = await produtosService.obterTodos();
+        
+        const [dados, config] = await Promise.all([
+          produtosService.obterTodos(),
+          configService.obterPromoSchedule()
+        ]);
+        
         setProdutos(dados);
+        setPromoConfig(config);
+        configAtiva = config;
 
-        const ativo = utils.estaEmHorarioPromo();
+        const ativo = utils.estaEmHorarioPromo(config);
         setHorarioPromoAtivo(ativo);
       } catch (err) {
-        console.error('Erro ao carregar produtos:', err);
-        setErro('Erro ao carregar produtos. Tente novamente.');
+        console.error('Erro ao carregar dados:', err);
+        setErro('Erro ao carregar dados. Tente novamente.');
       } finally {
         setCarregando(false);
       }
     };
 
-    carregarProdutos();
+    carregarDados();
 
     const intervalo = setInterval(() => {
-      const ativo = utils.estaEmHorarioPromo();
+      const ativo = utils.estaEmHorarioPromo(configAtiva);
       setHorarioPromoAtivo(ativo);
     }, 60000);
 
@@ -298,7 +316,7 @@ export default function Home() {
 
             <div className="space-y-4 mb-8">
               <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed">
-                <strong>PROMOÇÃO 🚀🔥✨</strong> só pode ser pedida das <strong className="text-red-400">09:00 até as 15:25</strong>.
+                <strong>PROMOÇÃO 🚀🔥✨</strong> só pode ser pedida das <strong className="text-red-400">{promoConfig.hora_inicio} até as {promoConfig.hora_fim}</strong>.
               </p>
               <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed">
                 <strong>Pedidos Expressos</strong> Das 10:00 às 22:00. Fora desse horário, os pedidos serão processados no dia seguinte a partir das 10:00.
@@ -364,7 +382,7 @@ export default function Home() {
           <div className="mb-6 p-4 bg-yellow-500/20 border border-yellow-500 rounded-lg flex items-center gap-3">
             <Clock className="w-5 h-5 text-yellow-500" />
             <p className="text-yellow-400 font-['Roboto_Mono']">
-              ⏰ Promoção encerrada! Disponível novamente das 09:00 às 15:25.
+              ⏰ Promoção encerrada! Disponível novamente das {promoConfig.hora_inicio} às {promoConfig.hora_fim}.
             </p>
           </div>
         )}
@@ -444,7 +462,7 @@ export default function Home() {
           <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg flex items-center gap-3 shadow-[0_0_15px_rgba(255,0,0,0.3)]">
             <Clock className="w-5 h-5 text-red-500" />
             <p className="text-red-400 font-['Roboto_Mono']">
-              ⚠️ PROMOÇÃO 🚀 só pode ser pedida das <strong>09:00 às 15:25</strong>. Entrega às <strong>19:00</strong> de Segunda a Quinta.
+              ⚠️ PROMOÇÃO 🚀 só pode ser pedida das <strong>{promoConfig.hora_inicio} às {promoConfig.hora_fim}</strong>. Entrega às <strong>19:00</strong> de {utils.formatarDiasSemana(promoConfig.dias_semana)}.
             </p>
           </div>
         )}

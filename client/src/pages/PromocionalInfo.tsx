@@ -1,13 +1,20 @@
 import { useLocation } from "wouter";
 import { ArrowLeft, Clock, Calendar, CheckCircle2, Zap } from "lucide-react";
-import { utils } from "@/lib/supabase";
+import { utils, configService, PromoSchedule } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 
 export default function PromocionalInfo() {
   const [, setLocation] = useLocation();
   const [horaAtual, setHoraAtual] = useState(utils.obterHoraBrasilia());
+  const [promoConfig, setPromoConfig] = useState<PromoSchedule>({
+    dias_semana: [1, 2, 3],
+    hora_inicio: "09:00",
+    hora_fim: "15:25"
+  });
 
   useEffect(() => {
+    configService.obterPromoSchedule().then(setPromoConfig).catch(console.error);
+
     const timer = setInterval(() => {
       setHoraAtual(utils.obterHoraBrasilia());
     }, 1000);
@@ -39,7 +46,7 @@ export default function PromocionalInfo() {
               <h3 className="text-xl font-bold font-['Orbitron']">DIAS</h3>
             </div>
             <p className="text-gray-400 font-['Roboto_Mono']">
-              As ofertas ficam disponíveis de <span className="text-[#39FF14] font-bold">Segunda a Quinta-feira</span>.
+              As ofertas ficam disponíveis de <span className="text-[#39FF14] font-bold">{utils.formatarDiasSemana(promoConfig.dias_semana)}</span>.
             </p>
           </div>
 
@@ -49,7 +56,7 @@ export default function PromocionalInfo() {
               <h3 className="text-xl font-bold font-['Orbitron']">HORÁRIO</h3>
             </div>
             <p className="text-gray-400 font-['Roboto_Mono']">
-              Das <span className="text-[#39FF14] font-bold">09:00 às 15:25</span> (Horário de Brasília).
+              Das <span className="text-[#39FF14] font-bold">{promoConfig.hora_inicio} às {promoConfig.hora_fim}</span> (Horário de Brasília).
             </p>
           </div>
         </div>
