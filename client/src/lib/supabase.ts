@@ -322,15 +322,15 @@ export const visitasService = {
     }
   },
 
-  // Obter métricas de visitas agrupadas por dia (apenas últimos 30 dias para evitar egress alto)
-  async obterMetricas(): Promise<{ data: string; acessos: number }[]> {
-    const trintaDiasAtras = new Date();
-    trintaDiasAtras.setDate(trintaDiasAtras.getDate() - 30);
+  // Obter métricas de visitas agrupadas por dia (parametrizável para evitar egress alto)
+  async obterMetricas(dias: number = 90): Promise<{ data: string; acessos: number }[]> {
+    const limiteData = new Date();
+    limiteData.setDate(limiteData.getDate() - dias);
 
     const { data, error } = await supabase
       .from('visitas')
       .select('created_at')
-      .gte('created_at', trintaDiasAtras.toISOString());
+      .gte('created_at', limiteData.toISOString());
 
     if (error) throw error;
 

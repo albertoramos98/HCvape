@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings } from 'lucide-react';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw } from 'lucide-react';
 import { authService, produtosService, pedidosService, imagemService, visitasService, Produto, Pedido, utils, configService, PromoSchedule } from '@/lib/supabase';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Legend } from 'recharts';
 
 /**
  * Página Admin - Gerenciamento Completo de Estoque + Promoções + Imagens + Pedidos
@@ -34,7 +34,11 @@ export default function Admin() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [pedidosExcluidos, setPedidosExcluidos] = useState<Pedido[]>([]);
   const [metricasVisitas, setMetricasVisitas] = useState<{ data: string; acessos: number }[]>([]);
-  const [filtroDiasMetricas, setFiltroDiasMetricas] = useState<number>(7);
+  const [filtroPeriodo, setFiltroPeriodo] = useState<'7d' | '15d' | '30d' | '90d' | 'custom'>('7d');
+  const [dataInicioMetricas, setDataInicioMetricas] = useState<string>('');
+  const [dataFimMetricas, setDataFimMetricas] = useState<string>('');
+  const [agrupamentoMetricas, setAgrupamentoMetricas] = useState<'dia' | 'semana' | 'mes'>('dia');
+  const [statusPedidoFiltro, setStatusPedidoFiltro] = useState<'todos' | 'concluidos'>('todos');
   const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos' | 'metricas' | 'saude' | 'configuracoes'>('produtos');
 
   // Estados para configuração do horário promocional
@@ -46,11 +50,239 @@ export default function Admin() {
   const [salvandoConfig, setSalvandoConfig] = useState(false);
   const [tabelaConfigNaoExiste, setTabelaConfigNaoExiste] = useState(false);
 
-  // Memo para métricas filtradas por dias
-  const metricasFiltradas = useMemo(() => {
-    if (filtroDiasMetricas === 0) return metricasVisitas;
-    return metricasVisitas.slice(-filtroDiasMetricas);
-  }, [metricasVisitas, filtroDiasMetricas]);
+  // Lógica de processamento de métricas ricas com preenchimento de gaps
+  const { diasArray, dataAgrupada, resumoMetricas, topProdutosEmarcas } = useMemo(() => {
+    let start: Date;
+    let end: Date = new Date();
+    end.setHours(23, 59, 59, 999);
+
+    if (filtroPeriodo === '7d') {
+      start = new Date();
+      start.setDate(start.getDate() - 6);
+    } else if (filtroPeriodo === '15d') {
+      start = new Date();
+      start.setDate(start.getDate() - 14);
+    } else if (filtroPeriodo === '30d') {
+      start = new Date();
+      start.setDate(start.getDate() - 29);
+    } else if (filtroPeriodo === '90d') {
+      start = new Date();
+      start.setDate(start.getDate() - 89);
+    } else {
+      // custom
+      start = dataInicioMetricas ? new Date(dataInicioMetricas + 'T00:00:00') : new Date();
+      if (dataFimMetricas) {
+        end = new Date(dataFimMetricas + 'T23:59:59');
+      }
+    }
+    start.setHours(0, 0, 0, 0);
+
+    // Evitar loops infinitos ou ranges absurdos
+    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const rangeLimite = Math.min(diffDays, 366); // limite de 1 ano
+
+    const timeline: { key: string; dateObj: Date; visitas: number; vendas: number; faturamento: number; ticketMedio: number; conversao: number }[] = [];
+    
+    // Ajustar a data inicial no loop
+    let current = new Date(start);
+    for (let i = 0; i <= rangeLimite; i++) {
+      if (current > end) break;
+      const key = current.toLocaleDateString('pt-BR');
+      timeline.push({
+        key,
+        dateObj: new Date(current),
+        visitas: 0,
+        vendas: 0,
+        faturamento: 0,
+        ticketMedio: 0,
+        conversao: 0
+      });
+      current.setDate(current.getDate() + 1);
+    }
+
+    // 1. Mapear visitas
+    const visitasMap: { [key: string]: number } = {};
+    metricasVisitas.forEach(v => {
+      visitasMap[v.data] = v.acessos;
+    });
+
+    // 2. Mapear pedidos
+    const pedidosFiltradosPorStatus = pedidos.filter(p => {
+      if (statusPedidoFiltro === 'concluidos') {
+        return p.status_checklist === true;
+      }
+      return true;
+    });
+
+    const pedidosPorDia: { [key: string]: { count: number; total: number } } = {};
+    pedidosFiltradosPorStatus.forEach(p => {
+      if (!p.created_at) return;
+      const dataStr = new Date(p.created_at).toLocaleDateString('pt-BR');
+      if (!pedidosPorDia[dataStr]) {
+        pedidosPorDia[dataStr] = { count: 0, total: 0 };
+      }
+      pedidosPorDia[dataStr].count += 1;
+      pedidosPorDia[dataStr].total += p.total_final;
+    });
+
+    // 3. Preencher a timeline
+    timeline.forEach(d => {
+      d.visitas = visitasMap[d.key] || 0;
+      const ped = pedidosPorDia[d.key];
+      if (ped) {
+        d.vendas = ped.count;
+        d.faturamento = ped.total;
+        d.ticketMedio = ped.count > 0 ? ped.total / ped.count : 0;
+      }
+      d.conversao = d.visitas > 0 ? (d.vendas / d.visitas) * 100 : 0;
+    });
+
+    // 4. Calcular Top Produtos, Marcas e Indicações
+    const produtoQuantidades: { [key: string]: { nome: string; marca: string; quantidade: number; receita: number } } = {};
+    const marcaQuantidades: { [key: string]: { marca: string; quantidade: number; receita: number } } = {};
+    const indicacaoQuantidades: { [key: string]: { indicacao: string; pedidos: number; faturamento: number } } = {};
+
+    const datasValidas = new Set(timeline.map(d => d.key));
+
+    const pedidosNoPeriodo = pedidos.filter(p => {
+      if (!p.created_at) return false;
+      const dataStr = new Date(p.created_at).toLocaleDateString('pt-BR');
+      const noPeriodo = datasValidas.has(dataStr);
+      const statusOk = statusPedidoFiltro === 'concluidos' ? p.status_checklist : true;
+      return noPeriodo && statusOk;
+    });
+
+    pedidosNoPeriodo.forEach(p => {
+      const canal = (p.indicacao || 'Direto / Nenhuma').trim();
+      if (!indicacaoQuantidades[canal]) {
+        indicacaoQuantidades[canal] = { indicacao: canal, pedidos: 0, faturamento: 0 };
+      }
+      indicacaoQuantidades[canal].pedidos += 1;
+      indicacaoQuantidades[canal].faturamento += p.total_final;
+
+      p.itens.forEach(item => {
+        const prodId = item.id;
+        const produtoOriginal = produtos.find(prod => prod.id === prodId);
+        const marca = (item.marca || produtoOriginal?.marca || 'Desconhecida').toUpperCase().trim();
+        const nome = (item.nome || produtoOriginal?.nome || 'Produto').toUpperCase().trim();
+        const chaveProduto = `${marca} - ${nome}`;
+
+        if (!produtoQuantidades[chaveProduto]) {
+          produtoQuantidades[chaveProduto] = { nome, marca, quantidade: 0, receita: 0 };
+        }
+        produtoQuantidades[chaveProduto].quantidade += item.quantidade;
+        produtoQuantidades[chaveProduto].receita += item.preco_unitario * item.quantidade;
+
+        if (!marcaQuantidades[marca]) {
+          marcaQuantidades[marca] = { marca, quantidade: 0, receita: 0 };
+        }
+        marcaQuantidades[marca].quantidade += item.quantidade;
+        marcaQuantidades[marca].receita += item.preco_unitario * item.quantidade;
+      });
+    });
+
+    const topProdutos = Object.values(produtoQuantidades)
+      .sort((a, b) => b.quantidade - a.quantidade)
+      .slice(0, 5);
+
+    const topMarcas = Object.values(marcaQuantidades)
+      .sort((a, b) => b.quantidade - a.quantidade)
+      .slice(0, 5);
+
+    const topIndicacoes = Object.values(indicacaoQuantidades)
+      .sort((a, b) => b.pedidos - a.pedidos);
+
+    // 5. Agrupar dados do gráfico por semana/mês se necessário
+    let graficoData = [];
+    if (agrupamentoMetricas === 'semana') {
+      const semanasMap: { [key: string]: { label: string; visitas: number; vendas: number; faturamento: number; dateRef: Date } } = {};
+      timeline.forEach(d => {
+        const sunday = new Date(d.dateObj);
+        sunday.setDate(sunday.getDate() - sunday.getDay());
+        const label = `Sem ${sunday.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
+        
+        if (!semanasMap[label]) {
+          semanasMap[label] = { label, visitas: 0, vendas: 0, faturamento: 0, dateRef: sunday };
+        }
+        semanasMap[label].visitas += d.visitas;
+        semanasMap[label].vendas += d.vendas;
+        semanasMap[label].faturamento += d.faturamento;
+      });
+      graficoData = Object.values(semanasMap)
+        .sort((a, b) => a.dateRef.getTime() - b.dateRef.getTime())
+        .map(w => ({
+          data: w.label,
+          visitas: w.visitas,
+          vendas: w.vendas,
+          faturamento: w.faturamento,
+          ticketMedio: w.vendas > 0 ? w.faturamento / w.vendas : 0,
+          conversao: w.visitas > 0 ? (w.vendas / w.visitas) * 100 : 0
+        }));
+    } else if (agrupamentoMetricas === 'mes') {
+      const mesesMap: { [key: string]: { label: string; visitas: number; vendas: number; faturamento: number; dateRef: Date } } = {};
+      timeline.forEach(d => {
+        const keyMes = `${d.dateObj.getFullYear()}-${String(d.dateObj.getMonth() + 1).padStart(2, '0')}`;
+        const label = d.dateObj.toLocaleDateString('pt-BR', { month: 'short', year: '2-digit' }).replace('.', '');
+        
+        if (!mesesMap[keyMes]) {
+          mesesMap[keyMes] = { label, visitas: 0, vendas: 0, faturamento: 0, dateRef: new Date(d.dateObj.getFullYear(), d.dateObj.getMonth(), 1) };
+        }
+        mesesMap[keyMes].visitas += d.visitas;
+        mesesMap[keyMes].vendas += d.vendas;
+        mesesMap[keyMes].faturamento += d.faturamento;
+      });
+      graficoData = Object.values(mesesMap)
+        .sort((a, b) => a.dateRef.getTime() - b.dateRef.getTime())
+        .map(m => ({
+          data: m.label,
+          visitas: m.visitas,
+          vendas: m.vendas,
+          faturamento: m.faturamento,
+          ticketMedio: m.vendas > 0 ? m.faturamento / m.vendas : 0,
+          conversao: m.visitas > 0 ? (m.vendas / m.visitas) * 100 : 0
+        }));
+    } else {
+      // dia
+      graficoData = timeline.map(d => ({
+        data: d.key,
+        visitas: d.visitas,
+        vendas: d.vendas,
+        faturamento: d.faturamento,
+        ticketMedio: d.ticketMedio,
+        conversao: d.conversao
+      }));
+    }
+
+    // 6. Resumo geral do período
+    let totalVisitas = 0;
+    let totalVendas = 0;
+    let totalFaturamento = 0;
+    timeline.forEach(d => {
+      totalVisitas += d.visitas;
+      totalVendas += d.vendas;
+      totalFaturamento += d.faturamento;
+    });
+    const conversaoGeral = totalVisitas > 0 ? (totalVendas / totalVisitas) * 100 : 0;
+    const ticketMedioGeral = totalVendas > 0 ? totalFaturamento / totalVendas : 0;
+
+    return {
+      diasArray: timeline,
+      dataAgrupada: graficoData,
+      resumoMetricas: {
+        totalVisitas,
+        totalVendas,
+        totalFaturamento,
+        conversaoGeral,
+        ticketMedioGeral
+      },
+      topProdutosEmarcas: {
+        topProdutos,
+        topMarcas,
+        topIndicacoes
+      }
+    };
+  }, [metricasVisitas, pedidos, produtos, filtroPeriodo, dataInicioMetricas, dataFimMetricas, agrupamentoMetricas, statusPedidoFiltro]);
 
   const [subAbaPedidos, setSubAbaPedidos] = useState<'ativos' | 'excluidos'>('ativos');
   const [filtroData, setFiltroData] = useState<string>(new Date().toLocaleDateString('en-CA'));
@@ -126,7 +358,7 @@ export default function Admin() {
         pedidosService.obterTodos(),
         pedidosService.obterExcluidos(),
         utils.obterMarcas(),
-        visitasService.obterMetricas(),
+        visitasService.obterMetricas(365),
         configService.obterPromoSchedule().catch(err => {
           console.warn('Erro ao obter promo schedule no carregarTudo (tabela configuracoes pode não existir):', err);
           setTabelaConfigNaoExiste(true);
@@ -1213,125 +1445,474 @@ export default function Admin() {
             </div>
           </section>
         ) : abaAtiva === 'metricas' ? (
-          /* SEÇÃO DE MÉTRICAS */
+          /* SEÇÃO DE MÉTRICAS RICAS E INTERATIVAS */
           <section className="space-y-8 animate-in fade-in duration-500">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Métricas de Acesso</h2>
+            {/* Controles de Dashboard */}
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-black/40 p-6 rounded-xl border border-[#39FF14]/20">
+              <div className="flex flex-col gap-2">
+                <h2 className="text-2xl font-bold neon-glow font-['Orbitron'] flex items-center gap-2">
+                  <BarChart3 className="w-6 h-6 text-[#39FF14]" /> MÉTRICAS ANALÍTICAS
+                </h2>
+                <p className="text-xs text-[#808080] font-['Roboto_Mono']">Análise completa de tráfego, conversão e faturamento</p>
+              </div>
               
-              <div className="flex items-center gap-3">
-                <div className="flex bg-black/40 p-1 rounded-lg border border-[#39FF14]/20">
-                  {[7, 15, 30, 0].map((dias) => (
-                    <button 
-                      key={dias}
-                      onClick={() => setFiltroDiasMetricas(dias)}
-                      className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${filtroDiasMetricas === dias ? 'bg-[#39FF14] text-black' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
-                    >
-                      {dias === 0 ? 'Tudo' : `${dias}D`}
-                    </button>
-                  ))}
+              <div className="flex flex-wrap items-center gap-4">
+                {/* Filtro de Período */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] font-bold text-[#808080] uppercase font-['Orbitron']">Período</label>
+                  <div className="flex bg-black/60 p-1 rounded-lg border border-[#39FF14]/20">
+                    {(['7d', '15d', '30d', '90d', 'custom'] as const).map((per) => (
+                      <button
+                        key={per}
+                        onClick={() => setFiltroPeriodo(per)}
+                        className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${filtroPeriodo === per ? 'bg-[#39FF14] text-black shadow-[0_0_8px_rgba(57,255,20,0.3)]' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
+                      >
+                        {per === 'custom' ? 'Custom' : per.toUpperCase()}
+                      </button>
+                    ))}
+                  </div>
                 </div>
+
+                {/* Filtro de Agrupamento */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] font-bold text-[#808080] uppercase font-['Orbitron']">Visualização</label>
+                  <div className="flex bg-black/60 p-1 rounded-lg border border-[#39FF14]/20">
+                    {(['dia', 'semana', 'mes'] as const).map((agrup) => (
+                      <button
+                        key={agrup}
+                        disabled={filtroPeriodo === '7d' && (agrup === 'semana' || agrup === 'mes')}
+                        onClick={() => setAgrupamentoMetricas(agrup)}
+                        className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${agrupamentoMetricas === agrup ? 'bg-blue-500 text-white shadow-[0_0_8px_rgba(59,130,246,0.3)]' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
+                      >
+                        {agrup === 'dia' ? 'Dia' : agrup === 'semana' ? 'Semana' : 'Mês'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Filtro de Status do Pedido */}
+                <div className="flex flex-col gap-1">
+                  <label className="text-[9px] font-bold text-[#808080] uppercase font-['Orbitron']">Pedidos</label>
+                  <div className="flex bg-black/60 p-1 rounded-lg border border-[#39FF14]/20">
+                    {(['todos', 'concluidos'] as const).map((stat) => (
+                      <button
+                        key={stat}
+                        onClick={() => setStatusPedidoFiltro(stat)}
+                        className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${statusPedidoFiltro === stat ? 'bg-purple-500 text-white shadow-[0_0_8px_rgba(168,85,247,0.3)]' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
+                      >
+                        {stat === 'todos' ? 'Todos' : 'Concluídos'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Refresh Button */}
+                <div className="flex flex-col gap-1 self-end">
+                  <button onClick={carregarTudo} className="p-2 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-lg hover:bg-[#39FF14]/20 transition-all" title="Recarregar dados">
+                    <RefreshCw className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Inputs de Data Customizados */}
+            {filtroPeriodo === 'custom' && (
+              <div className="flex flex-wrap items-center gap-4 bg-black/30 p-4 rounded-xl border border-dashed border-[#39FF14]/20 animate-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[#808080] font-['Orbitron']">De:</span>
+                  <input
+                    type="date"
+                    value={dataInicioMetricas}
+                    onChange={(e) => setDataInicioMetricas(e.target.value)}
+                    className="bg-black/60 border border-[#39FF14]/30 text-[#39FF14] px-3 py-1.5 rounded-lg text-xs font-['Roboto_Mono'] focus:border-[#39FF14] outline-none"
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-[#808080] font-['Orbitron']">Até:</span>
+                  <input
+                    type="date"
+                    value={dataFimMetricas}
+                    onChange={(e) => setDataFimMetricas(e.target.value)}
+                    className="bg-black/60 border border-[#39FF14]/30 text-[#39FF14] px-3 py-1.5 rounded-lg text-xs font-['Roboto_Mono'] focus:border-[#39FF14] outline-none"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* Cartões de KPI */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+              {/* Card 1: Visitas */}
+              <div className="glass-morphism p-5 rounded-xl border border-[#39FF14]/20 bg-[#39FF14]/5 hover:border-[#39FF14]/40 transition-all duration-300 hover:-translate-y-0.5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold text-[#39FF14] uppercase font-['Orbitron'] tracking-wider">Visitas</span>
+                  <Users className="w-4 h-4 text-[#39FF14]" />
+                </div>
+                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  {resumoMetricas.totalVisitas.toLocaleString('pt-BR')}
+                </h3>
+                <p className="text-[9px] text-[#808080] mt-1 font-['Roboto_Mono']">Acessos únicos</p>
+              </div>
+
+              {/* Card 2: Vendas */}
+              <div className="glass-morphism p-5 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:border-blue-500/40 transition-all duration-300 hover:-translate-y-0.5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold text-blue-400 uppercase font-['Orbitron'] tracking-wider">Vendas</span>
+                  <ShoppingBag className="w-4 h-4 text-blue-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  {resumoMetricas.totalVendas}
+                </h3>
+                <p className="text-[9px] text-[#808080] mt-1 font-['Roboto_Mono']">Pedidos registrados</p>
+              </div>
+
+              {/* Card 3: Faturamento */}
+              <div className="glass-morphism p-5 rounded-xl border border-purple-500/20 bg-purple-500/5 hover:border-purple-500/40 transition-all duration-300 hover:-translate-y-0.5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold text-purple-400 uppercase font-['Orbitron'] tracking-wider">Faturamento</span>
+                  <DollarSign className="w-4 h-4 text-purple-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  R$ {resumoMetricas.totalFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </h3>
+                <p className="text-[9px] text-[#808080] mt-1 font-['Roboto_Mono']">Faturamento líquido</p>
+              </div>
+
+              {/* Card 4: Taxa de Conversão */}
+              <div className="glass-morphism p-5 rounded-xl border border-yellow-500/20 bg-yellow-500/5 hover:border-yellow-500/40 transition-all duration-300 hover:-translate-y-0.5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold text-yellow-500 uppercase font-['Orbitron'] tracking-wider">Conversão</span>
+                  <Percent className="w-4 h-4 text-yellow-500" />
+                </div>
+                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  {resumoMetricas.conversaoGeral.toFixed(2)}%
+                </h3>
+                <p className="text-[9px] text-[#808080] mt-1 font-['Roboto_Mono']">Pedidos / Visitas</p>
+              </div>
+
+              {/* Card 5: Ticket Médio */}
+              <div className="glass-morphism p-5 rounded-xl border border-orange-500/20 bg-orange-500/5 hover:border-orange-500/40 transition-all duration-300 hover:-translate-y-0.5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[10px] font-bold text-orange-400 uppercase font-['Orbitron'] tracking-wider">Ticket Médio</span>
+                  <Zap className="w-4 h-4 text-orange-400" />
+                </div>
+                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  R$ {resumoMetricas.ticketMedioGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </h3>
+                <p className="text-[9px] text-[#808080] mt-1 font-['Roboto_Mono']">Valor médio por compra</p>
+              </div>
+            </div>
+
+            {/* Linha do Tempo e Evolução */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Gráfico 1: Visitas vs Vendas & Conversão */}
+              <div className="lg:col-span-2 glass-morphism p-6 rounded-xl border border-[#39FF14]/10 bg-black/40 min-h-[400px] flex flex-col">
+                <h3 className="text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] mb-6 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-[#39FF14]" /> Evolução de Tráfego, Vendas & Conversão
+                </h3>
                 
-                <button onClick={carregarTudo} className="p-2 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-lg hover:bg-[#39FF14]/20 transition-all">
-                  <Zap className="w-4 h-4" />
-                </button>
+                {dataAgrupada.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <p className="text-[#808080] font-['Roboto_Mono']">Sem dados no período selecionado</p>
+                  </div>
+                ) : (
+                  <div className="flex-1 min-h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={dataAgrupada}>
+                        <defs>
+                          <linearGradient id="colorVisitas" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#39FF14" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="#39FF14" stopOpacity={0}/>
+                          </linearGradient>
+                          <linearGradient id="colorVendas" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                        <XAxis 
+                          dataKey="data" 
+                          stroke="#666" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          dy={10}
+                        />
+                        <YAxis 
+                          yAxisId="left"
+                          stroke="#666" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          allowDecimals={false}
+                        />
+                        <YAxis 
+                          yAxisId="right"
+                          orientation="right"
+                          stroke="#eab308" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          tickFormatter={(value) => `${value.toFixed(0)}%`}
+                        />
+                        <RechartsTooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)', 
+                            border: '1px solid #39FF14',
+                            borderRadius: '8px',
+                            fontSize: '11px',
+                            fontFamily: 'Roboto Mono',
+                            color: '#E0E0E0'
+                          }}
+                          itemStyle={{ padding: '2px 0' }}
+                        />
+                        <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', fontFamily: 'Orbitron', color: '#C0C0C0' }} />
+                        <Area 
+                          yAxisId="left"
+                          name="Visitas"
+                          type="monotone" 
+                          dataKey="visitas" 
+                          stroke="#39FF14" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#colorVisitas)" 
+                          animationDuration={1000}
+                        />
+                        <Area 
+                          yAxisId="left"
+                          name="Vendas"
+                          type="monotone" 
+                          dataKey="vendas" 
+                          stroke="#3b82f6" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#colorVendas)" 
+                          animationDuration={1000}
+                        />
+                        <Line 
+                          yAxisId="right"
+                          name="Taxa Conversão"
+                          type="monotone" 
+                          dataKey="conversao" 
+                          stroke="#eab308" 
+                          strokeWidth={2.5}
+                          dot={{ r: 3, fill: '#eab308', stroke: '#000', strokeWidth: 1 }}
+                          activeDot={{ r: 5 }}
+                          animationDuration={1200}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+
+              {/* Gráfico 2: Faturamento & Ticket Médio */}
+              <div className="glass-morphism p-6 rounded-xl border border-blue-500/10 bg-black/40 min-h-[400px] flex flex-col">
+                <h3 className="text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] mb-6 flex items-center gap-2">
+                  <DollarSign className="w-4 h-4 text-purple-400" /> Faturamento vs. Ticket Médio
+                </h3>
+                
+                {dataAgrupada.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center">
+                    <p className="text-[#808080] font-['Roboto_Mono']">Sem dados no período selecionado</p>
+                  </div>
+                ) : (
+                  <div className="flex-1 min-h-[300px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={dataAgrupada}>
+                        <defs>
+                          <linearGradient id="colorFaturamento" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#a855f7" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="#a855f7" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                        <XAxis 
+                          dataKey="data" 
+                          stroke="#666" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          dy={10}
+                        />
+                        <YAxis 
+                          yAxisId="left"
+                          stroke="#666" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          tickFormatter={(value) => `R$${value}`}
+                        />
+                        <YAxis 
+                          yAxisId="right"
+                          orientation="right"
+                          stroke="#f97316" 
+                          fontSize={10} 
+                          tickLine={false} 
+                          axisLine={false}
+                          tickFormatter={(value) => `R$${value}`}
+                        />
+                        <RechartsTooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)', 
+                            border: '1px solid #a855f7',
+                            borderRadius: '8px',
+                            fontSize: '11px',
+                            fontFamily: 'Roboto Mono',
+                            color: '#E0E0E0'
+                          }}
+                          itemStyle={{ padding: '2px 0' }}
+                        />
+                        <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', fontFamily: 'Orbitron', color: '#C0C0C0' }} />
+                        <Area 
+                          yAxisId="left"
+                          name="Faturamento"
+                          type="monotone" 
+                          dataKey="faturamento" 
+                          stroke="#a855f7" 
+                          strokeWidth={2}
+                          fillOpacity={1} 
+                          fill="url(#colorFaturamento)" 
+                          animationDuration={1000}
+                        />
+                        <Line 
+                          yAxisId="right"
+                          name="Ticket Médio"
+                          type="monotone" 
+                          dataKey="ticketMedio" 
+                          stroke="#f97316" 
+                          strokeWidth={2.5}
+                          dot={{ r: 3, fill: '#f97316', stroke: '#000', strokeWidth: 1 }}
+                          activeDot={{ r: 5 }}
+                          animationDuration={1200}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
             </div>
 
+            {/* Ranking de Produtos, Marcas e Origem */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="glass-morphism p-6 rounded-xl border border-[#39FF14]/20 bg-[#39FF14]/5">
-                <div className="flex items-center gap-3 mb-2">
-                  <Users className="w-5 h-5 text-[#39FF14]" />
-                  <p className="text-xs font-bold text-[#39FF14] uppercase font-['Orbitron']">Total de Acessos</p>
-                </div>
-                <h3 className="text-3xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
-                  {metricasFiltradas.reduce((acc, v) => acc + v.acessos, 0)}
+              {/* Top 5 Produtos */}
+              <div className="glass-morphism p-6 rounded-xl border border-blue-500/10 bg-black/40 flex flex-col">
+                <h3 className="text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] mb-6 flex items-center gap-2">
+                  <Box className="w-4 h-4 text-blue-400" /> Top 5 Produtos mais Vendidos
                 </h3>
-                <p className="text-[10px] text-[#808080] mt-1">No período selecionado</p>
+                {topProdutosEmarcas.topProdutos.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center min-h-[220px]">
+                    <p className="text-[#808080] font-['Roboto_Mono'] text-xs">Nenhum produto vendido no período</p>
+                  </div>
+                ) : (
+                  <div className="flex-1 min-h-[220px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={topProdutosEmarcas.topProdutos} layout="vertical" margin={{ left: 5, right: 5, top: 0, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#222" horizontal={false} />
+                        <XAxis type="number" stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis 
+                          dataKey="nome" 
+                          type="category" 
+                          stroke="#C0C0C0" 
+                          fontSize={9} 
+                          tickLine={false} 
+                          axisLine={false} 
+                          width={110}
+                          tickFormatter={(value) => value.length > 18 ? `${value.substring(0, 16)}...` : value}
+                        />
+                        <RechartsTooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)', 
+                            border: '1px solid #3b82f6',
+                            borderRadius: '8px',
+                            fontSize: '11px',
+                            fontFamily: 'Roboto Mono',
+                            color: '#E0E0E0'
+                          }}
+                        />
+                        <Bar dataKey="quantidade" name="Qtd Vendida" fill="#3b82f6" radius={[0, 4, 4, 0]}>
+                          {topProdutosEmarcas.topProdutos.map((entry, index) => {
+                            const colors = ['#3b82f6', '#1d4ed8', '#2563eb', '#60a5fa', '#93c5fd'];
+                            return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                          })}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
               </div>
-              <div className="glass-morphism p-6 rounded-xl border border-blue-500/20 bg-blue-500/5">
-                <div className="flex items-center gap-3 mb-2">
-                  <TrendingUp className="w-5 h-5 text-blue-400" />
-                  <p className="text-xs font-bold text-blue-400 uppercase font-['Orbitron']">Média Diária</p>
-                </div>
-                <h3 className="text-3xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
-                  {metricasFiltradas.length > 0 
-                    ? (metricasFiltradas.reduce((acc, v) => acc + v.acessos, 0) / metricasFiltradas.length).toFixed(1)
-                    : 0}
-                </h3>
-                <p className="text-[10px] text-[#808080] mt-1">Acessos por dia</p>
-              </div>
-              <div className="glass-morphism p-6 rounded-xl border border-purple-500/20 bg-purple-500/5">
-                <div className="flex items-center gap-3 mb-2">
-                  <Zap className="w-5 h-5 text-purple-400" />
-                  <p className="text-xs font-bold text-purple-400 uppercase font-['Orbitron']">Pico de Acesso</p>
-                </div>
-                <h3 className="text-3xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
-                  {metricasFiltradas.length > 0 
-                    ? Math.max(...metricasFiltradas.map(v => v.acessos))
-                    : 0}
-                </h3>
-                <p className="text-[10px] text-[#808080] mt-1">Máximo em um único dia</p>
-              </div>
-            </div>
 
-            <div className="glass-morphism p-8 rounded-xl border border-[#39FF14]/10 bg-black/40 min-h-[400px]">
-              <h3 className="text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] mb-8 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4 text-[#39FF14]" /> Histórico de Visitas (Cliques por Dia)
-              </h3>
-              
-              {metricasFiltradas.length === 0 ? (
-                <div className="h-64 flex items-center justify-center">
-                  <p className="text-[#808080] font-['Roboto_Mono']">Nenhum dado de visita registrado ainda</p>
-                </div>
-              ) : (
-                <div className="h-[350px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={metricasFiltradas}>
-                      <defs>
-                        <linearGradient id="colorAcessos" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#39FF14" stopOpacity={0.3}/>
-                          <stop offset="95%" stopColor="#39FF14" stopOpacity={0}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                      <XAxis 
-                        dataKey="data" 
-                        stroke="#666" 
-                        fontSize={10} 
-                        tickLine={false} 
-                        axisLine={false}
-                        dy={10}
-                      />
-                      <YAxis 
-                        stroke="#666" 
-                        fontSize={10} 
-                        tickLine={false} 
-                        axisLine={false}
-                        tickFormatter={(value) => `${value}`}
-                      />
-                      <RechartsTooltip 
-                        contentStyle={{ 
-                          backgroundColor: 'rgba(0, 0, 0, 0.8)', 
-                          border: '1px solid #39FF14',
-                          borderRadius: '8px',
-                          fontSize: '12px',
-                          fontFamily: 'Roboto Mono'
-                        }}
-                        itemStyle={{ color: '#39FF14' }}
-                      />
-                      <Area 
-                        type="monotone" 
-                        dataKey="acessos" 
-                        stroke="#39FF14" 
-                        strokeWidth={3}
-                        fillOpacity={1} 
-                        fill="url(#colorAcessos)" 
-                        animationDuration={1500}
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
-              )}
+              {/* Top 5 Marcas */}
+              <div className="glass-morphism p-6 rounded-xl border border-purple-500/10 bg-black/40 flex flex-col">
+                <h3 className="text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] mb-6 flex items-center gap-2">
+                  <Zap className="w-4 h-4 text-purple-400" /> Top 5 Marcas mais Vendidas
+                </h3>
+                {topProdutosEmarcas.topMarcas.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center min-h-[220px]">
+                    <p className="text-[#808080] font-['Roboto_Mono'] text-xs">Nenhuma marca vendida no período</p>
+                  </div>
+                ) : (
+                  <div className="flex-1 min-h-[220px] w-full">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={topProdutosEmarcas.topMarcas}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#222" vertical={false} />
+                        <XAxis dataKey="marca" stroke="#C0C0C0" fontSize={10} tickLine={false} axisLine={false} />
+                        <YAxis stroke="#666" fontSize={10} tickLine={false} axisLine={false} />
+                        <RechartsTooltip 
+                          contentStyle={{ 
+                            backgroundColor: 'rgba(0, 0, 0, 0.9)', 
+                            border: '1px solid #a855f7',
+                            borderRadius: '8px',
+                            fontSize: '11px',
+                            fontFamily: 'Roboto Mono',
+                            color: '#E0E0E0'
+                          }}
+                        />
+                        <Bar dataKey="quantidade" name="Qtd Vendida" fill="#a855f7" radius={[4, 4, 0, 0]}>
+                          {topProdutosEmarcas.topMarcas.map((entry, index) => {
+                            const colors = ['#a855f7', '#7e22ce', '#8b5cf6', '#c084fc', '#ddd6fe'];
+                            return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                          })}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+              </div>
+
+              {/* Performance por Indicação (Canais) */}
+              <div className="glass-morphism p-6 rounded-xl border border-yellow-500/10 bg-black/40 flex flex-col">
+                <h3 className="text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] mb-6 flex items-center gap-2">
+                  <Users className="w-4 h-4 text-yellow-500" /> Origens de Pedidos (Indicações)
+                </h3>
+                {topProdutosEmarcas.topIndicacoes.length === 0 ? (
+                  <div className="flex-1 flex items-center justify-center min-h-[220px]">
+                    <p className="text-[#808080] font-['Roboto_Mono'] text-xs">Nenhum pedido registrado no período</p>
+                  </div>
+                ) : (
+                  <div className="flex-1 overflow-y-auto max-h-[220px] custom-scrollbar space-y-2 pr-1">
+                    <table className="w-full text-left text-xs font-['Roboto_Mono']">
+                      <thead>
+                        <tr className="text-[#808080] border-b border-white/10 pb-2">
+                          <th className="pb-2 font-['Orbitron'] uppercase text-[9px]">Origem</th>
+                          <th className="pb-2 text-right font-['Orbitron'] uppercase text-[9px]">Pedidos</th>
+                          <th className="pb-2 text-right font-['Orbitron'] uppercase text-[9px]">Faturamento</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {topProdutosEmarcas.topIndicacoes.map((ind, i) => (
+                          <tr key={i} className="border-b border-white/5 py-2 hover:bg-[#39FF14]/5 transition-colors">
+                            <td className="py-2 text-[#E0E0E0] truncate max-w-[120px] font-bold">{ind.indicacao}</td>
+                            <td className="py-2 text-right text-blue-400 font-bold">{ind.pedidos}</td>
+                            <td className="py-2 text-right text-[#39FF14] font-bold">
+                              R$ {ind.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
             </div>
           </section>
         ) : abaAtiva === 'saude' ? (
