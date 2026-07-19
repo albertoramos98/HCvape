@@ -320,6 +320,7 @@ export default function Admin() {
     is_promo: false,
     preco_promo: '',
   });
+  const [formSaboresEstoque, setFormSaboresEstoque] = useState<{ sabor: string; estoque: number }[]>([]);
 
   // Estados para imagem
   const [imagemArquivo, setImagemArquivo] = useState<File | null>(null);
@@ -462,6 +463,7 @@ export default function Admin() {
       is_promo: false,
       preco_promo: '',
     });
+    setFormSaboresEstoque([{ sabor: '', estoque: 10 }]);
     setImagemArquivo(null);
     setImagemPreview(null);
     setImagemUrlAtual(null);
@@ -482,6 +484,21 @@ export default function Admin() {
       is_promo: produto.is_promo || false,
       preco_promo: produto.preco_promo?.toString() || '',
     });
+    
+    if (produto.sabores_estoque) {
+      const items = Object.entries(produto.sabores_estoque).map(([sabor, est]) => ({
+        sabor,
+        estoque: est || 0
+      }));
+      setFormSaboresEstoque(items.length > 0 ? items : [{ sabor: '', estoque: 0 }]);
+    } else {
+      const items = produto.sabores.map((sabor, index) => ({
+        sabor,
+        estoque: index === 0 ? produto.estoque : 0
+      }));
+      setFormSaboresEstoque(items.length > 0 ? items : [{ sabor: '', estoque: 0 }]);
+    }
+
     setImagemArquivo(null);
     setImagemPreview(null);
     setImagemUrlAtual(produto.imagem_url || null);
@@ -503,6 +520,7 @@ export default function Admin() {
       is_promo: false,
       preco_promo: '',
     });
+    setFormSaboresEstoque([]);
     setImagemArquivo(null);
     setImagemPreview(null);
     setImagemUrlAtual(null);
@@ -552,29 +570,36 @@ export default function Admin() {
 
     const marcaFinal = marcaCustomizada || formProduto.marca;
 
-    if (!marcaFinal || !formProduto.nome || !formProduto.preco || !formProduto.estoque || !formProduto.sabores) {
+    if (!marcaFinal || !formProduto.nome || !formProduto.preco) {
       setErro('Preencha todos os campos obrigatórios');
       return;
     }
 
     const preco = parseFloat(formProduto.preco);
-    const estoque = parseInt(formProduto.estoque);
-    const sabores = formProduto.sabores.split(',').map(s => s.trim()).filter(s => s);
-
     if (isNaN(preco) || preco <= 0) {
       setErro('Preço deve ser um número positivo');
       return;
     }
 
-    if (isNaN(estoque) || estoque < 0) {
-      setErro('Estoque deve ser um número não-negativo');
+    const saboresFiltrados = formSaboresEstoque.filter(item => item.sabor.trim() !== '');
+    if (saboresFiltrados.length === 0) {
+      setErro('Adicione pelo menos um sabor com estoque');
       return;
     }
 
-    if (sabores.length === 0) {
-      setErro('Adicione pelo menos um sabor');
+    const saboresUnicos = new Set(saboresFiltrados.map(item => item.sabor.toLowerCase().trim()));
+    if (saboresUnicos.size !== saboresFiltrados.length) {
+      setErro('Existem sabores duplicados');
       return;
     }
+
+    const saboresEstoqueObj: { [sabor: string]: number } = {};
+    saboresFiltrados.forEach(item => {
+      saboresEstoqueObj[item.sabor.trim()] = Math.max(0, item.estoque);
+    });
+
+    const estoque = Object.values(saboresEstoqueObj).reduce((a, b) => a + b, 0);
+    const sabores = Object.keys(saboresEstoqueObj);
 
     let precoPromo: number | null = null;
     if (formProduto.is_promo) {
@@ -622,8 +647,9 @@ export default function Admin() {
           preco,
           estoque,
           sabores,
+          sabores_estoque: saboresEstoqueObj,
           is_promo: formProduto.is_promo,
-          preco_promo: precoPromo || undefined,
+          preco_promo: precoPromo || null,
         };
 
         if (imagemUrl !== undefined) {
@@ -631,7 +657,7 @@ export default function Admin() {
         }
 
         await produtosService.editar(editandoId, updates);
-        setSucesso('Produto atualizado com sucesso!');
+        setSucesso('Produto updated com sucesso!');
       } else {
         // --- CRIAR ---
         const novoProduto = await produtosService.criar({
@@ -640,6 +666,7 @@ export default function Admin() {
           preco,
           estoque,
           sabores,
+          sabores_estoque: saboresEstoqueObj,
           is_promo: formProduto.is_promo,
           preco_promo: precoPromo || undefined,
           imagem_url: null,
@@ -732,11 +759,27 @@ export default function Admin() {
     try {
       setSalvando(true);
       setErro(null);
-      await produtosService.atualizarEstoque(id, novoEstoque);
 
-      setProdutos(produtos.map(p =>
-        p.id === id ? { ...p, estoque: novoEstoque } : p
-      ));
+      const produto = produtos.find(p => p.id === id);
+      if (!produto) return;
+
+      // Se o produto tiver apenas um sabor ou nenhum, podemos atualizar inline
+      if (produto.sabores.length <= 1) {
+        const saborUnico = produto.sabores[0] || 'Original';
+        const novosSaboresEstoque = { [saborUnico]: novoEstoque };
+        
+        await produtosService.atualizarEstoqueSabores(id, novosSaboresEstoque, novoEstoque);
+
+        setProdutos(produtos.map(p =>
+          p.id === id ? { ...p, estoque: novoEstoque, sabores_estoque: novosSaboresEstoque } : p
+        ));
+      } else {
+        // Se tiver múltiplos sabores, atualiza o total geral (embora a UI bloqueie isso)
+        await produtosService.atualizarEstoque(id, novoEstoque);
+        setProdutos(produtos.map(p =>
+          p.id === id ? { ...p, estoque: novoEstoque } : p
+        ));
+      }
 
       setEstoqueEditado({ ...estoqueEditado, [id]: undefined });
       setSucesso('Estoque atualizado com sucesso!');
@@ -773,12 +816,23 @@ export default function Admin() {
         const produto = produtosAtuais.find(p => p.id === item.id);
         
         if (produto) {
-          // Se status for true (Checklist), subtrai. Se for false (Reabrir), soma.
           const fator = status ? -1 : 1;
-          const novoEstoque = Math.max(0, produto.estoque + (item.quantidade * fator));
+          const saboresEstoque = produto.sabores_estoque ? { ...produto.sabores_estoque } : {};
           
-          await produtosService.atualizarEstoque(item.id, novoEstoque);
-          return { id: item.id, estoque: novoEstoque };
+          // Se o sabor comprado não existe mapeado no JSON, inicializamos
+          if (saboresEstoque[item.sabor] === undefined) {
+            produto.sabores.forEach(s => {
+              saboresEstoque[s] = s.toLowerCase() === item.sabor.toLowerCase() ? produto.estoque : 0;
+            });
+          }
+          
+          const estoqueAtualSabor = saboresEstoque[item.sabor] || 0;
+          saboresEstoque[item.sabor] = Math.max(0, estoqueAtualSabor + (item.quantidade * fator));
+          
+          const novoEstoqueTotal = Object.values(saboresEstoque).reduce((a, b) => a + b, 0);
+          
+          await produtosService.atualizarEstoqueSabores(item.id, saboresEstoque, novoEstoqueTotal);
+          return { id: item.id, estoque: novoEstoqueTotal, sabores_estoque: saboresEstoque };
         }
         return null;
       });
@@ -792,6 +846,7 @@ export default function Admin() {
           const index = novosProdutos.findIndex(p => p.id === res.id);
           if (index !== -1) {
             novosProdutos[index].estoque = res.estoque;
+            novosProdutos[index].sabores_estoque = res.sabores_estoque;
           }
         }
       });
@@ -1229,14 +1284,33 @@ export default function Admin() {
                           <td className="py-3 px-4 text-[#E0E0E0] font-['Roboto_Mono']">{produto.nome} {produto.is_promo && <Zap className="inline w-3 h-3 text-red-400" />}</td>
                           <td className="py-3 px-4 text-[#39FF14] font-bold">R$ {produto.preco.toFixed(2)}</td>
                           <td className="py-3 px-4">
-                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${produto.estoque > 0 ? 'bg-[#39FF14]/20 text-[#39FF14]' : 'bg-red-500/20 text-red-400'}`}>{produto.estoque}</span>
+                            {produto.sabores_estoque && Object.keys(produto.sabores_estoque).length > 0 ? (
+                              <div className="flex flex-col gap-1 text-xs">
+                                {Object.entries(produto.sabores_estoque).map(([sabor, est]) => (
+                                  <div key={sabor} className="flex justify-between gap-3 font-['Roboto_Mono']">
+                                    <span className="text-[#808080]">{sabor}:</span>
+                                    <span className={est > 0 ? 'text-[#39FF14] font-bold' : 'text-red-400 font-bold'}>{est}</span>
+                                  </div>
+                                ))}
+                                <div className="border-t border-[#39FF14]/20 mt-1 pt-1 flex justify-between font-bold text-[10px]">
+                                  <span className="text-[#C0C0C0]">TOTAL:</span>
+                                  <span className={produto.estoque > 0 ? 'text-[#39FF14]' : 'text-red-400'}>{produto.estoque}</span>
+                                </div>
+                              </div>
+                            ) : (
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${produto.estoque > 0 ? 'bg-[#39FF14]/20 text-[#39FF14]' : 'bg-red-500/20 text-red-400'}`}>{produto.estoque}</span>
+                            )}
                           </td>
                           <td className="py-3 px-4">
-                            <input type="number" min="0" value={estoqueEditado[produto.id] ?? produto.estoque} onChange={(e) => setEstoqueEditado({ ...estoqueEditado, [produto.id]: parseInt(e.target.value) || 0 })} className="w-16 bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-1 py-0.5 rounded focus:border-[#39FF14] outline-none" />
+                            {produto.sabores.length <= 1 ? (
+                              <input type="number" min="0" value={estoqueEditado[produto.id] ?? produto.estoque} onChange={(e) => setEstoqueEditado({ ...estoqueEditado, [produto.id]: parseInt(e.target.value) || 0 })} className="w-16 bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-1 py-0.5 rounded focus:border-[#39FF14] outline-none" />
+                            ) : (
+                              <span className="text-[10px] text-[#808080] italic">Editar sabores</span>
+                            )}
                           </td>
                           <td className="py-3 px-4">
                             <div className="flex gap-1">
-                              <button onClick={() => handleAtualizarEstoque(produto.id)} disabled={salvando || estoqueEditado[produto.id] === undefined} className="p-1.5 bg-[#39FF14] text-black rounded disabled:opacity-50"><Save className="w-3 h-3" /></button>
+                              <button onClick={() => handleAtualizarEstoque(produto.id)} disabled={salvando || estoqueEditado[produto.id] === undefined || produto.sabores.length > 1} className="p-1.5 bg-[#39FF14] text-black rounded disabled:opacity-50"><Save className="w-3 h-3" /></button>
                               <button onClick={() => abrirModalEditar(produto)} className="p-1.5 bg-blue-500/20 border border-blue-500 text-blue-400 rounded"><Edit2 className="w-3 h-3" /></button>
                               <button onClick={() => handleDeletarProduto(produto.id, produto.nome)} className="p-1.5 bg-red-500/20 border border-red-500 text-red-400 rounded"><Trash2 className="w-3 h-3" /></button>
                             </div>
@@ -2194,19 +2268,72 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                 <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Nome</label>
                 <input type="text" value={formProduto.nome} onChange={(e) => setFormProduto({ ...formProduto, nome: e.target.value })} className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono']" placeholder="ex: IGNITE 8.000" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Preço (R$)</label>
-                  <input type="number" step="0.01" value={formProduto.preco} onChange={(e) => setFormProduto({ ...formProduto, preco: e.target.value })} className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono']" placeholder="115.00" />
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Estoque</label>
-                  <input type="number" value={formProduto.estoque} onChange={(e) => setFormProduto({ ...formProduto, estoque: e.target.value })} className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono']" placeholder="50" />
-                </div>
-              </div>
               <div>
-                <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Sabores (vírgula)</label>
-                <textarea value={formProduto.sabores} onChange={(e) => setFormProduto({ ...formProduto, sabores: e.target.value })} className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] h-20 resize-none" placeholder="Limão, Manga, Banana" />
+                <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Preço (R$)</label>
+                <input type="number" step="0.01" value={formProduto.preco} onChange={(e) => setFormProduto({ ...formProduto, preco: e.target.value })} className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono']" placeholder="115.00" />
+              </div>
+              
+              <div className="border border-[#39FF14]/30 rounded-xl p-4 bg-black/30 space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Sabores e Estoques</label>
+                  <button
+                    type="button"
+                    onClick={() => setFormSaboresEstoque([...formSaboresEstoque, { sabor: '', estoque: 10 }])}
+                    className="flex items-center gap-1 text-xs font-bold text-[#39FF14] hover:text-[#39FF14]/80 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Adicionar Sabor
+                  </button>
+                </div>
+                
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                  {formSaboresEstoque.map((item, index) => (
+                    <div key={index} className="flex gap-2 items-center">
+                      <input
+                        type="text"
+                        value={item.sabor}
+                        onChange={(e) => {
+                          const newItems = [...formSaboresEstoque];
+                          newItems[index].sabor = e.target.value;
+                          setFormSaboresEstoque(newItems);
+                        }}
+                        className="flex-1 bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-3 py-1.5 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                        placeholder="ex: Menta Ice"
+                        required
+                      />
+                      <input
+                        type="number"
+                        min="0"
+                        value={item.estoque}
+                        onChange={(e) => {
+                          const newItems = [...formSaboresEstoque];
+                          newItems[index].estoque = parseInt(e.target.value) || 0;
+                          setFormSaboresEstoque(newItems);
+                        }}
+                        className="w-24 bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-3 py-1.5 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                        placeholder="Estoque"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (formSaboresEstoque.length > 1) {
+                            setFormSaboresEstoque(formSaboresEstoque.filter((_, idx) => idx !== index));
+                          } else {
+                            setFormSaboresEstoque([{ sabor: '', estoque: 0 }]);
+                          }
+                        }}
+                        className="p-1.5 text-red-500 hover:bg-red-500/20 rounded transition-all"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                
+                <div className="text-[10px] text-[#808080] font-['Roboto_Mono'] flex justify-between border-t border-[#39FF14]/20 pt-2 mt-2 font-bold uppercase">
+                  <span>Sabores: {formSaboresEstoque.filter(i => i.sabor.trim() !== '').length}</span>
+                  <span>Estoque Total: {formSaboresEstoque.reduce((sum, item) => sum + (item.sabor.trim() !== '' ? item.estoque : 0), 0)}</span>
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" checked={formProduto.is_promo} onChange={(e) => setFormProduto({ ...formProduto, is_promo: e.target.checked })} className="accent-[#39FF14]" />

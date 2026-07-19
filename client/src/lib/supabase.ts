@@ -20,6 +20,7 @@ export interface Produto {
   preco: number;
   estoque: number;
   sabores: string[];
+  sabores_estoque?: { [sabor: string]: number } | null;
   is_promo?: boolean;
   preco_promo?: number;
   imagem_url?: string | null;
@@ -91,11 +92,25 @@ export const produtosService = {
     return data || [];
   },
 
-  // Atualizar estoque
+  // Atualizar estoque total
   async atualizarEstoque(id: string, novoEstoque: number): Promise<void> {
     const { error } = await supabase
       .from('produtos')
       .update({ estoque: novoEstoque, updated_at: new Date().toISOString() })
+      .eq('id', id);
+
+    if (error) throw error;
+  },
+
+  // Atualizar estoque por sabores e total
+  async atualizarEstoqueSabores(id: string, saboresEstoque: { [sabor: string]: number }, estoqueTotal: number): Promise<void> {
+    const { error } = await supabase
+      .from('produtos')
+      .update({ 
+        sabores_estoque: saboresEstoque, 
+        estoque: estoqueTotal, 
+        updated_at: new Date().toISOString() 
+      })
       .eq('id', id);
 
     if (error) throw error;

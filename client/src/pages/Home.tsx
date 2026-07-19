@@ -160,8 +160,10 @@ export default function Home() {
       return;
     }
 
-    if (produto.estoque <= 0) {
-      alert('Produto esgotado!');
+    const saborEstoque = produto.sabores_estoque ? (produto.sabores_estoque[sabor] ?? 0) : produto.estoque;
+
+    if (saborEstoque <= 0) {
+      alert('Sabor esgotado!');
       return;
     }
 
@@ -173,6 +175,12 @@ export default function Home() {
     const itemExistente = carrinho.find(
       item => item.id === produto.id && item.sabor === sabor
     );
+
+    const quantNoCarrinho = itemExistente ? itemExistente.quantidade : 0;
+    if (quantNoCarrinho + 1 > saborEstoque) {
+      alert(`Desculpe, só temos ${saborEstoque} unidades deste sabor no estoque.`);
+      return;
+    }
 
     if (itemExistente) {
       setCarrinho(carrinho.map(item =>
@@ -210,6 +218,16 @@ export default function Home() {
       removerDoCarrinho(id, sabor);
       return;
     }
+
+    const produto = produtos.find(p => p.id === id);
+    if (produto) {
+      const saborEstoque = produto.sabores_estoque ? (produto.sabores_estoque[sabor] ?? 0) : produto.estoque;
+      if (novaQuantidade > saborEstoque) {
+        alert(`Desculpe, só temos ${saborEstoque} unidades deste sabor no estoque.`);
+        return;
+      }
+    }
+
     setCarrinho(carrinho.map(item =>
       item.id === id && item.sabor === sabor
         ? { ...item, quantidade: novaQuantidade }
@@ -545,11 +563,15 @@ export default function Home() {
                         }`}
                       >
                         <option value="">Escolha uma opção...</option>
-                        {produto.sabores.map(sabor => (
-                          <option key={sabor} value={sabor}>
-                            {sabor}
-                          </option>
-                        ))}
+                        {produto.sabores.map(sabor => {
+                          const saborEstoque = produto.sabores_estoque ? (produto.sabores_estoque[sabor] ?? 0) : produto.estoque;
+                          const esgotado = saborEstoque <= 0;
+                          return (
+                            <option key={sabor} value={sabor} disabled={esgotado}>
+                              {sabor} {esgotado ? '— ESGOTADO' : ''}
+                            </option>
+                          );
+                        })}
                       </select>
                     </div>
 

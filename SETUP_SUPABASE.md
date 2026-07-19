@@ -41,7 +41,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar"
 
 ### Se a tabela já existir (migração)
 
-Se você já tem a tabela criada sem o campo `imagem_url`, execute apenas:
+Se você já tem a tabela criada, execute este script no SQL Editor do Supabase para adicionar as colunas necessárias:
 
 ```sql
 -- Adicionar coluna de imagem (se ainda não existir)
@@ -53,6 +53,9 @@ ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_promo DECIMAL(10, 2);
 
 -- Criar índice para promoções (se ainda não existir)
 CREATE INDEX IF NOT EXISTS idx_produtos_is_promo ON produtos(is_promo);
+
+-- Adicionar coluna de controle de estoque por sabor (JSONB)
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS sabores_estoque JSONB DEFAULT '{}'::jsonb;
 ```
 
 ---
