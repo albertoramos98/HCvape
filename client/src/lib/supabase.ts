@@ -445,6 +445,14 @@ export const authService = {
 
 // Utilidades
 export const utils = {
+  // Normalizar texto para buscas resilientes (remover acentos e minúsculas)
+  normalizarTexto(texto: string): string {
+    return (texto || '')
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+  },
+
   // Obter todas as marcas únicas
   async obterMarcas(): Promise<string[]> {
     const { data, error } = await supabase

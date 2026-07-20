@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw } from 'lucide-react';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search } from 'lucide-react';
 import { authService, produtosService, pedidosService, imagemService, visitasService, Produto, Pedido, utils, configService, PromoSchedule } from '@/lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Legend } from 'recharts';
 
@@ -40,6 +40,7 @@ export default function Admin() {
   const [agrupamentoMetricas, setAgrupamentoMetricas] = useState<'dia' | 'semana' | 'mes'>('dia');
   const [statusPedidoFiltro, setStatusPedidoFiltro] = useState<'todos' | 'concluidos'>('todos');
   const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos' | 'metricas' | 'saude' | 'configuracoes'>('produtos');
+  const [pesquisa, setPesquisa] = useState('');
 
   // Estados para configuração do horário promocional
   const [promoConfig, setPromoConfig] = useState<PromoSchedule>({
@@ -49,6 +50,18 @@ export default function Admin() {
   });
   const [salvandoConfig, setSalvandoConfig] = useState(false);
   const [tabelaConfigNaoExiste, setTabelaConfigNaoExiste] = useState(false);
+
+  // Filtrar produtos por termo de pesquisa
+  const produtosFiltrados = useMemo(() => {
+    if (!pesquisa.trim()) return produtos;
+    const termo = utils.normalizarTexto(pesquisa);
+    return produtos.filter(p => {
+      const nomeMatch = utils.normalizarTexto(p.nome).includes(termo);
+      const marcaMatch = utils.normalizarTexto(p.marca).includes(termo);
+      const saborMatch = p.sabores.some(s => utils.normalizarTexto(s).includes(termo));
+      return nomeMatch || marcaMatch || saborMatch;
+    });
+  }, [produtos, pesquisa]);
 
   // Lógica de processamento de métricas ricas com preenchimento de gaps
   const { diasArray, dataAgrupada, resumoMetricas, topProdutosEmarcas } = useMemo(() => {
@@ -1182,7 +1195,7 @@ export default function Admin() {
           <>
             <section className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Produtos ({produtos.length})</h2>
+                <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Produtos {pesquisa.trim() ? `(${produtosFiltrados.length}/${produtos.length})` : `(${produtos.length})`}</h2>
                 <div className="flex gap-3">
                   <button onClick={handleExportarProdutos} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold hover:bg-[#39FF14]/30 transition-all duration-300">
                     <Download className="w-4 h-4" /> Exportar Estoque
@@ -1203,7 +1216,7 @@ export default function Admin() {
                   <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
                     {(() => {
                       const resumoModelo: { [key: string]: number } = {};
-                      produtos.forEach(p => {
+                      produtosFiltrados.forEach(p => {
                         const chave = `${p.marca} ${p.nome}`;
                         resumoModelo[chave] = (resumoModelo[chave] || 0) + p.estoque;
                       });
@@ -1230,7 +1243,7 @@ export default function Admin() {
                   <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
                     {(() => {
                       const resumoSabor: { [key: string]: number } = {};
-                      produtos.forEach(p => {
+                      produtosFiltrados.forEach(p => {
                         p.sabores.forEach(s => {
                           const sabor = s.trim();
                           if (sabor) {
@@ -1261,64 +1274,92 @@ export default function Admin() {
                   <p className="text-[#808080] font-['Roboto_Mono']">Nenhum produto cadastrado</p>
                 </div>
               ) : (
-                <div className="glass-morphism rounded-xl overflow-hidden overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-[#39FF14]/30 text-left text-xs font-bold text-[#39FF14] font-['Orbitron'] uppercase">
-                        <th className="py-3 px-4">Img</th>
-                        <th className="py-3 px-4">Marca</th>
-                        <th className="py-3 px-4">Nome</th>
-                        <th className="py-3 px-4">Preço</th>
-                        <th className="py-3 px-4">Estoque</th>
-                        <th className="py-3 px-4">Novo Est.</th>
-                        <th className="py-3 px-4">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {produtos.map((produto) => (
-                        <tr key={produto.id} className="border-b border-[#39FF14]/10 hover:bg-[#39FF14]/5 transition-colors duration-200 text-sm">
-                          <td className="py-3 px-4">
-                            {produto.imagem_url ? <img src={produto.imagem_url} alt={produto.nome} className="w-10 h-10 object-cover rounded border border-[#39FF14]/30" /> : <ImageOff className="w-6 h-6 text-[#606060]" />}
-                          </td>
-                          <td className="py-3 px-4 text-[#C0C0C0] font-['Roboto_Mono']">{produto.marca}</td>
-                          <td className="py-3 px-4 text-[#E0E0E0] font-['Roboto_Mono']">{produto.nome} {produto.is_promo && <Zap className="inline w-3 h-3 text-red-400" />}</td>
-                          <td className="py-3 px-4 text-[#39FF14] font-bold">R$ {produto.preco.toFixed(2)}</td>
-                          <td className="py-3 px-4">
-                            {produto.sabores_estoque && Object.keys(produto.sabores_estoque).length > 0 ? (
-                              <div className="flex flex-col gap-1 text-xs">
-                                {Object.entries(produto.sabores_estoque).map(([sabor, est]) => (
-                                  <div key={sabor} className="flex justify-between gap-3 font-['Roboto_Mono']">
-                                    <span className="text-[#808080]">{sabor}:</span>
-                                    <span className={est > 0 ? 'text-[#39FF14] font-bold' : 'text-red-400 font-bold'}>{est}</span>
+                <div className="space-y-4">
+                  {/* Barra de Pesquisa */}
+                  <div className="relative max-w-md">
+                    <input
+                      type="text"
+                      placeholder="Pesquisar produto..."
+                      value={pesquisa}
+                      onChange={(e) => setPesquisa(e.target.value)}
+                      className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] pl-10 pr-10 py-2.5 rounded-lg focus:border-[#39FF14] focus:shadow-[0_0_15px_rgba(57,255,20,0.3)] focus:outline-none transition-all duration-300 font-['Roboto_Mono'] text-sm"
+                    />
+                    <Search className="w-4 h-4 text-[#808080] absolute left-3 top-[13px]" />
+                    {pesquisa && (
+                      <button
+                        onClick={() => setPesquisa('')}
+                        className="absolute right-3 top-[11px] text-[#808080] hover:text-[#39FF14] transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {produtosFiltrados.length === 0 ? (
+                    <div className="glass-morphism p-12 rounded-xl text-center border border-[#39FF14]/20 bg-black/40">
+                      <p className="text-[#808080] font-['Roboto_Mono']">Nenhum produto encontrado com a pesquisa "{pesquisa}"</p>
+                    </div>
+                  ) : (
+                    <div className="glass-morphism rounded-xl overflow-hidden overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-[#39FF14]/30 text-left text-xs font-bold text-[#39FF14] font-['Orbitron'] uppercase">
+                            <th className="py-3 px-4">Img</th>
+                            <th className="py-3 px-4">Marca</th>
+                            <th className="py-3 px-4">Nome</th>
+                            <th className="py-3 px-4">Preço</th>
+                            <th className="py-3 px-4">Estoque</th>
+                            <th className="py-3 px-4">Novo Est.</th>
+                            <th className="py-3 px-4">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {produtosFiltrados.map((produto) => (
+                            <tr key={produto.id} className="border-b border-[#39FF14]/10 hover:bg-[#39FF14]/5 transition-colors duration-200 text-sm">
+                              <td className="py-3 px-4">
+                                {produto.imagem_url ? <img src={produto.imagem_url} alt={produto.nome} className="w-10 h-10 object-cover rounded border border-[#39FF14]/30" /> : <ImageOff className="w-6 h-6 text-[#606060]" />}
+                              </td>
+                              <td className="py-3 px-4 text-[#C0C0C0] font-['Roboto_Mono']">{produto.marca}</td>
+                              <td className="py-3 px-4 text-[#E0E0E0] font-['Roboto_Mono']">{produto.nome} {produto.is_promo && <Zap className="inline w-3 h-3 text-red-400" />}</td>
+                              <td className="py-3 px-4 text-[#39FF14] font-bold">R$ {produto.preco.toFixed(2)}</td>
+                              <td className="py-3 px-4">
+                                {produto.sabores_estoque && Object.keys(produto.sabores_estoque).length > 0 ? (
+                                  <div className="flex flex-col gap-1 text-xs">
+                                    {Object.entries(produto.sabores_estoque).map(([sabor, est]) => (
+                                      <div key={sabor} className="flex justify-between gap-3 font-['Roboto_Mono']">
+                                        <span className="text-[#808080]">{sabor}:</span>
+                                        <span className={est > 0 ? 'text-[#39FF14] font-bold' : 'text-red-400 font-bold'}>{est}</span>
+                                      </div>
+                                    ))}
+                                    <div className="border-t border-[#39FF14]/20 mt-1 pt-1 flex justify-between font-bold text-[10px]">
+                                      <span className="text-[#C0C0C0]">TOTAL:</span>
+                                      <span className={produto.estoque > 0 ? 'text-[#39FF14]' : 'text-red-400'}>{produto.estoque}</span>
+                                    </div>
                                   </div>
-                                ))}
-                                <div className="border-t border-[#39FF14]/20 mt-1 pt-1 flex justify-between font-bold text-[10px]">
-                                  <span className="text-[#C0C0C0]">TOTAL:</span>
-                                  <span className={produto.estoque > 0 ? 'text-[#39FF14]' : 'text-red-400'}>{produto.estoque}</span>
+                                ) : (
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${produto.estoque > 0 ? 'bg-[#39FF14]/20 text-[#39FF14]' : 'bg-red-500/20 text-red-400'}`}>{produto.estoque}</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4">
+                                {produto.sabores.length <= 1 ? (
+                                  <input type="number" min="0" value={estoqueEditado[produto.id] ?? produto.estoque} onChange={(e) => setEstoqueEditado({ ...estoqueEditado, [produto.id]: parseInt(e.target.value) || 0 })} className="w-16 bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-1 py-0.5 rounded focus:border-[#39FF14] outline-none" />
+                                ) : (
+                                  <span className="text-[10px] text-[#808080] italic">Editar sabores</span>
+                                )}
+                              </td>
+                              <td className="py-3 px-4">
+                                <div className="flex gap-1">
+                                  <button onClick={() => handleAtualizarEstoque(produto.id)} disabled={salvando || estoqueEditado[produto.id] === undefined || produto.sabores.length > 1} className="p-1.5 bg-[#39FF14] text-black rounded disabled:opacity-50"><Save className="w-3 h-3" /></button>
+                                  <button onClick={() => abrirModalEditar(produto)} className="p-1.5 bg-blue-500/20 border border-blue-500 text-blue-400 rounded"><Edit2 className="w-3 h-3" /></button>
+                                  <button onClick={() => handleDeletarProduto(produto.id, produto.nome)} className="p-1.5 bg-red-500/20 border border-red-500 text-red-400 rounded"><Trash2 className="w-3 h-3" /></button>
                                 </div>
-                              </div>
-                            ) : (
-                              <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${produto.estoque > 0 ? 'bg-[#39FF14]/20 text-[#39FF14]' : 'bg-red-500/20 text-red-400'}`}>{produto.estoque}</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4">
-                            {produto.sabores.length <= 1 ? (
-                              <input type="number" min="0" value={estoqueEditado[produto.id] ?? produto.estoque} onChange={(e) => setEstoqueEditado({ ...estoqueEditado, [produto.id]: parseInt(e.target.value) || 0 })} className="w-16 bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-1 py-0.5 rounded focus:border-[#39FF14] outline-none" />
-                            ) : (
-                              <span className="text-[10px] text-[#808080] italic">Editar sabores</span>
-                            )}
-                          </td>
-                          <td className="py-3 px-4">
-                            <div className="flex gap-1">
-                              <button onClick={() => handleAtualizarEstoque(produto.id)} disabled={salvando || estoqueEditado[produto.id] === undefined || produto.sabores.length > 1} className="p-1.5 bg-[#39FF14] text-black rounded disabled:opacity-50"><Save className="w-3 h-3" /></button>
-                              <button onClick={() => abrirModalEditar(produto)} className="p-1.5 bg-blue-500/20 border border-blue-500 text-blue-400 rounded"><Edit2 className="w-3 h-3" /></button>
-                              <button onClick={() => handleDeletarProduto(produto.id, produto.nome)} className="p-1.5 bg-red-500/20 border border-red-500 text-red-400 rounded"><Trash2 className="w-3 h-3" /></button>
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               )}
             </section>

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff, Phone, User, CheckCircle2, Loader2, Github, Mail } from 'lucide-react';
+import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff, Phone, User, CheckCircle2, Loader2, Github, Mail, Search } from 'lucide-react';
 import { produtosService, pedidosService, Produto, utils, PedidoItem, configService, PromoSchedule } from '@/lib/supabase';
 import { useLocation } from "wouter";
 
@@ -52,6 +52,7 @@ export default function Home() {
   const [, setLocation] = useLocation();
   const [produtos, setProdutos] = useState<Produto[]>([]);
   const [carregando, setCarregando] = useState(true);
+  const [pesquisa, setPesquisa] = useState('');
   const [erro, setErro] = useState<string | null>(null);
   const [marcaSelecionada, setMarcaSelecionada] = useState<string | null>(null);
   const [carrinho, setCarrinho] = useState<CartItem[]>([]);
@@ -131,13 +132,38 @@ export default function Home() {
     return produtos.filter(p => p.is_promo && p.estoque > 0);
   }, [produtos]);
 
-  // Filtrar produtos Expressos por marca
+  // Filtrar produtos Expressos por marca e pesquisa
   const produtosFiltrados = useMemo(() => {
-    if (!marcaSelecionada) {
-      return produtosExpressos;
+    let result = produtosExpressos;
+    if (marcaSelecionada) {
+      result = result.filter(p => p.marca === marcaSelecionada);
     }
-    return produtosExpressos.filter(p => p.marca === marcaSelecionada);
-  }, [produtosExpressos, marcaSelecionada]);
+    if (pesquisa.trim()) {
+      const termo = utils.normalizarTexto(pesquisa);
+      result = result.filter(p => {
+        const nomeMatch = utils.normalizarTexto(p.nome).includes(termo);
+        const marcaMatch = utils.normalizarTexto(p.marca).includes(termo);
+        const saborMatch = p.sabores.some(s => utils.normalizarTexto(s).includes(termo));
+        return nomeMatch || marcaMatch || saborMatch;
+      });
+    }
+    return result;
+  }, [produtosExpressos, marcaSelecionada, pesquisa]);
+
+  // Filtrar produtos Promocionais por pesquisa
+  const produtosPromoFiltrados = useMemo(() => {
+    let result = produtosPromo;
+    if (pesquisa.trim()) {
+      const termo = utils.normalizarTexto(pesquisa);
+      result = result.filter(p => {
+        const nomeMatch = utils.normalizarTexto(p.nome).includes(termo);
+        const marcaMatch = utils.normalizarTexto(p.marca).includes(termo);
+        const saborMatch = p.sabores.some(s => utils.normalizarTexto(s).includes(termo));
+        return nomeMatch || marcaMatch || saborMatch;
+      });
+    }
+    return result;
+  }, [produtosPromo, pesquisa]);
 
   // Marcas apenas de Expressos
   const marcasExpressos = useMemo(() => {
@@ -441,6 +467,28 @@ export default function Home() {
           </div>
         </section>
 
+        {/* Barra de Pesquisa */}
+        <section className="mb-6">
+          <div className="relative max-w-md">
+            <input
+              type="text"
+              placeholder="Pesquisar produto..."
+              value={pesquisa}
+              onChange={(e) => setPesquisa(e.target.value)}
+              className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] pl-10 pr-10 py-3 rounded-lg focus:border-[#39FF14] focus:shadow-[0_0_15px_rgba(57,255,20,0.3)] focus:outline-none transition-all duration-300 font-['Roboto_Mono'] text-sm"
+            />
+            <Search className="w-5 h-5 text-[#808080] absolute left-3 top-3.5" />
+            {pesquisa && (
+              <button
+                onClick={() => setPesquisa('')}
+                className="absolute right-3 top-3.5 text-[#808080] hover:text-[#39FF14] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            )}
+          </div>
+        </section>
+
         {/* Filtros de Marca - Apenas para Expressos */}
         {abaAtiva === 'expressos' && (
           <section className="mb-8">
@@ -493,11 +541,11 @@ export default function Home() {
               : '🔥 PROMOÇÃO 🚀🔥✨'}
           </h2>
 
-          {(abaAtiva === 'expressos' ? produtosFiltrados : produtosPromo).length === 0 ? (
+          {(abaAtiva === 'expressos' ? produtosFiltrados : produtosPromoFiltrados).length === 0 ? (
             <p className="text-center text-[#808080] py-12">Nenhum produto encontrado</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {(abaAtiva === 'expressos' ? produtosFiltrados : produtosPromo).map(produto => (
+              {(abaAtiva === 'expressos' ? produtosFiltrados : produtosPromoFiltrados).map(produto => (
                 <div
                   key={produto.id}
                   className={`glass-morphism rounded-xl border transition-all duration-300 overflow-hidden ${
