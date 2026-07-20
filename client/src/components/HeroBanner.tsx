@@ -77,7 +77,7 @@ export function HeroBanner({
       <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-[#39FF14]/10 rounded-full blur-3xl pointer-events-none" />
 
       {/* Slide Container */}
-      <div className="relative min-h-[320px] md:min-h-[360px] flex items-center p-6 md:p-10">
+      <div className="relative min-h-[360px] md:min-h-[420px] flex items-center p-6 md:p-10">
         
         {/* SLIDE 0: Ofertas Relâmpago */}
         {slideAtual === 0 && (
@@ -119,35 +119,35 @@ export function HeroBanner({
             {/* Destaque Visual Lateral */}
             <div className="md:col-span-5 flex justify-center">
               {promoDestaque ? (
-                <div className="relative group w-full max-w-[260px] bg-black/60 border border-[#39FF14]/40 rounded-xl p-4 flex flex-col items-center shadow-[0_0_15px_rgba(57,255,20,0.2)] hover:border-[#39FF14] transition-all">
-                  <span className="absolute -top-3 left-4 bg-[#39FF14] text-black font-['Orbitron'] font-extrabold text-[10px] px-2 py-0.5 rounded shadow">
+                <div className="relative group w-full max-w-[320px] bg-black/70 border border-[#39FF14]/40 rounded-2xl p-5 flex flex-col items-center shadow-[0_0_20px_rgba(57,255,20,0.25)] hover:border-[#39FF14] transition-all">
+                  <span className="absolute -top-3 left-4 bg-[#39FF14] text-black font-['Orbitron'] font-extrabold text-xs px-3 py-1 rounded shadow">
                     EM DESTAQUE
                   </span>
                   {promoDestaque.imagem_url ? (
                     <img
                       src={promoDestaque.imagem_url}
                       alt={promoDestaque.nome}
-                      className="w-32 h-32 object-cover rounded-lg my-2 group-hover:scale-105 transition-transform"
+                      className="w-40 h-40 md:w-44 md:h-44 object-cover rounded-xl my-2 group-hover:scale-105 transition-transform"
                     />
                   ) : (
-                    <div className="w-32 h-32 bg-black/40 rounded-lg flex items-center justify-center my-2 border border-[#39FF14]/20">
-                      <Zap className="w-10 h-10 text-[#39FF14]/40" />
+                    <div className="w-40 h-40 md:w-44 md:h-44 bg-black/40 rounded-xl flex items-center justify-center my-2 border border-[#39FF14]/20">
+                      <Zap className="w-12 h-12 text-[#39FF14]/40" />
                     </div>
                   )}
-                  <span className="text-xs text-[#39FF14] font-['Orbitron'] font-bold uppercase">{promoDestaque.marca}</span>
-                  <h3 className="text-sm font-bold text-[#E0E0E0] text-center font-['Orbitron'] truncate w-full">{promoDestaque.nome}</h3>
-                  <div className="mt-2 flex items-center gap-2">
-                    <span className="text-xs text-[#C0C0C0] line-through font-['Roboto_Mono']">
+                  <span className="text-xs text-[#39FF14] font-['Orbitron'] font-bold uppercase tracking-wider">{promoDestaque.marca}</span>
+                  <h3 className="text-base font-bold text-[#E0E0E0] text-center font-['Orbitron'] truncate w-full mt-1">{promoDestaque.nome}</h3>
+                  <div className="mt-2 flex items-center gap-3">
+                    <span className="text-sm text-[#C0C0C0] line-through font-['Roboto_Mono']">
                       R$ {promoDestaque.preco.toFixed(2)}
                     </span>
-                    <span className="text-base font-extrabold text-[#39FF14] font-['Orbitron']">
+                    <span className="text-lg font-extrabold text-[#39FF14] font-['Orbitron']">
                       R$ {(promoDestaque.preco_promo || promoDestaque.preco).toFixed(2)}
                     </span>
                   </div>
                 </div>
               ) : (
-                <div className="w-40 h-40 rounded-full border-2 border-dashed border-[#39FF14]/30 flex items-center justify-center text-center p-4">
-                  <span className="text-xs font-['Roboto_Mono'] text-[#C0C0C0]">HC Vape Express</span>
+                <div className="w-48 h-48 rounded-full border-2 border-dashed border-[#39FF14]/30 flex items-center justify-center text-center p-4">
+                  <span className="text-sm font-['Roboto_Mono'] text-[#C0C0C0]">HC Vape Express</span>
                 </div>
               )}
             </div>
@@ -184,7 +184,7 @@ export function HeroBanner({
             </div>
 
             {/* Destaque Visual Lateral com Mini Cards */}
-            <div className="md:col-span-5 flex flex-col sm:flex-row md:flex-col gap-3 justify-center">
+            <div className="md:col-span-5 flex flex-col sm:flex-row md:flex-col gap-4 justify-center">
               {novidadesDestaque.map((prod) => (
                 <div
                   key={prod.id}
@@ -192,19 +192,19 @@ export function HeroBanner({
                     onSelectAba('expressos');
                     onSelectMarca(prod.marca);
                   }}
-                  className="cursor-pointer bg-black/60 border border-[#39FF14]/30 rounded-xl p-3 flex items-center gap-3 hover:border-[#39FF14] transition-all hover:bg-black/80"
+                  className="cursor-pointer bg-black/70 border border-[#39FF14]/30 rounded-2xl p-4 flex items-center gap-4 hover:border-[#39FF14] shadow-[0_0_15px_rgba(57,255,20,0.15)] transition-all hover:bg-black/90 hover:scale-[1.02]"
                 >
                   {prod.imagem_url ? (
-                    <img src={prod.imagem_url} alt={prod.nome} className="w-14 h-14 object-cover rounded-lg" />
+                    <img src={prod.imagem_url} alt={prod.nome} className="w-20 h-20 md:w-22 md:h-22 object-cover rounded-xl flex-shrink-0" />
                   ) : (
-                    <div className="w-14 h-14 bg-black/40 rounded-lg flex items-center justify-center border border-[#39FF14]/20">
-                      <Sparkles className="w-6 h-6 text-[#39FF14]/40" />
+                    <div className="w-20 h-20 md:w-22 md:h-22 bg-black/40 rounded-xl flex items-center justify-center border border-[#39FF14]/20 flex-shrink-0">
+                      <Sparkles className="w-8 h-8 text-[#39FF14]/40" />
                     </div>
                   )}
-                  <div className="min-w-0 flex-1">
-                    <span className="text-[10px] text-[#39FF14] font-['Orbitron'] font-bold block uppercase">{prod.marca}</span>
-                    <h4 className="text-xs font-bold text-white font-['Orbitron'] truncate">{prod.nome}</h4>
-                    <span className="text-xs font-bold text-[#39FF14] font-['Roboto_Mono']">R$ {prod.preco.toFixed(2)}</span>
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <span className="text-xs text-[#39FF14] font-['Orbitron'] font-bold block uppercase tracking-wider">{prod.marca}</span>
+                    <h4 className="text-sm md:text-base font-bold text-white font-['Orbitron'] truncate">{prod.nome}</h4>
+                    <span className="text-sm font-bold text-[#39FF14] font-['Roboto_Mono'] block">R$ {prod.preco.toFixed(2)}</span>
                   </div>
                 </div>
               ))}
@@ -242,10 +242,10 @@ export function HeroBanner({
             </div>
 
             <div className="md:col-span-4 flex justify-center items-center">
-              <div className="p-6 rounded-2xl bg-[#39FF14]/10 border border-[#39FF14]/40 text-center space-y-2 max-w-[240px]">
-                <div className="text-3xl font-extrabold text-[#39FF14] font-['Orbitron'] neon-glow">100%</div>
-                <div className="text-xs font-bold text-[#E0E0E0] font-['Orbitron']">PRODUTOS SELECIONADOS</div>
-                <div className="text-[11px] text-[#C0C0C0] font-['Roboto_Mono']">Originalidade e suporte ao cliente em cada pedido.</div>
+              <div className="p-7 rounded-2xl bg-[#39FF14]/10 border border-[#39FF14]/40 text-center space-y-3 max-w-[280px] shadow-[0_0_20px_rgba(57,255,20,0.2)]">
+                <div className="text-4xl font-extrabold text-[#39FF14] font-['Orbitron'] neon-glow">100%</div>
+                <div className="text-sm font-bold text-[#E0E0E0] font-['Orbitron']">PRODUTOS SELECIONADOS</div>
+                <div className="text-xs text-[#C0C0C0] font-['Roboto_Mono'] leading-relaxed">Originalidade e suporte ao cliente em cada pedido.</div>
               </div>
             </div>
           </div>
