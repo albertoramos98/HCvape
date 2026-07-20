@@ -1,18 +1,89 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { Music, ChevronDown, ExternalLink, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const SPOTIFY_PLAYLIST_ID = "3VdORUUTqpr44E1MhW2Ohe";
-const SPOTIFY_EMBED_URL = `https://open.spotify.com/embed/playlist/${SPOTIFY_PLAYLIST_ID}?utm_source=generator&theme=0&autoplay=1`;
 const SPOTIFY_DIRECT_URL = `https://open.spotify.com/playlist/${SPOTIFY_PLAYLIST_ID}`;
+
+declare global {
+  interface Window {
+    onSpotifyIframeApiReady?: (IFrameAPI: any) => void;
+    SpotifyIframeApi?: any;
+  }
+}
 
 export const RadioPlayer: React.FC = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const embedControllerRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const setupController = (IFrameAPI: any) => {
+      if (!containerRef.current || embedControllerRef.current) return;
+
+      const options = {
+        width: "100%",
+        height: "352",
+        uri: `spotify:playlist:${SPOTIFY_PLAYLIST_ID}`,
+      };
+
+      IFrameAPI.createController(containerRef.current, options, (controller: any) => {
+        if (!isMounted) return;
+        embedControllerRef.current = controller;
+
+        // Tentar tocar imediatamente ao carregar o controlador
+        try {
+          controller.play();
+        } catch {
+          // Ignora se o navegador bloquear autoplay sem gesto prévio
+        }
+      });
+    };
+
+    if (window.SpotifyIframeApi) {
+      setupController(window.SpotifyIframeApi);
+    } else {
+      window.onSpotifyIframeApiReady = (IFrameAPI: any) => {
+        window.SpotifyIframeApi = IFrameAPI;
+        setupController(IFrameAPI);
+      };
+
+      if (!document.getElementById("spotify-iframe-api-script")) {
+        const script = document.createElement("script");
+        script.id = "spotify-iframe-api-script";
+        script.src = "https://open.spotify.com/embed/iframe-api/v1";
+        script.async = true;
+        document.head.appendChild(script);
+      }
+    }
+
+    // Acionar reprodução no primeiro clique/toque em qualquer lugar da tela
+    const handleUserInteraction = () => {
+      if (embedControllerRef.current) {
+        try {
+          embedControllerRef.current.play();
+        } catch (e) {
+          console.error("Erro ao iniciar áudio do Spotify:", e);
+        }
+      }
+    };
+
+    window.addEventListener("click", handleUserInteraction, { capture: true, once: true });
+    window.addEventListener("touchstart", handleUserInteraction, { capture: true, once: true });
+
+    return () => {
+      isMounted = false;
+      window.removeEventListener("click", handleUserInteraction, { capture: true });
+      window.removeEventListener("touchstart", handleUserInteraction, { capture: true });
+    };
+  }, []);
 
   return (
     <div className="fixed bottom-5 left-5 z-50 transition-all duration-300">
-      {/* Expanded Spotify Card - Always mounted and rendered to preserve background audio playback */}
+      {/* Expanded Spotify Card - Sempre mantido montado para preservação do áudio */}
       <div
         className={`w-80 sm:w-96 glass-morphism rounded-2xl border border-[#39FF14]/40 shadow-[0_0_25px_rgba(57,255,20,0.25)] transition-all duration-300 origin-bottom-left ${
           isOpen
@@ -56,19 +127,9 @@ export const RadioPlayer: React.FC = () => {
           </div>
         </div>
 
-        {/* Spotify Player Iframe */}
-        <div className="rounded-xl overflow-hidden border border-white/10 bg-black/60">
-          <iframe
-            src={SPOTIFY_EMBED_URL}
-            width="100%"
-            height="352"
-            frameBorder="0"
-            allowFullScreen
-            allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-            loading="lazy"
-            title="HCvape Spotify Playlist"
-            className="rounded-xl"
-          />
+        {/* Spotify Player Container (Gerado dinamicamente via Spotify iFrame API) */}
+        <div className="rounded-xl overflow-hidden border border-white/10 bg-black/60 min-h-[352px]">
+          <div ref={containerRef} className="w-full h-[352px] rounded-xl" />
         </div>
       </div>
 
