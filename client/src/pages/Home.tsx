@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff, Phone, User, CheckCircle2, Loader2, Github, Mail, Search } from 'lucide-react';
 import { produtosService, pedidosService, Produto, utils, PedidoItem, configService, PromoSchedule } from '@/lib/supabase';
 import { useLocation } from "wouter";
+import { HeroBanner } from '@/components/HeroBanner';
 
 /**
  * HC - Desde 2020 | Catálogo Digital
@@ -430,6 +431,14 @@ export default function Home() {
             </p>
           </div>
         )}
+
+        {/* Hero Banner (Destaques, Novidades e Ofertas) */}
+        <HeroBanner
+          produtos={produtos}
+          horarioPromoAtivo={horarioPromoAtivo}
+          onSelectAba={(aba) => setAbaAtiva(aba)}
+          onSelectMarca={(marca) => setMarcaSelecionada(marca)}
+        />
 
         {/* Abas de Seleção */}
         <section className="mb-8">
