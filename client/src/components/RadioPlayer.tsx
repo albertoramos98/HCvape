@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const SPOTIFY_PLAYLIST_ID = "3VdORUUTqpr44E1MhW2Ohe";
-const SPOTIFY_EMBED_URL = `https://open.spotify.com/embed/playlist/${SPOTIFY_PLAYLIST_ID}?utm_source=generator&theme=0`;
+const SPOTIFY_EMBED_URL = `https://open.spotify.com/embed/playlist/${SPOTIFY_PLAYLIST_ID}?utm_source=generator&theme=0&autoplay=1`;
 const SPOTIFY_DIRECT_URL = `https://open.spotify.com/playlist/${SPOTIFY_PLAYLIST_ID}`;
 
 export const RadioPlayer: React.FC = () => {
