@@ -67,7 +67,7 @@ describe('Lógica de Processamento de Métricas e Preenchimento de Gaps', () => 
   ];
 
   const processarMetricas = (params: {
-    filtroPeriodo: '7d' | '15d' | '30d' | '90d' | 'custom';
+    filtroPeriodo: '7d' | '15d' | '30d' | '90d' | '180d' | 'tudo' | 'custom';
     dataInicioMetricas?: string;
     dataFimMetricas?: string;
     agrupamentoMetricas: 'dia' | 'semana' | 'mes';
@@ -102,6 +102,11 @@ describe('Lógica de Processamento de Métricas e Preenchimento de Gaps', () => 
     } else if (filtroPeriodo === '90d') {
       start = new Date(refDate);
       start.setDate(start.getDate() - 89);
+    } else if (filtroPeriodo === '180d') {
+      start = new Date(refDate);
+      start.setDate(start.getDate() - 179);
+    } else if (filtroPeriodo === 'tudo') {
+      start = new Date('2024-01-01T00:00:00');
     } else {
       start = dataInicioMetricas ? new Date(dataInicioMetricas + 'T00:00:00') : new Date(refDate);
       if (dataFimMetricas) {

@@ -35,7 +35,7 @@ export default function Admin() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [pedidosExcluidos, setPedidosExcluidos] = useState<Pedido[]>([]);
   const [metricasVisitas, setMetricasVisitas] = useState<{ data: string; acessos: number }[]>([]);
-  const [filtroPeriodo, setFiltroPeriodo] = useState<'7d' | '15d' | '30d' | '90d' | 'custom'>('7d');
+  const [filtroPeriodo, setFiltroPeriodo] = useState<'7d' | '15d' | '30d' | '90d' | '180d' | 'tudo' | 'custom'>('7d');
   const [dataInicioMetricas, setDataInicioMetricas] = useState<string>('');
   const [dataFimMetricas, setDataFimMetricas] = useState<string>('');
   const [agrupamentoMetricas, setAgrupamentoMetricas] = useState<'dia' | 'semana' | 'mes'>('dia');
@@ -86,6 +86,11 @@ export default function Admin() {
     } else if (filtroPeriodo === '90d') {
       start = new Date();
       start.setDate(start.getDate() - 89);
+    } else if (filtroPeriodo === '180d') {
+      start = new Date();
+      start.setDate(start.getDate() - 179);
+    } else if (filtroPeriodo === 'tudo') {
+      start = new Date('2024-01-01T00:00:00');
     } else {
       // custom
       start = dataInicioMetricas ? new Date(dataInicioMetricas + 'T00:00:00') : new Date();
@@ -1657,13 +1662,13 @@ export default function Admin() {
                 <div className="flex flex-col gap-1">
                   <label className="text-[9px] font-bold text-[#808080] uppercase font-['Orbitron']">Período</label>
                   <div className="flex bg-black/60 p-1 rounded-lg border border-[#39FF14]/20">
-                    {(['7d', '15d', '30d', '90d', 'custom'] as const).map((per) => (
+                    {(['7d', '15d', '30d', '90d', '180d', 'tudo', 'custom'] as const).map((per) => (
                       <button
                         key={per}
                         onClick={() => setFiltroPeriodo(per)}
                         className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${filtroPeriodo === per ? 'bg-[#39FF14] text-black shadow-[0_0_8px_rgba(57,255,20,0.3)]' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
                       >
-                        {per === 'custom' ? 'Custom' : per.toUpperCase()}
+                        {per === 'custom' ? 'Custom' : per === 'tudo' ? 'Tudo' : per.toUpperCase()}
                       </button>
                     ))}
                   </div>

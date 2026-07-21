@@ -250,14 +250,13 @@ export const produtosService = {
 };
 
 export const pedidosService = {
-  // Buscar todos os pedidos ativos (limitado aos últimos 500 para performance)
+  // Buscar todos os pedidos ativos
   async obterTodos(): Promise<Pedido[]> {
     const { data, error } = await supabase
       .from('pedidos')
       .select('*')
       .or('excluido.is.null,excluido.eq.false')
-      .order('created_at', { ascending: false })
-      .limit(500);
+      .order('created_at', { ascending: false });
 
     if (error) throw error;
     return data || [];
