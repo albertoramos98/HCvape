@@ -67,6 +67,84 @@ export interface PromoSchedule {
   hora_fim: string;
 }
 
+export interface HeroSlideConfig {
+  id: string;
+  ativo: boolean;
+  badge: {
+    texto: string;
+    cor: 'red' | 'green' | 'blue';
+    aoVivoBadge?: boolean;
+  };
+  titulo: string;
+  tituloDestaque: string;
+  descricao: string;
+  tipoDestaque: 'produto_promo' | 'produto_especifico' | 'custom' | 'nenhum';
+  produtoDestaqueId?: string | null;
+  customImagemUrl?: string | null;
+  customTitulo?: string | null;
+  customSubtitulo?: string | null;
+  botaoTexto: string;
+  botaoAcao: 'expressos' | 'promocionais' | 'url';
+  botaoUrl?: string | null;
+}
+
+export interface HeroBannerConfig {
+  slides: HeroSlideConfig[];
+}
+
+export const DEFAULT_HERO_BANNER_CONFIG: HeroBannerConfig = {
+  slides: [
+    {
+      id: "slide_promo",
+      ativo: true,
+      badge: {
+        texto: "OFERTAS RELÂMPAGO",
+        cor: "red",
+        aoVivoBadge: true
+      },
+      titulo: "Super Preços &",
+      tituloDestaque: "Promoções Especiais",
+      descricao: "Garanta os pods com os melhores descontos do dia. Quantidades limitadas por horário!",
+      tipoDestaque: "produto_promo",
+      botaoTexto: "Ver Ofertas Promocionais",
+      botaoAcao: "promocionais"
+    },
+    {
+      id: "slide_novidades",
+      ativo: true,
+      badge: {
+        texto: "NOVIDADES DO CATÁLOGO",
+        cor: "green",
+        aoVivoBadge: false
+      },
+      titulo: "Os Modelos Mais Vendidos",
+      tituloDestaque: "Pronta Entrega Express",
+      descricao: "Linha completa com os melhores sabores e marcas premium selecionadas especialmente para você.",
+      tipoDestaque: "produto_especifico",
+      botaoTexto: "Ver Catálogo Expresso",
+      botaoAcao: "expressos"
+    },
+    {
+      id: "slide_qualidade",
+      ativo: true,
+      badge: {
+        texto: "HC VAPE • DESDE 2020",
+        cor: "blue",
+        aoVivoBadge: false
+      },
+      titulo: "Garantia de Qualidade &",
+      tituloDestaque: "Atendimento Direto",
+      descricao: "Faça seu pedido diretamente pelo site e receba a confirmação no seu WhatsApp. Praticidade e rapidez na entrega!",
+      tipoDestaque: "custom",
+      customTitulo: "100%",
+      customSubtitulo: "PRODUTOS SELECIONADOS",
+      botaoTexto: "Entenda Como Funciona",
+      botaoAcao: "url",
+      botaoUrl: "/como-funciona"
+    }
+  ]
+};
+
 // Funções auxiliares
 export const produtosService = {
   // Buscar todos os produtos
@@ -396,6 +474,36 @@ export const configService = {
       .upsert({
         chave: 'promo_schedule',
         valor: schedule,
+        updated_at: new Date().toISOString()
+      });
+    
+    if (error) throw error;
+  },
+
+  // Obter a configuração do Hero Banner
+  async obterHeroBannerConfig(): Promise<HeroBannerConfig> {
+    try {
+      const { data, error } = await supabase
+        .from('configuracoes')
+        .select('valor')
+        .eq('chave', 'hero_banner_config')
+        .single();
+      
+      if (error) throw error;
+      return data.valor as HeroBannerConfig;
+    } catch (err) {
+      console.warn('Usando valores padrão para Hero Banner (tabela configuracoes pode não ter a chave):', err);
+      return DEFAULT_HERO_BANNER_CONFIG;
+    }
+  },
+
+  // Salvar a configuração do Hero Banner
+  async salvarHeroBannerConfig(config: HeroBannerConfig): Promise<void> {
+    const { error } = await supabase
+      .from('configuracoes')
+      .upsert({
+        chave: 'hero_banner_config',
+        valor: config,
         updated_at: new Date().toISOString()
       });
     

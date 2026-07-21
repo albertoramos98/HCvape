@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search } from 'lucide-react';
-import { authService, produtosService, pedidosService, imagemService, visitasService, Produto, Pedido, utils, configService, PromoSchedule } from '@/lib/supabase';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
+import { authService, produtosService, pedidosService, imagemService, visitasService, Produto, Pedido, utils, configService, PromoSchedule, HeroBannerConfig, HeroSlideConfig, DEFAULT_HERO_BANNER_CONFIG } from '@/lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Legend } from 'recharts';
+import { HeroBanner } from '@/components/HeroBanner';
 
 /**
  * Página Admin - Gerenciamento Completo de Estoque + Promoções + Imagens + Pedidos
@@ -39,7 +40,7 @@ export default function Admin() {
   const [dataFimMetricas, setDataFimMetricas] = useState<string>('');
   const [agrupamentoMetricas, setAgrupamentoMetricas] = useState<'dia' | 'semana' | 'mes'>('dia');
   const [statusPedidoFiltro, setStatusPedidoFiltro] = useState<'todos' | 'concluidos'>('todos');
-  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos' | 'metricas' | 'saude' | 'configuracoes'>('produtos');
+  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos' | 'metricas' | 'saude' | 'configuracoes' | 'herobanner'>('produtos');
   const [pesquisa, setPesquisa] = useState('');
 
   // Estados para configuração do horário promocional
@@ -50,6 +51,10 @@ export default function Admin() {
   });
   const [salvandoConfig, setSalvandoConfig] = useState(false);
   const [tabelaConfigNaoExiste, setTabelaConfigNaoExiste] = useState(false);
+
+  // Estados para configuração do Hero Banner
+  const [heroConfig, setHeroConfig] = useState<HeroBannerConfig>(DEFAULT_HERO_BANNER_CONFIG);
+  const [salvandoHero, setSalvandoHero] = useState(false);
 
   // Filtrar produtos por termo de pesquisa
   const produtosFiltrados = useMemo(() => {
@@ -367,7 +372,7 @@ export default function Admin() {
   const carregarTudo = async () => {
     try {
       setErro(null);
-      const [produtosData, pedidosData, pedidosExcluidosData, marcasData, metricasData, configData] = await Promise.all([
+      const [produtosData, pedidosData, pedidosExcluidosData, marcasData, metricasData, configData, heroData] = await Promise.all([
         produtosService.obterTodos(),
         pedidosService.obterTodos(),
         pedidosService.obterExcluidos(),
@@ -381,6 +386,10 @@ export default function Admin() {
             hora_inicio: "09:00",
             hora_fim: "15:25"
           };
+        }),
+        configService.obterHeroBannerConfig().catch(err => {
+          console.warn('Erro ao obter hero banner config:', err);
+          return DEFAULT_HERO_BANNER_CONFIG;
         })
       ]);
       setProdutos(produtosData);
@@ -389,6 +398,7 @@ export default function Admin() {
       setMarcas(marcasData);
       setMetricasVisitas(metricasData);
       setPromoConfig(configData);
+      setHeroConfig(heroData);
       setEstoqueEditado({});
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
@@ -736,6 +746,74 @@ export default function Admin() {
     } finally {
       setSalvandoConfig(false);
     }
+  };
+
+  // Salvar configurações do Hero Banner
+  const handleSalvarHeroConfig = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErro(null);
+    setSucesso(null);
+    setSalvandoHero(true);
+    try {
+      await configService.salvarHeroBannerConfig(heroConfig);
+      setSucesso('Hero Banner atualizado com sucesso!');
+      setTabelaConfigNaoExiste(false);
+      setTimeout(() => setSucesso(null), 3000);
+    } catch (err: any) {
+      console.error('Erro ao salvar Hero Banner:', err);
+      if (err.code === '42P01' || err.message?.includes('relation "configuracoes" does not exist')) {
+        setTabelaConfigNaoExiste(true);
+        setErro('A tabela "configuracoes" não existe no banco de dados. Crie a tabela primeiro.');
+      } else {
+        setErro(err.message || 'Erro ao salvar Hero Banner.');
+      }
+    } finally {
+      setSalvandoHero(false);
+    }
+  };
+
+  const handleAtualizarSlide = (index: number, updates: Partial<HeroSlideConfig>) => {
+    const novosSlides = [...heroConfig.slides];
+    novosSlides[index] = { ...novosSlides[index], ...updates };
+    setHeroConfig({ ...heroConfig, slides: novosSlides });
+  };
+
+  const handleAdicionarSlide = () => {
+    const novoSlide: HeroSlideConfig = {
+      id: `slide_${Date.now()}`,
+      ativo: true,
+      badge: {
+        texto: "NOVO DESTAQUE",
+        cor: "green",
+        aoVivoBadge: false,
+      },
+      titulo: "Novo Título",
+      tituloDestaque: "Subtítulo Neon",
+      descricao: "Descrição do novo slide do Hero Banner.",
+      tipoDestaque: "produto_especifico",
+      botaoTexto: "Ver Ofertas",
+      botaoAcao: "expressos"
+    };
+    setHeroConfig({ ...heroConfig, slides: [...heroConfig.slides, novoSlide] });
+  };
+
+  const handleRemoverSlide = (index: number) => {
+    if (heroConfig.slides.length <= 1) {
+      alert("Você precisa ter pelo menos um slide no Hero Banner.");
+      return;
+    }
+    const novosSlides = heroConfig.slides.filter((_, i) => i !== index);
+    setHeroConfig({ ...heroConfig, slides: novosSlides });
+  };
+
+  const handleMoverSlide = (index: number, direcao: 'up' | 'down') => {
+    const novosSlides = [...heroConfig.slides];
+    const targetIndex = direcao === 'up' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= novosSlides.length) return;
+    const temp = novosSlides[index];
+    novosSlides[index] = novosSlides[targetIndex];
+    novosSlides[targetIndex] = temp;
+    setHeroConfig({ ...heroConfig, slides: novosSlides });
   };
 
   // Deletar produto
@@ -1188,6 +1266,9 @@ export default function Admin() {
           </button>
           <button onClick={() => setAbaAtiva('configuracoes')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'configuracoes' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
             <Settings className="w-4 h-4" /> Promoção
+          </button>
+          <button onClick={() => setAbaAtiva('herobanner')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'herobanner' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
+            <LayoutTemplate className="w-4 h-4" /> Hero Banner
           </button>
         </div>
 
@@ -2115,7 +2196,7 @@ export default function Admin() {
               </div>
             </div>
           </section>
-        ) : (
+        ) : abaAtiva === 'configuracoes' ? (
           /* SEÇÃO DE CONFIGURAÇÕES PROMOCIONAIS */
           <section className="max-w-2xl mx-auto space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col gap-2">
@@ -2236,6 +2317,291 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                   ) : (
                     <>
                       <Save className="w-4 h-4" /> Salvar Configurações
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </section>
+        ) : (
+          /* SEÇÃO DE PERSONALIZAÇÃO DO HERO BANNER */
+          <section className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-3xl font-bold neon-glow font-['Orbitron']">Personalização do Hero Banner</h2>
+                <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-sm">Gerencie os slides, textos, botões e os produtos em destaque exibidos no topo do catálogo.</p>
+              </div>
+              <button
+                type="button"
+                onClick={handleAdicionarSlide}
+                className="px-4 py-2.5 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold text-xs hover:bg-[#39FF14]/30 transition-all flex items-center gap-2 self-start sm:self-auto shadow-[0_0_15px_rgba(57,255,20,0.2)]"
+              >
+                <Plus className="w-4 h-4" /> Adicionar Slide
+              </button>
+            </div>
+
+            {/* Pré-visualização em Tempo Real */}
+            <div className="space-y-3">
+              <h3 className="text-xs font-bold text-[#39FF14] uppercase tracking-wider font-['Orbitron'] flex items-center gap-2">
+                <Sparkles className="w-4 h-4 animate-spin" style={{ animationDuration: '6s' }} /> Pré-visualização do Hero Banner
+              </h3>
+              <HeroBanner
+                produtos={produtos}
+                horarioPromoAtivo={true}
+                onSelectAba={() => {}}
+                onSelectMarca={() => {}}
+                config={heroConfig}
+              />
+            </div>
+
+            {/* Formulário com Cards de Editar Slides */}
+            <form onSubmit={handleSalvarHeroConfig} className="space-y-6">
+              <div className="space-y-6">
+                {heroConfig.slides.map((slide, index) => (
+                  <div key={slide.id || index} className="glass-morphism p-6 rounded-xl border border-[#39FF14]/30 bg-black/50 space-y-6">
+                    {/* Header do Card do Slide */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#39FF14]/20 pb-4">
+                      <div className="flex items-center gap-3">
+                        <span className="w-7 h-7 rounded-lg bg-[#39FF14]/20 border border-[#39FF14]/50 flex items-center justify-center font-['Orbitron'] font-bold text-xs text-[#39FF14]">
+                          #{index + 1}
+                        </span>
+                        <h4 className="font-bold text-[#E0E0E0] font-['Orbitron'] text-base truncate max-w-[220px] sm:max-w-sm">
+                          {slide.titulo || 'Novo Slide'}
+                        </h4>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-['Orbitron'] font-bold ${
+                          slide.ativo ? 'bg-[#39FF14]/20 border border-[#39FF14]/50 text-[#39FF14]' : 'bg-zinc-800 text-zinc-500'
+                        }`}>
+                          {slide.ativo ? 'Ativo' : 'Inativo'}
+                        </span>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <label className="flex items-center gap-2 text-xs font-bold text-[#C0C0C0] font-['Roboto_Mono'] cursor-pointer mr-2">
+                          <input
+                            type="checkbox"
+                            checked={slide.ativo}
+                            onChange={(e) => handleAtualizarSlide(index, { ativo: e.target.checked })}
+                            className="accent-[#39FF14] w-4 h-4"
+                          />
+                          Exibir Slide
+                        </label>
+
+                        <button
+                          type="button"
+                          onClick={() => handleMoverSlide(index, 'up')}
+                          disabled={index === 0}
+                          className="p-1.5 bg-black/60 border border-zinc-700 text-zinc-300 rounded hover:border-[#39FF14] hover:text-[#39FF14] disabled:opacity-30 transition-colors"
+                          title="Mover para cima"
+                        >
+                          <ArrowUp className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleMoverSlide(index, 'down')}
+                          disabled={index === heroConfig.slides.length - 1}
+                          className="p-1.5 bg-black/60 border border-zinc-700 text-zinc-300 rounded hover:border-[#39FF14] hover:text-[#39FF14] disabled:opacity-30 transition-colors"
+                          title="Mover para baixo"
+                        >
+                          <ArrowDown className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoverSlide(index)}
+                          className="p-1.5 bg-red-500/20 border border-red-500/50 text-red-400 rounded hover:bg-red-500/30 transition-colors"
+                          title="Excluir Slide"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Conteúdo do Slide */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {/* Badge / Tag */}
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Texto da Tag (Badge)</label>
+                        <input
+                          type="text"
+                          value={slide.badge.texto}
+                          onChange={(e) => handleAtualizarSlide(index, { badge: { ...slide.badge, texto: e.target.value } })}
+                          className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                          placeholder="ex: OFERTAS RELÂMPAGO"
+                        />
+                      </div>
+
+                      <div className="flex gap-4 items-end">
+                        <div className="space-y-2 flex-1">
+                          <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Cor da Tag</label>
+                          <select
+                            value={slide.badge.cor}
+                            onChange={(e) => handleAtualizarSlide(index, { badge: { ...slide.badge, cor: e.target.value as 'red' | 'green' | 'blue' } })}
+                            className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                          >
+                            <option value="green">Verde (Novidade)</option>
+                            <option value="red">Vermelho (Oferta)</option>
+                            <option value="blue">Azul (Informação)</option>
+                          </select>
+                        </div>
+
+                        <label className="flex items-center gap-2 text-xs text-[#C0C0C0] font-['Roboto_Mono'] cursor-pointer pb-2.5">
+                          <input
+                            type="checkbox"
+                            checked={!!slide.badge.aoVivoBadge}
+                            onChange={(e) => handleAtualizarSlide(index, { badge: { ...slide.badge, aoVivoBadge: e.target.checked } })}
+                            className="accent-red-500 w-4 h-4"
+                          />
+                          Tag "Ao Vivo"
+                        </label>
+                      </div>
+
+                      {/* Títulos */}
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Título Principal</label>
+                        <input
+                          type="text"
+                          value={slide.titulo}
+                          onChange={(e) => handleAtualizarSlide(index, { titulo: e.target.value })}
+                          className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                          placeholder="ex: Super Preços &"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-[#39FF14] uppercase font-['Orbitron']">Título Destaque (Neon)</label>
+                        <input
+                          type="text"
+                          value={slide.tituloDestaque}
+                          onChange={(e) => handleAtualizarSlide(index, { tituloDestaque: e.target.value })}
+                          className="w-full bg-black/60 border border-[#39FF14] text-[#39FF14] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm font-bold"
+                          placeholder="ex: Promoções Especiais"
+                        />
+                      </div>
+
+                      {/* Descrição */}
+                      <div className="md:col-span-2 space-y-2">
+                        <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Descrição do Slide</label>
+                        <textarea
+                          rows={2}
+                          value={slide.descricao}
+                          onChange={(e) => handleAtualizarSlide(index, { descricao: e.target.value })}
+                          className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                          placeholder="Breve descrição em destaque..."
+                        />
+                      </div>
+
+                      {/* Botão de Ação */}
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Texto do Botão</label>
+                        <input
+                          type="text"
+                          value={slide.botaoTexto}
+                          onChange={(e) => handleAtualizarSlide(index, { botaoTexto: e.target.value })}
+                          className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                          placeholder="ex: Ver Ofertas Promocionais"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Ação do Botão</label>
+                        <select
+                          value={slide.botaoAcao}
+                          onChange={(e) => handleAtualizarSlide(index, { botaoAcao: e.target.value as any })}
+                          className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                        >
+                          <option value="promocionais">Ir para Aba Promocionais</option>
+                          <option value="expressos">Ir para Aba Expressos</option>
+                          <option value="url">Abrir URL (Página Interna / Externa)</option>
+                        </select>
+                      </div>
+
+                      {slide.botaoAcao === 'url' && (
+                        <div className="md:col-span-2 space-y-2">
+                          <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">URL de Destino</label>
+                          <input
+                            type="text"
+                            value={slide.botaoUrl || ''}
+                            onChange={(e) => handleAtualizarSlide(index, { botaoUrl: e.target.value })}
+                            className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                            placeholder="ex: /como-funciona ou https://..."
+                          />
+                        </div>
+                      )}
+
+                      {/* Destaque Lateral */}
+                      <div className="md:col-span-2 space-y-3 pt-3 border-t border-white/10">
+                        <label className="block text-xs font-bold text-[#39FF14] uppercase font-['Orbitron']">Conteúdo Lateral (Card de Destaque)</label>
+                        <select
+                          value={slide.tipoDestaque}
+                          onChange={(e) => handleAtualizarSlide(index, { tipoDestaque: e.target.value as any })}
+                          className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                        >
+                          <option value="produto_especifico">Produto Específico do Catálogo (Selecionar)</option>
+                          <option value="produto_promo">Automático: Primeiro Produto da Promoção</option>
+                          <option value="custom">Caixa de Garantia / Texto Personalizado</option>
+                          <option value="nenhum">Nenhum Card (Sem destaque lateral)</option>
+                        </select>
+
+                        {slide.tipoDestaque === 'produto_especifico' && (
+                          <div className="space-y-2">
+                            <label className="block text-[11px] font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Selecionar Produto em Destaque</label>
+                            <select
+                              value={slide.produtoDestaqueId || ''}
+                              onChange={(e) => handleAtualizarSlide(index, { produtoDestaqueId: e.target.value || null })}
+                              className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                            >
+                              <option value="">Nenhum (Exibir 2 novidades aleatórias)</option>
+                              {produtos.map(p => (
+                                <option key={p.id} value={p.id}>
+                                  {p.marca} — {p.nome} (R$ {p.preco.toFixed(2)}) {p.is_promo ? '[PROMO]' : ''}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        )}
+
+                        {slide.tipoDestaque === 'custom' && (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+                            <div className="space-y-1">
+                              <label className="block text-[11px] font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Destaque Grande (ex: 100%)</label>
+                              <input
+                                type="text"
+                                value={slide.customTitulo || ''}
+                                onChange={(e) => handleAtualizarSlide(index, { customTitulo: e.target.value })}
+                                className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-3 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                                placeholder="100%"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <label className="block text-[11px] font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Subtítulo (ex: PRODUTOS SELECIONADOS)</label>
+                              <input
+                                type="text"
+                                value={slide.customSubtitulo || ''}
+                                onChange={(e) => handleAtualizarSlide(index, { customSubtitulo: e.target.value })}
+                                className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-3 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                                placeholder="PRODUTOS SELECIONADOS"
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="flex gap-4 pt-4 border-t border-[#39FF14]/10">
+                <button
+                  type="submit"
+                  disabled={salvandoHero}
+                  className="cyber-button w-full flex items-center justify-center gap-2"
+                >
+                  {salvandoHero ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" /> Salvar Configurações do Hero Banner
                     </>
                   )}
                 </button>

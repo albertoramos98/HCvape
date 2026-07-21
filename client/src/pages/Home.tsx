@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff, Phone, User, CheckCircle2, Loader2, Github, Mail, Search } from 'lucide-react';
-import { produtosService, pedidosService, Produto, utils, PedidoItem, configService, PromoSchedule } from '@/lib/supabase';
+import { produtosService, pedidosService, Produto, utils, PedidoItem, configService, PromoSchedule, HeroBannerConfig } from '@/lib/supabase';
 import { useLocation } from "wouter";
 import { HeroBanner } from '@/components/HeroBanner';
 
@@ -52,6 +52,7 @@ function ProdutoImagem({ src, alt, className }: { src?: string | null; alt: stri
 export default function Home() {
   const [, setLocation] = useLocation();
   const [produtos, setProdutos] = useState<Produto[]>([]);
+  const [heroBannerConfig, setHeroBannerConfig] = useState<HeroBannerConfig | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [pesquisa, setPesquisa] = useState('');
   const [erro, setErro] = useState<string | null>(null);
@@ -94,13 +95,15 @@ export default function Home() {
         setCarregando(true);
         setErro(null);
         
-        const [dados, config] = await Promise.all([
+        const [dados, config, heroConfig] = await Promise.all([
           produtosService.obterTodos(),
-          configService.obterPromoSchedule()
+          configService.obterPromoSchedule(),
+          configService.obterHeroBannerConfig()
         ]);
         
         setProdutos(dados);
         setPromoConfig(config);
+        setHeroBannerConfig(heroConfig);
         configAtiva = config;
 
         const ativo = utils.estaEmHorarioPromo(config);
@@ -438,6 +441,7 @@ export default function Home() {
           horarioPromoAtivo={horarioPromoAtivo}
           onSelectAba={(aba) => setAbaAtiva(aba)}
           onSelectMarca={(marca) => setMarcaSelecionada(marca)}
+          config={heroBannerConfig}
         />
 
         {/* Abas de Seleção */}

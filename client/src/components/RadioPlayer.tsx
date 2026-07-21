@@ -3,7 +3,7 @@ import { Music, ChevronDown, ExternalLink, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const SPOTIFY_PLAYLIST_ID = "3VdORUUTqpr44E1MhW2Ohe";
+const SPOTIFY_PLAYLIST_ID = "0uYYy88oNE8iYBFGIZPXKh";
 const SPOTIFY_DIRECT_URL = `https://open.spotify.com/playlist/${SPOTIFY_PLAYLIST_ID}`;
 
 declare global {
