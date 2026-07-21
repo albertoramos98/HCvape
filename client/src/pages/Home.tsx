@@ -317,7 +317,7 @@ export default function Home() {
         .join('\n');
 
       const textoFinal = `Olá! Acabei de fazer um pedido pelo site: 🛒✨\n\n🆔 *Pedido:* #${novoPedido.numero_pedido}\n👤 *Cliente:* ${nomeCliente}\n📞 *WhatsApp:* ${telefoneCliente}\n${indicacao ? `💡 *Vim por:* ${indicacao}\n` : ''}\n---\n📦 *MEUS ITENS:*\n\n${mensagemItens}\n\n---\n💰 *TOTAL:* R$ ${novoPedido.total_final.toFixed(2)}\n\nHC Vape agradece a preferência! 🌬️💨`;
-      const whatsappUrl = `https://wa.me/558197390944?text=${encodeURIComponent(textoFinal)}`;
+      const whatsappUrl = `https://wa.me/5581995867544?text=${encodeURIComponent(textoFinal)}`;
       
       // Definir pedido concluído para mostrar link de fallback se necessário
       setPedidoConcluido({ numero: novoPedido.numero_pedido, total: novoPedido.total_final });
