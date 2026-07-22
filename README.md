@@ -17,7 +17,7 @@ Catálogo SPA (Single Page Application) com estética Cyberpunk/Dark Mode para g
 - ✅ Seletor de sabor por produto
 - ✅ Carrinho flutuante com glassmorphism
 - ✅ Lógica de estoque (botão "Esgotado" quando estoque ≤ 0)
-- ✅ Checkout via WhatsApp (+55 81 9 9586-7544)
+- ✅ Checkout via WhatsApp (+55 81 99739-0944)
 
 ### Admin Protegido (`/admin`)
 - ✅ Autenticação Supabase (email + senha)
