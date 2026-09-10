@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { Zap, Truck, Clock, CheckCircle2, AlertCircle, DollarSign } from 'lucide-react';
+import { Zap, Truck, Clock, CheckCircle2, AlertCircle, DollarSign, ArrowLeft, ArrowRight, ShieldCheck, Flame, Sparkles } from 'lucide-react';
 import { configService, utils, PromoSchedule } from '@/lib/supabase';
 
 /**
  * Página: Como Funciona
- * Explica os dois modelos de venda: PROMOCIONAL e ESTOQUE
- * Design: Cyberpunk Dark Mode
+ * Explica os dois modelos de venda: PROMOCIONAL e EXPRESSO
+ * Design: Luxury Dark Cyber
  */
 
 export default function HowItWorks() {
@@ -21,273 +21,244 @@ export default function HowItWorks() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-black asphalt-texture">
+    <div className="min-h-screen dark-atmosphere selection:bg-[#00F59B] selection:text-[#04140b]">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-black/80 backdrop-blur-md border-b border-[#39FF14]/30">
-        <div className="container flex items-center justify-between py-4">
-          <div>
-            <h1 className="text-2xl font-bold neon-glow font-['Orbitron']">HC</h1>
-            <p className="text-xs text-[#C0C0C0] font-['Roboto_Mono']">Como Funciona</p>
-          </div>
+      <header className="sticky top-0 z-30 bg-[#080b11]/85 backdrop-blur-xl border-b border-white/10">
+        <div className="container flex items-center justify-between py-3.5">
+          <a href="/" className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#00F59B] to-[#00A86B] flex items-center justify-center font-extrabold text-[#04140b] text-base font-['Outfit'] shadow-lg">
+              HC
+            </div>
+            <div>
+              <span className="text-base font-bold text-slate-100 tracking-tight font-['Outfit']">HC VAPE</span>
+              <span className="text-[10px] text-slate-400 block -mt-0.5">Guia de Compras</span>
+            </div>
+          </a>
+
           <a
             href="/"
-            className="px-4 py-2 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold hover:bg-[#39FF14]/30 transition-all duration-300"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200"
           >
-            ← Voltar ao Catálogo
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Voltar ao Catálogo</span>
           </a>
         </div>
       </header>
 
-      <main className="container py-12">
-        {/* Título */}
-        <section className="mb-12 text-center">
-          <h2 className="text-4xl font-bold neon-glow mb-4 font-['Orbitron']">
-            📦 NOSSAS FORMAS DE VENDA
-          </h2>
-          <p className="text-[#C0C0C0] max-w-2xl mx-auto font-['Roboto_Mono'] text-lg">
-            Trabalhamos com 2 modalidades de venda: <strong>PROMOCIONAL</strong> e <strong>EXPRESSO</strong>.
-          </p>
-          <p className="text-[#39FF14] max-w-2xl mx-auto font-['Orbitron'] font-bold mt-3">
-            Veja qual combina mais com você 👇
+      <main className="container py-10 sm:py-14 space-y-12 max-w-4xl">
+        {/* Intro Section */}
+        <section className="text-center space-y-4">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-300">
+            <Sparkles className="w-3.5 h-3.5 text-[#00F59B]" />
+            <span>Transparência e Rapidez</span>
+          </div>
+
+          <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-100 font-['Outfit'] tracking-tight">
+            Nossas Formas de Atendimento
+          </h1>
+
+          <p className="text-sm sm:text-base text-slate-400 max-w-xl mx-auto leading-relaxed">
+            Oferecemos duas modalidades pensadas para cada necessidade: <strong className="text-white">Promocional</strong> (com máximo desconto) e <strong className="text-white">Expresso</strong> (pronta entrega imediata).
           </p>
         </section>
 
-        {/* Seletor de Modelo */}
-        <section className="mb-12">
-          <div className="flex gap-4 justify-center mb-8 flex-wrap">
+        {/* Interactive Mode Switcher */}
+        <section className="space-y-8">
+          <div className="flex p-1.5 bg-[#0e1320] border border-white/10 rounded-2xl max-w-md mx-auto">
             <button
               onClick={() => setModeloSelecionado('promocional')}
-              className={`px-8 py-4 rounded-lg font-['Orbitron'] font-bold transition-all duration-300 text-lg ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 ${
                 modeloSelecionado === 'promocional'
-                  ? 'bg-red-500 text-white shadow-[0_0_20px_rgba(255,0,0,0.5)]'
-                  : 'bg-red-500/20 border border-red-500 text-red-400 hover:bg-red-500/30'
+                  ? 'bg-gradient-to-r from-[#FF3366] to-[#E60045] text-white shadow-lg'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              💸 🔥 PROMOCIONAL
+              <Flame className="w-4 h-4" />
+              <span>Modalidade Promocional</span>
             </button>
+
             <button
               onClick={() => setModeloSelecionado('estoque')}
-              className={`px-8 py-4 rounded-lg font-['Orbitron'] font-bold transition-all duration-300 text-lg ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 ${
                 modeloSelecionado === 'estoque'
-                  ? 'bg-[#39FF14] text-black shadow-[0_0_20px_rgba(57,255,20,0.5)]'
-                  : 'bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] hover:bg-[#39FF14]/30'
+                  ? 'bg-gradient-to-r from-[#00F59B] to-[#00D084] text-[#04140b] shadow-lg'
+                  : 'text-slate-400 hover:text-white'
               }`}
             >
-              ⚡ 🚀 EXPRESSO
+              <Zap className="w-4 h-4" />
+              <span>Modalidade Expresso</span>
             </button>
           </div>
-        </section>
 
-        {/* Conteúdo Promocional */}
-        {modeloSelecionado === 'promocional' && (
-          <section className="max-w-4xl mx-auto">
-            <div className="glass-morphism p-8 rounded-xl border border-red-500/30 mb-8 shadow-[0_0_20px_rgba(255,0,0,0.2)]">
-              {/* Título */}
-              <div className="flex items-start gap-4 mb-8">
-                <div className="p-3 bg-red-500/20 rounded-lg animate-pulse">
-                  <DollarSign className="w-8 h-8 text-red-500" />
+          {/* Promocional Detail Card */}
+          {modeloSelecionado === 'promocional' && (
+            <div className="glass-card rounded-3xl p-6 sm:p-8 border-[#FF3366]/30 shadow-2xl space-y-6 animate-in fade-in duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+                <div className="flex items-center gap-3.5">
+                  <div className="p-3 bg-[#FF3366]/15 rounded-2xl text-[#FF5E85] border border-[#FF3366]/30">
+                    <DollarSign className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-100 font-['Outfit']">
+                      Modalidade Promocional
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-400">
+                      Máxima economia com pedidos antecipados por horário
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-3xl font-bold text-[#E0E0E0] mb-2 font-['Orbitron']">
-                    💸 🔥 PROMOCIONAL (Mais Barato)
-                  </h3>
-                  <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                    Quer pagar menos? Essa é a melhor opção!
-                  </p>
+
+                <span className="self-start sm:self-auto px-3 py-1 rounded-full text-xs font-bold bg-[#FF3366]/15 text-[#FF5E85] border border-[#FF3366]/30">
+                  Mais Econômico
+                </span>
+              </div>
+
+              {/* Step by step */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Passo a Passo:</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                    <span className="w-6 h-6 rounded-full bg-[#FF3366]/20 text-[#FF5E85] text-xs font-bold flex items-center justify-center">1</span>
+                    <h4 className="text-sm font-bold text-slate-100">Escolha o Pod</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">Navegue pelas Ofertas Relâmpago e selecione o sabor desejado.</p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                    <span className="w-6 h-6 rounded-full bg-[#FF3366]/20 text-[#FF5E85] text-xs font-bold flex items-center justify-center">2</span>
+                    <h4 className="text-sm font-bold text-slate-100">Peça até as {promoConfig.hora_fim}</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">Confirme e realize o pagamento dentro do horário promocional ativo.</p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                    <span className="w-6 h-6 rounded-full bg-[#FF3366]/20 text-[#FF5E85] text-xs font-bold flex items-center justify-center">3</span>
+                    <h4 className="text-sm font-bold text-slate-100">Receba às 19h</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">Seu pedido sai para entrega no mesmo dia a partir das 19:00.</p>
+                  </div>
                 </div>
               </div>
 
-              {/* Descrição */}
-              <div className="bg-black/40 p-6 rounded-lg border border-red-500/20 mb-8">
-                <p className="text-[#E0E0E0] font-['Roboto_Mono'] leading-relaxed text-lg">
-                  A venda <strong>Promocional</strong> é ideal para quem <strong>não tem pressa</strong> e quer <strong>economizar</strong>.
+              <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-start gap-3 text-xs sm:text-sm text-amber-300">
+                <AlertCircle className="w-5 h-5 flex-shrink-0 text-amber-400 mt-0.5" />
+                <p>
+                  <strong>Dica:</strong> Se programe com antecedência durante os dias de semana ({utils.formatarDiasSemana(promoConfig.dias_semana)}) para garantir preços imperdíveis.
                 </p>
               </div>
+            </div>
+          )}
 
-              {/* Checklist */}
-              <div className="space-y-4 mb-8">
-                <h4 className="text-xl font-bold text-red-400 mb-4 font-['Orbitron']">
-                  ✅ Como Funciona:
-                </h4>
-                <div className="space-y-3">
-                  <div className="flex gap-4 items-start">
-                    <CheckCircle2 className="w-6 h-6 text-red-400 flex-shrink-0 mt-1" />
-                    <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                      <strong>Você escolhe modelo e sabor</strong>
-                    </p>
+          {/* Expresso Detail Card */}
+          {modeloSelecionado === 'estoque' && (
+            <div className="glass-card rounded-3xl p-6 sm:p-8 border-[#00F59B]/30 shadow-2xl space-y-6 animate-in fade-in duration-300">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
+                <div className="flex items-center gap-3.5">
+                  <div className="p-3 bg-[#00F59B]/15 rounded-2xl text-[#00F59B] border border-[#00F59B]/30">
+                    <Truck className="w-7 h-7" />
                   </div>
-                  <div className="flex gap-4 items-start">
-                    <CheckCircle2 className="w-6 h-6 text-red-400 flex-shrink-0 mt-1" />
-                    <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                      <strong>Faz o pagamento até às 15h</strong>
-                    </p>
-                  </div>
-                  <div className="flex gap-4 items-start">
-                    <CheckCircle2 className="w-6 h-6 text-red-400 flex-shrink-0 mt-1" />
-                    <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                      <strong>Recebe seu pedido a partir das 19h do mesmo dia</strong>
-                    </p>
-                  </div>
-                  <div className="flex gap-4 items-start">
-                    <CheckCircle2 className="w-6 h-6 text-red-400 flex-shrink-0 mt-1" />
-                    <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                      <strong>Funciona de {utils.formatarDiasSemana(promoConfig.dias_semana).toLowerCase()}</strong>
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Dica */}
-              <div className="bg-yellow-500/10 p-6 rounded-lg border border-yellow-500/30">
-                <div className="flex gap-3">
-                  <AlertCircle className="w-6 h-6 text-yellow-400 flex-shrink-0 mt-1" />
                   <div>
-                    <h5 className="text-yellow-400 font-bold mb-2 font-['Orbitron'] text-lg">
-                      💡 Dica Importante
-                    </h5>
-                    <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                      Se programe e peça com antecedência para aproveitar o <strong>melhor preço!</strong>
+                    <h2 className="text-xl sm:text-2xl font-bold text-slate-100 font-['Outfit']">
+                      Modalidade Pronta Entrega Express
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-400">
+                      Entrega imediata para quem não quer esperar
                     </p>
                   </div>
                 </div>
+
+                <span className="self-start sm:self-auto px-3 py-1 rounded-full text-xs font-bold bg-[#00F59B]/15 text-[#00F59B] border border-[#00F59B]/30">
+                  Pronta Entrega
+                </span>
+              </div>
+
+              {/* Step by step */}
+              <div className="space-y-4">
+                <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Passo a Passo:</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                    <span className="w-6 h-6 rounded-full bg-[#00F59B]/20 text-[#00F59B] text-xs font-bold flex items-center justify-center">1</span>
+                    <h4 className="text-sm font-bold text-slate-100">Escolha no Catálogo</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">Produtos com estoque real atualizado prontos para envio imediato.</p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                    <span className="w-6 h-6 rounded-full bg-[#00F59B]/20 text-[#00F59B] text-xs font-bold flex items-center justify-center">2</span>
+                    <h4 className="text-sm font-bold text-slate-100">Finalize no WhatsApp</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">Atendimento das 10h às 22h com confirmação instantânea de Pix.</p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                    <span className="w-6 h-6 rounded-full bg-[#00F59B]/20 text-[#00F59B] text-xs font-bold flex items-center justify-center">3</span>
+                    <h4 className="text-sm font-bold text-slate-100">Envio ou Retirada</h4>
+                    <p className="text-xs text-slate-400 leading-relaxed">Retirada no local ou envio por motoboy / Uber Moto no mesmo instante.</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 flex items-start gap-3 text-xs sm:text-sm text-emerald-300">
+                <CheckCircle2 className="w-5 h-5 flex-shrink-0 text-emerald-400 mt-0.5" />
+                <p>
+                  <strong>Ideal para urgências:</strong> Acabou seu pod e você quer receber em minutos? Escolha os itens expressos!
+                </p>
               </div>
             </div>
-          </section>
-        )}
+          )}
+        </section>
 
-        {/* Conteúdo Estoque */}
-        {modeloSelecionado === 'estoque' && (
-          <section className="max-w-4xl mx-auto">
-            <div className="glass-morphism p-8 rounded-xl border border-[#39FF14]/30 mb-8 shadow-[0_0_20px_rgba(57,255,20,0.2)]">
-              {/* Título */}
-              <div className="flex items-start gap-4 mb-8">
-                <div className="p-3 bg-[#39FF14]/20 rounded-lg animate-pulse">
-                  <Truck className="w-8 h-8 text-[#39FF14]" />
-                </div>
-                <div>
-                  <h3 className="text-3xl font-bold text-[#E0E0E0] mb-2 font-['Orbitron']">
-                    ⚡ 🚀 EXPRESSO (Entrega Imediata)
-                  </h3>
-                  <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                    Precisa para agora? Então escolha a modalidade Expresso.
-                  </p>
-                </div>
-              </div>
+        {/* Side-by-Side Comparison Table */}
+        <section className="space-y-6">
+          <h2 className="text-2xl font-bold text-slate-100 font-['Outfit'] text-center">
+            Comparativo entre as Modalidades
+          </h2>
 
-              {/* Processo */}
-              <div className="space-y-4 mb-8">
-                <h4 className="text-xl font-bold text-[#39FF14] mb-4 font-['Orbitron']">
-                  📋 Como Funciona:
-                </h4>
-                <div className="space-y-3">
-                  <div className="flex gap-4 items-start">
-                    <div className="flex items-center justify-center w-8 h-8 bg-[#39FF14] text-black rounded-full font-bold text-sm flex-shrink-0">
-                      1
-                    </div>
-                    <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                      <strong>📲 Enviamos a lista com os produtos disponíveis no momento</strong>
-                    </p>
-                  </div>
-                  <div className="flex gap-4 items-start">
-                    <div className="flex items-center justify-center w-8 h-8 bg-[#39FF14] text-black rounded-full font-bold text-sm flex-shrink-0">
-                      2
-                    </div>
-                    <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                      <strong>💳 Você realiza o pagamento</strong>
-                    </p>
-                  </div>
-                  <div className="flex gap-4 items-start">
-                    <div className="flex items-center justify-center w-8 h-8 bg-[#39FF14] text-black rounded-full font-bold text-sm flex-shrink-0">
-                      3
-                    </div>
-                    <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                      <strong>🛵 Já pode solicitar retirada via Uber Moto</strong>
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Benefícios */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="bg-green-500/10 p-4 rounded-lg border border-green-500/30">
-                  <h5 className="text-green-400 font-bold mb-3 font-['Orbitron'] text-lg">✔ Vantagens:</h5>
-                  <ul className="space-y-2 text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                    <li>• Venda imediata</li>
-                    <li>• Ideal para quem tem urgência</li>
-                    <li>• Sem esperar até a noite</li>
-                  </ul>
-                </div>
-                <div className="bg-blue-500/10 p-4 rounded-lg border border-blue-500/30">
-                  <h5 className="text-blue-400 font-bold mb-3 font-['Orbitron'] text-lg">📍 Entrega:</h5>
-                  <ul className="space-y-2 text-[#C0C0C0] font-['Roboto_Mono'] text-lg">
-                    <li>• Retirada pessoal</li>
-                    <li>• Uber Moto</li>
-                    <li>• Entrega rápida</li>
-                  </ul>
-                </div>
-              </div>
+          <div className="glass-card rounded-3xl overflow-hidden border-white/10">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead>
+                  <tr className="border-b border-white/10 bg-white/[0.02]">
+                    <th className="py-4 px-5 font-bold text-slate-300">Característica</th>
+                    <th className="py-4 px-5 font-bold text-[#FF5E85]">🔥 Promocional</th>
+                    <th className="py-4 px-5 font-bold text-[#00F59B]">⚡ Expresso</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-white/5 text-slate-300">
+                  <tr className="hover:bg-white/[0.01] transition-colors">
+                    <td className="py-3.5 px-5 font-medium text-slate-400">Horário de Pedido</td>
+                    <td className="py-3.5 px-5 text-white font-semibold">{promoConfig.hora_inicio} às {promoConfig.hora_fim}</td>
+                    <td className="py-3.5 px-5 text-white font-semibold">10:00 às 22:00</td>
+                  </tr>
+                  <tr className="hover:bg-white/[0.01] transition-colors">
+                    <td className="py-3.5 px-5 font-medium text-slate-400">Prazo de Entrega</td>
+                    <td className="py-3.5 px-5">A partir das 19:00 do mesmo dia</td>
+                    <td className="py-3.5 px-5">Imediata (Retirada / Moto)</td>
+                  </tr>
+                  <tr className="hover:bg-white/[0.01] transition-colors">
+                    <td className="py-3.5 px-5 font-medium text-slate-400">Faixa de Preço</td>
+                    <td className="py-3.5 px-5 text-[#FF5E85] font-bold">Desconto Máximo 💸</td>
+                    <td className="py-3.5 px-5 text-slate-200">Tabela Padrão</td>
+                  </tr>
+                  <tr className="hover:bg-white/[0.01] transition-colors">
+                    <td className="py-3.5 px-5 font-medium text-slate-400">Dias de Funcionamento</td>
+                    <td className="py-3.5 px-5">{utils.formatarDiasSemanaAbreviado(promoConfig.dias_semana)}</td>
+                    <td className="py-3.5 px-5">Segunda a Sábado</td>
+                  </tr>
+                  <tr className="hover:bg-white/[0.01] transition-colors">
+                    <td className="py-3.5 px-5 font-medium text-slate-400">Melhor Para</td>
+                    <td className="py-3.5 px-5">Quem se programa e quer pagar menos</td>
+                    <td className="py-3.5 px-5">Quem quer vape na mão agora</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
-          </section>
-        )}
-
-        {/* Comparativo */}
-        <section className="mt-16 max-w-4xl mx-auto">
-          <h3 className="text-2xl font-bold text-[#E0E0E0] mb-8 text-center font-['Orbitron']">
-            Comparativo Rápido
-          </h3>
-          <div className="glass-morphism p-8 rounded-xl border border-[#39FF14]/30 overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-[#39FF14]/30">
-                  <th className="text-left py-4 px-4 text-[#39FF14] font-['Orbitron'] font-bold text-lg">
-                    Característica
-                  </th>
-                  <th className="text-left py-4 px-4 text-red-400 font-['Orbitron'] font-bold text-lg">
-                    PROMOCIONAL
-                  </th>
-                  <th className="text-left py-4 px-4 text-[#39FF14] font-['Orbitron'] font-bold text-lg">
-                    EXPRESSO
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr className="border-b border-[#39FF14]/20 hover:bg-[#39FF14]/5 transition-all">
-                  <td className="py-4 px-4 text-[#C0C0C0] font-['Roboto_Mono'] text-lg font-bold">Horário de Pedido</td>
-                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">Até {promoConfig.hora_fim.split(':')[0]}h</td>
-                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">24h</td>
-                </tr>
-                <tr className="border-b border-[#39FF14]/20 hover:bg-[#39FF14]/5 transition-all">
-                  <td className="py-4 px-4 text-[#C0C0C0] font-['Roboto_Mono'] text-lg font-bold">Entrega</td>
-                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">A partir das 19h</td>
-                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">Imediata</td>
-                </tr>
-                <tr className="border-b border-[#39FF14]/20 hover:bg-[#39FF14]/5 transition-all">
-                  <td className="py-4 px-4 text-[#C0C0C0] font-['Roboto_Mono'] text-lg font-bold">Preço</td>
-                  <td className="py-4 px-4 text-red-400 font-['Roboto_Mono'] text-lg font-bold">Mais Barato 💸</td>
-                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">Normal</td>
-                </tr>
-                <tr className="border-b border-[#39FF14]/20 hover:bg-[#39FF14]/5 transition-all">
-                  <td className="py-4 px-4 text-[#C0C0C0] font-['Roboto_Mono'] text-lg font-bold">Dias de Funcionamento</td>
-                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">{utils.formatarDiasSemanaAbreviado(promoConfig.dias_semana)}</td>
-                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">Todos os dias</td>
-                </tr>
-                <tr className="border-b border-[#39FF14]/20 hover:bg-[#39FF14]/5 transition-all">
-                  <td className="py-4 px-4 text-[#C0C0C0] font-['Roboto_Mono'] text-lg font-bold">Ideal Para</td>
-                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">Quem não tem pressa</td>
-                  <td className="py-4 px-4 text-[#E0E0E0] font-['Roboto_Mono'] text-lg">Quem tem urgência</td>
-                </tr>
-              </tbody>
-            </table>
           </div>
         </section>
 
         {/* CTA */}
-        <section className="mt-16 text-center">
+        <section className="text-center pt-6">
           <a
             href="/"
-            className="inline-block px-8 py-4 bg-[#39FF14] text-black rounded-lg font-['Orbitron'] font-bold text-lg hover:shadow-[0_0_20px_rgba(57,255,20,0.6)] transition-all duration-300"
+            className="inline-flex items-center gap-2.5 px-8 py-4 btn-emerald rounded-2xl text-base shadow-xl"
           >
-            🛒 Ir para o Catálogo
+            <span>Explorar Produtos do Catálogo</span>
+            <ArrowRight className="w-4 h-4" />
           </a>
         </section>
       </main>

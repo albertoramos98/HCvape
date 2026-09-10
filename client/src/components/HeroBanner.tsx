@@ -46,12 +46,12 @@ export function HeroBanner({
     setSlideAtual(prev => (prev - 1 + totalSlides) % totalSlides);
   };
 
-  // Auto slide a cada 5.5 segundos
+  // Auto slide a cada 6 segundos
   useEffect(() => {
     if (isPausado || totalSlides <= 1) return;
     const interval = setInterval(() => {
       proximoSlide();
-    }, 5500);
+    }, 6000);
 
     return () => clearInterval(interval);
   }, [isPausado, totalSlides, slideAtual]);
@@ -74,23 +74,24 @@ export function HeroBanner({
   // Helper para renderizar Badge do Slide
   const renderBadge = (s: HeroSlideConfig) => {
     const cor = s.badge.cor || 'green';
-    let bgBorderClass = 'bg-[#39FF14]/20 border-[#39FF14]/50 text-[#39FF14]';
+    let badgeClasses = 'bg-[#00F59B]/10 border-[#00F59B]/30 text-[#00F59B]';
     let IconeComponent = Sparkles;
 
     if (cor === 'red') {
-      bgBorderClass = 'bg-red-500/20 border-red-500/40 text-red-400';
+      badgeClasses = 'bg-[#FF3366]/15 border-[#FF3366]/40 text-[#FF5E85]';
       IconeComponent = Flame;
     } else if (cor === 'blue') {
-      bgBorderClass = 'bg-blue-500/20 border-blue-500/40 text-blue-400';
+      badgeClasses = 'bg-cyan-500/15 border-cyan-500/40 text-cyan-300';
       IconeComponent = ShieldCheck;
     }
 
     return (
-      <div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full border text-xs font-['Orbitron'] font-bold tracking-wider ${bgBorderClass}`}>
-        <IconeComponent className="w-4 h-4 animate-pulse" />
-        {s.badge.texto}
+      <div className={`inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border text-xs font-semibold tracking-wider ${badgeClasses}`}>
+        <IconeComponent className="w-3.5 h-3.5" />
+        <span className="font-bold tracking-wide uppercase">{s.badge.texto}</span>
         {s.badge.aoVivoBadge && horarioPromoAtivo && (
-          <span className="bg-red-500 text-black px-2 py-0.5 rounded text-[10px] font-black uppercase">
+          <span className="flex items-center gap-1 bg-[#FF3366] text-white px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase animate-pulse">
+            <span className="w-1.5 h-1.5 rounded-full bg-white animate-ping" />
             Ao Vivo
           </span>
         )}
@@ -107,35 +108,35 @@ export function HeroBanner({
       const prodEncontrado = produtos.find(p => p.id === s.produtoDestaqueId);
       if (prodEncontrado) {
         return (
-          <div className="relative group w-full max-w-[320px] bg-black/70 border border-[#39FF14]/40 rounded-2xl p-5 flex flex-col items-center shadow-[0_0_20px_rgba(57,255,20,0.25)] hover:border-[#39FF14] transition-all">
-            <span className="absolute -top-3 left-4 bg-[#39FF14] text-black font-['Orbitron'] font-extrabold text-xs px-3 py-1 rounded shadow">
-              EM DESTAQUE
+          <div className="relative group w-full max-w-[320px] bg-[#0d131f]/90 border border-white/10 rounded-2xl p-5 flex flex-col items-center shadow-2xl hover:border-[#00F59B]/50 transition-all duration-300 backdrop-blur-xl">
+            <span className="absolute -top-3 left-4 bg-gradient-to-r from-[#00F59B] to-[#00D084] text-[#04140b] font-bold text-[11px] px-3 py-1 rounded-full shadow-lg tracking-wider uppercase">
+              Em Destaque
             </span>
             {prodEncontrado.imagem_url ? (
               <img
                 src={prodEncontrado.imagem_url}
                 alt={prodEncontrado.nome}
-                className="w-40 h-40 md:w-44 md:h-44 object-cover rounded-xl my-2 group-hover:scale-105 transition-transform"
+                className="w-40 h-40 md:w-44 md:h-44 object-contain rounded-xl my-2 group-hover:scale-105 transition-transform duration-300"
               />
             ) : (
-              <div className="w-40 h-40 md:w-44 md:h-44 bg-black/40 rounded-xl flex items-center justify-center my-2 border border-[#39FF14]/20">
-                <Zap className="w-12 h-12 text-[#39FF14]/40" />
+              <div className="w-40 h-40 md:w-44 md:h-44 bg-white/5 rounded-xl flex items-center justify-center my-2 border border-white/5">
+                <Zap className="w-12 h-12 text-[#00F59B]/40" />
               </div>
             )}
-            <span className="text-xs text-[#39FF14] font-['Orbitron'] font-bold uppercase tracking-wider">{prodEncontrado.marca}</span>
-            <h3 className="text-base font-bold text-[#E0E0E0] text-center font-['Orbitron'] truncate w-full mt-1">{prodEncontrado.nome}</h3>
-            <div className="mt-2 flex items-center gap-3">
+            <span className="text-xs text-[#00F59B] font-bold uppercase tracking-wider">{prodEncontrado.marca}</span>
+            <h3 className="text-base font-bold text-slate-100 text-center truncate w-full mt-1">{prodEncontrado.nome}</h3>
+            <div className="mt-2 flex items-center gap-2.5">
               {prodEncontrado.is_promo && prodEncontrado.preco_promo ? (
                 <>
-                  <span className="text-sm text-[#C0C0C0] line-through font-['Roboto_Mono']">
+                  <span className="text-xs text-slate-400 line-through">
                     R$ {prodEncontrado.preco.toFixed(2)}
                   </span>
-                  <span className="text-lg font-extrabold text-[#39FF14] font-['Orbitron']">
+                  <span className="text-lg font-extrabold text-[#00F59B]">
                     R$ {prodEncontrado.preco_promo.toFixed(2)}
                   </span>
                 </>
               ) : (
-                <span className="text-lg font-extrabold text-[#39FF14] font-['Orbitron']">
+                <span className="text-lg font-extrabold text-[#00F59B]">
                   R$ {prodEncontrado.preco.toFixed(2)}
                 </span>
               )}
@@ -150,28 +151,28 @@ export function HeroBanner({
       const promoDestaque = produtosPromo[0];
       if (promoDestaque) {
         return (
-          <div className="relative group w-full max-w-[320px] bg-black/70 border border-[#39FF14]/40 rounded-2xl p-5 flex flex-col items-center shadow-[0_0_20px_rgba(57,255,20,0.25)] hover:border-[#39FF14] transition-all">
-            <span className="absolute -top-3 left-4 bg-[#39FF14] text-black font-['Orbitron'] font-extrabold text-xs px-3 py-1 rounded shadow">
-              EM DESTAQUE
+          <div className="relative group w-full max-w-[320px] bg-[#0d131f]/90 border border-[#FF3366]/30 rounded-2xl p-5 flex flex-col items-center shadow-2xl hover:border-[#FF3366] transition-all duration-300 backdrop-blur-xl">
+            <span className="absolute -top-3 left-4 bg-gradient-to-r from-[#FF3366] to-[#E60045] text-white font-bold text-[11px] px-3 py-1 rounded-full shadow-lg tracking-wider uppercase flex items-center gap-1">
+              <Flame className="w-3 h-3" /> Oferta Relâmpago
             </span>
             {promoDestaque.imagem_url ? (
               <img
                 src={promoDestaque.imagem_url}
                 alt={promoDestaque.nome}
-                className="w-40 h-40 md:w-44 md:h-44 object-cover rounded-xl my-2 group-hover:scale-105 transition-transform"
+                className="w-40 h-40 md:w-44 md:h-44 object-contain rounded-xl my-2 group-hover:scale-105 transition-transform duration-300"
               />
             ) : (
-              <div className="w-40 h-40 md:w-44 md:h-44 bg-black/40 rounded-xl flex items-center justify-center my-2 border border-[#39FF14]/20">
-                <Zap className="w-12 h-12 text-[#39FF14]/40" />
+              <div className="w-40 h-40 md:w-44 md:h-44 bg-white/5 rounded-xl flex items-center justify-center my-2 border border-white/5">
+                <Zap className="w-12 h-12 text-[#FF3366]/40" />
               </div>
             )}
-            <span className="text-xs text-[#39FF14] font-['Orbitron'] font-bold uppercase tracking-wider">{promoDestaque.marca}</span>
-            <h3 className="text-base font-bold text-[#E0E0E0] text-center font-['Orbitron'] truncate w-full mt-1">{promoDestaque.nome}</h3>
-            <div className="mt-2 flex items-center gap-3">
-              <span className="text-sm text-[#C0C0C0] line-through font-['Roboto_Mono']">
+            <span className="text-xs text-[#FF5E85] font-bold uppercase tracking-wider">{promoDestaque.marca}</span>
+            <h3 className="text-base font-bold text-slate-100 text-center truncate w-full mt-1">{promoDestaque.nome}</h3>
+            <div className="mt-2 flex items-center gap-2.5">
+              <span className="text-xs text-slate-400 line-through">
                 R$ {promoDestaque.preco.toFixed(2)}
               </span>
-              <span className="text-lg font-extrabold text-[#39FF14] font-['Orbitron']">
+              <span className="text-lg font-extrabold text-[#FF3366]">
                 R$ {(promoDestaque.preco_promo || promoDestaque.preco).toFixed(2)}
               </span>
             </div>
@@ -185,7 +186,7 @@ export function HeroBanner({
       const novidadesDestaque = produtosDestaque.slice(0, 2);
       if (novidadesDestaque.length > 0) {
         return (
-          <div className="flex flex-col sm:flex-row md:flex-col gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row md:flex-col gap-3 justify-center w-full max-w-[340px]">
             {novidadesDestaque.map((prod) => (
               <div
                 key={prod.id}
@@ -193,19 +194,19 @@ export function HeroBanner({
                   onSelectAba('expressos');
                   onSelectMarca(prod.marca);
                 }}
-                className="cursor-pointer bg-black/70 border border-[#39FF14]/30 rounded-2xl p-4 flex items-center gap-4 hover:border-[#39FF14] shadow-[0_0_15px_rgba(57,255,20,0.15)] transition-all hover:bg-black/90 hover:scale-[1.02]"
+                className="cursor-pointer bg-[#0e1422]/80 border border-white/10 rounded-2xl p-3.5 flex items-center gap-3.5 hover:border-[#00F59B]/50 hover:bg-[#121a2d] transition-all duration-300 hover:scale-[1.02] shadow-lg backdrop-blur-md"
               >
                 {prod.imagem_url ? (
-                  <img src={prod.imagem_url} alt={prod.nome} className="w-20 h-20 md:w-22 md:h-22 object-cover rounded-xl flex-shrink-0" />
+                  <img src={prod.imagem_url} alt={prod.nome} className="w-16 h-16 object-contain rounded-xl flex-shrink-0 bg-white/5 p-1" />
                 ) : (
-                  <div className="w-20 h-20 md:w-22 md:h-22 bg-black/40 rounded-xl flex items-center justify-center border border-[#39FF14]/20 flex-shrink-0">
-                    <Sparkles className="w-8 h-8 text-[#39FF14]/40" />
+                  <div className="w-16 h-16 bg-white/5 rounded-xl flex items-center justify-center border border-white/5 flex-shrink-0">
+                    <Sparkles className="w-6 h-6 text-[#00F59B]/40" />
                   </div>
                 )}
-                <div className="min-w-0 flex-1 space-y-1">
-                  <span className="text-xs text-[#39FF14] font-['Orbitron'] font-bold block uppercase tracking-wider">{prod.marca}</span>
-                  <h4 className="text-sm md:text-base font-bold text-white font-['Orbitron'] truncate">{prod.nome}</h4>
-                  <span className="text-sm font-bold text-[#39FF14] font-['Roboto_Mono'] block">R$ {prod.preco.toFixed(2)}</span>
+                <div className="min-w-0 flex-1 space-y-0.5">
+                  <span className="text-[11px] text-[#00F59B] font-bold block uppercase tracking-wider">{prod.marca}</span>
+                  <h4 className="text-sm font-semibold text-slate-100 truncate">{prod.nome}</h4>
+                  <span className="text-sm font-bold text-emerald-400 block">R$ {prod.preco.toFixed(2)}</span>
                 </div>
               </div>
             ))}
@@ -218,17 +219,17 @@ export function HeroBanner({
     return (
       <div className="flex justify-center items-center">
         {s.customImagemUrl ? (
-          <img src={s.customImagemUrl} alt={s.titulo} className="max-w-[280px] max-h-[260px] object-cover rounded-2xl border border-[#39FF14]/40 shadow-[0_0_20px_rgba(57,255,20,0.25)]" />
+          <img src={s.customImagemUrl} alt={s.titulo} className="max-w-[280px] max-h-[240px] object-cover rounded-2xl border border-white/10 shadow-2xl" />
         ) : (
-          <div className="p-7 rounded-2xl bg-[#39FF14]/10 border border-[#39FF14]/40 text-center space-y-3 max-w-[280px] shadow-[0_0_20px_rgba(57,255,20,0.2)]">
-            <div className="text-4xl font-extrabold text-[#39FF14] font-['Orbitron'] neon-glow">
+          <div className="p-6 rounded-2xl bg-gradient-to-br from-[#00F59B]/10 to-cyan-500/5 border border-[#00F59B]/20 text-center space-y-2.5 max-w-[280px] shadow-xl backdrop-blur-md">
+            <div className="text-3xl font-extrabold text-[#00F59B] tracking-tight">
               {s.customTitulo || '100%'}
             </div>
-            <div className="text-sm font-bold text-[#E0E0E0] font-['Orbitron']">
+            <div className="text-sm font-bold text-slate-100 tracking-wide uppercase">
               {s.customSubtitulo || 'PRODUTOS SELECIONADOS'}
             </div>
-            <div className="text-xs text-[#C0C0C0] font-['Roboto_Mono'] leading-relaxed">
-              Originalidade e suporte ao cliente em cada pedido.
+            <div className="text-xs text-slate-400 leading-relaxed">
+              Originalidade e atendimento dedicado direto no seu WhatsApp.
             </div>
           </div>
         )}
@@ -249,28 +250,31 @@ export function HeroBanner({
 
   return (
     <div
-      className="relative w-full mb-8 overflow-hidden rounded-2xl border border-[#39FF14]/30 bg-black/80 backdrop-blur-md shadow-[0_0_25px_rgba(57,255,20,0.15)] transition-all"
+      className="relative w-full mb-8 overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#0c101b] via-[#090d16] to-[#07090f] shadow-2xl transition-all duration-300"
       onMouseEnter={() => setIsPausado(true)}
       onMouseLeave={() => setIsPausado(false)}
       onTouchStart={handleTouchStart}
       onTouchEnd={handleTouchEnd}
     >
-      {/* Background Neon Grid / Ambient Lighting */}
-      <div className="absolute inset-0 pointer-events-none opacity-20 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-[#39FF14]/30 via-transparent to-transparent" />
-      <div className="absolute -right-20 -bottom-20 w-80 h-80 bg-[#39FF14]/10 rounded-full blur-3xl pointer-events-none" />
+      {/* Dynamic Ambient Backdrops */}
+      <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#00F59B]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute bottom-0 left-10 w-80 h-80 bg-[#FF3366]/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none" />
 
-      {/* Slide Container */}
-      <div className="relative min-h-[360px] md:min-h-[420px] flex items-center p-6 md:p-10">
-        <div key={slide.id} className="w-full grid grid-cols-1 md:grid-cols-12 gap-6 items-center animate-in fade-in slide-in-from-right duration-500">
+      {/* Slide Content */}
+      <div className="relative min-h-[340px] md:min-h-[390px] flex items-center p-6 md:p-10">
+        <div key={slide.id} className="w-full grid grid-cols-1 md:grid-cols-12 gap-8 items-center animate-in fade-in duration-500">
           <div className="md:col-span-7 space-y-4">
             {renderBadge(slide)}
 
-            <h2 className="text-2xl md:text-4xl font-bold font-['Orbitron'] text-[#E0E0E0] leading-tight">
-              {slide.titulo} <br />
-              <span className="text-[#39FF14] neon-glow">{slide.tituloDestaque}</span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-extrabold text-slate-50 tracking-tight leading-tight">
+              {slide.titulo}{' '}
+              <span className="bg-gradient-to-r from-[#00F59B] via-emerald-400 to-cyan-400 bg-clip-text text-transparent block mt-1">
+                {slide.tituloDestaque}
+              </span>
             </h2>
 
-            <p className="text-sm md:text-base text-[#C0C0C0] font-['Roboto_Mono'] max-w-lg leading-relaxed">
+            <p className="text-sm md:text-base text-slate-400 max-w-lg leading-relaxed font-normal">
               {slide.descricao}
             </p>
 
@@ -278,28 +282,30 @@ export function HeroBanner({
               {slide.botaoAcao === 'url' && slide.botaoUrl ? (
                 <a
                   href={slide.botaoUrl}
-                  className="px-6 py-3 border border-[#39FF14] text-[#39FF14] font-['Orbitron'] font-bold text-sm md:text-base rounded-xl hover:bg-[#39FF14]/20 hover:shadow-[0_0_20px_rgba(57,255,20,0.4)] transition-all duration-300 inline-flex items-center gap-2"
+                  className="px-6 py-3 border border-white/15 text-slate-200 font-semibold text-sm md:text-base rounded-xl hover:bg-white/10 hover:border-white/30 transition-all duration-300 inline-flex items-center gap-2 backdrop-blur-md shadow-sm"
                 >
                   {slide.botaoTexto}
-                  <ArrowRight className="w-5 h-5" />
+                  <ArrowRight className="w-4 h-4 text-[#00F59B]" />
                 </a>
               ) : (
                 <button
                   onClick={() => handleBotaoClique(slide)}
-                  className="px-6 py-3 bg-[#39FF14] text-black font-['Orbitron'] font-bold text-sm md:text-base rounded-xl hover:shadow-[0_0_25px_rgba(57,255,20,0.8)] hover:scale-105 transition-all duration-300 flex items-center gap-2"
+                  className={`px-6 py-3 rounded-xl font-bold text-sm md:text-base flex items-center gap-2 shadow-lg transition-all duration-300 ${
+                    slide.botaoAcao === 'promocionais' ? 'btn-coral' : 'btn-emerald'
+                  }`}
                 >
                   {slide.botaoAcao === 'promocionais' ? (
-                    <Zap className="w-5 h-5 fill-black" />
+                    <Flame className="w-4 h-4 fill-white" />
                   ) : (
-                    <ArrowRight className="w-5 h-5" />
+                    <Zap className="w-4 h-4 fill-current" />
                   )}
                   {slide.botaoTexto}
                 </button>
               )}
 
               {slide.tipoDestaque === 'produto_promo' && (
-                <span className="text-xs text-[#C0C0C0] font-['Roboto_Mono'] flex items-center gap-1">
-                  <Tag className="w-4 h-4 text-[#39FF14]" /> {produtosPromo.length} itens em oferta
+                <span className="text-xs text-slate-400 flex items-center gap-1.5 font-medium bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
+                  <Tag className="w-3.5 h-3.5 text-[#FF3366]" /> {produtosPromo.length} itens disponíveis
                 </span>
               )}
             </div>
@@ -318,7 +324,7 @@ export function HeroBanner({
           <button
             onClick={slideAnterior}
             aria-label="Slide anterior"
-            className="absolute left-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 border border-[#39FF14]/30 text-[#39FF14] hover:bg-[#39FF14] hover:text-black transition-all"
+            className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 border border-white/10 text-slate-300 hover:bg-[#00F59B] hover:text-[#04140b] hover:border-[#00F59B] transition-all backdrop-blur-md"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -326,25 +332,25 @@ export function HeroBanner({
           <button
             onClick={proximoSlide}
             aria-label="Próximo slide"
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 border border-[#39FF14]/30 text-[#39FF14] hover:bg-[#39FF14] hover:text-black transition-all"
+            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/40 border border-white/10 text-slate-300 hover:bg-[#00F59B] hover:text-[#04140b] hover:border-[#00F59B] transition-all backdrop-blur-md"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
         </>
       )}
 
-      {/* Pontinhos Indicadores de Slide */}
+      {/* Indicadores de Slide */}
       {totalSlides > 1 && (
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/40 px-3 py-1.5 rounded-full border border-white/5 backdrop-blur-md">
           {Array.from({ length: totalSlides }).map((_, idx) => (
             <button
               key={idx}
               onClick={() => setSlideAtual(idx)}
               aria-label={`Ir para slide ${idx + 1}`}
-              className={`h-2 rounded-full transition-all duration-300 ${
+              className={`h-1.5 rounded-full transition-all duration-300 ${
                 slideValido === idx
-                  ? 'w-8 bg-[#39FF14] shadow-[0_0_10px_rgba(57,255,20,0.8)]'
-                  : 'w-2 bg-[#39FF14]/30 hover:bg-[#39FF14]/60'
+                  ? 'w-6 bg-[#00F59B] shadow-sm'
+                  : 'w-1.5 bg-white/20 hover:bg-white/50'
               }`}
             />
           ))}

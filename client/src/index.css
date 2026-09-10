@@ -27,91 +27,53 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
 }
 
 :root {
-  /* Cyberpunk Dark Mode Theme */
-  /* Design: Neon Green (#39FF14) + Chrome Silver (#C0C0C0) + Pure Black (#000000) */
-  
-  --primary: #39FF14;
-  --primary-foreground: #000000;
-  --sidebar-primary: #39FF14;
-  --sidebar-primary-foreground: #000000;
-  --chart-1: #39FF14;
-  --chart-2: #39FF14;
-  --chart-3: #39FF14;
-  --chart-4: #39FF14;
-  --chart-5: #39FF14;
-  --radius: 0.65rem;
+  /* Luxury Dark Cyber Theme */
+  --primary: #00F59B;
+  --primary-foreground: #04140b;
+  --radius: 0.85rem;
   
   /* Dark mode base colors */
-  --background: #000000;
-  --foreground: #E0E0E0;
-  --card: #0a0a0a;
-  --card-foreground: #E0E0E0;
-  --popover: #0a0a0a;
-  --popover-foreground: #E0E0E0;
-  --secondary: #1a1a1a;
-  --secondary-foreground: #C0C0C0;
-  --muted: #2a2a2a;
-  --muted-foreground: #808080;
-  --accent: #39FF14;
-  --accent-foreground: #000000;
-  --destructive: #FF006E;
+  --background: #080b11;
+  --foreground: #F8FAFC;
+  --card: #0f1420;
+  --card-foreground: #F8FAFC;
+  --popover: #0f1420;
+  --popover-foreground: #F8FAFC;
+  --secondary: #141b2b;
+  --secondary-foreground: #E2E8F0;
+  --muted: #1a2337;
+  --muted-foreground: #94A3B8;
+  --accent: #00F59B;
+  --accent-foreground: #04140b;
+  --destructive: #FF3366;
   --destructive-foreground: #FFFFFF;
-  --border: #1a1a1a;
-  --input: #0a0a0a;
-  --ring: #39FF14;
-  --sidebar: #000000;
-  --sidebar-foreground: #E0E0E0;
-  --sidebar-accent: #39FF14;
-  --sidebar-accent-foreground: #000000;
-  --sidebar-border: #1a1a1a;
-  --sidebar-ring: #39FF14;
+  --border: rgba(255, 255, 255, 0.08);
+  --input: #111827;
+  --ring: #00F59B;
 }
 
 @layer base {
   * {
-    @apply border-border outline-ring/50;
+    @apply border-border;
   }
+  
+  html {
+    color-scheme: dark;
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
-    font-family: 'Roboto Mono', monospace;
+    @apply bg-background text-foreground antialiased selection:bg-[#00F59B] selection:text-black;
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: #080b11;
   }
   
-  /* Cyberpunk Typography */
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Orbitron', sans-serif;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-  }
-  
-  h1 {
-    @apply text-4xl md:text-5xl font-bold;
-    font-family: 'Orbitron', sans-serif;
-  }
-  
-  h2 {
-    @apply text-3xl md:text-4xl font-bold;
-    font-family: 'Orbitron', sans-serif;
-  }
-  
-  h3 {
-    @apply text-2xl md:text-3xl font-bold;
-    font-family: 'Orbitron', sans-serif;
+    font-family: 'Outfit', system-ui, sans-serif;
+    letter-spacing: -0.02em;
   }
   
   button:not(:disabled),
@@ -136,11 +98,6 @@
     padding-right: 1rem;
   }
 
-  .flex {
-    min-height: 0;
-    min-width: 0;
-  }
-
   @media (min-width: 640px) {
     .container {
       padding-left: 1.5rem;
@@ -155,65 +112,121 @@
       max-width: 1280px;
     }
   }
-  
-  /* Cyberpunk Utilities */
-  .neon-glow {
-    @apply text-[#39FF14] drop-shadow-lg;
-    text-shadow: 0 0 10px #39FF14, 0 0 20px #39FF14;
-  }
-  
-  .neon-border {
-    @apply border-2 border-[#39FF14];
-    box-shadow: 0 0 10px rgba(57, 255, 20, 0.5), inset 0 0 10px rgba(57, 255, 20, 0.2);
-  }
-  
-  .neon-border-hover {
-    @apply hover:border-[#39FF14] hover:shadow-[0_0_10px_rgba(57,255,20,0.5),inset_0_0_10px_rgba(57,255,20,0.2)] transition-all duration-300;
-  }
-  
-  .glass-morphism {
-    @apply bg-black/40 backdrop-blur-md border border-[#39FF14]/30;
-  }
-  
-  .cyber-button {
-    @apply px-6 py-3 bg-[#39FF14] text-black font-bold font-['Orbitron'] rounded-lg transition-all duration-300;
-    box-shadow: 0 0 10px rgba(57, 255, 20, 0.5);
-  }
-  
-  .cyber-button:hover {
-    @apply scale-105;
-    box-shadow: 0 0 20px rgba(57, 255, 20, 0.8), 0 0 30px rgba(57, 255, 20, 0.5);
-  }
-  
-  .cyber-button:active {
-    @apply scale-95;
-  }
-  
-  .asphalt-texture {
+
+  /* Ambient Mesh & Atmosphere */
+  .dark-atmosphere {
+    background-color: #080b11;
     background-image: 
-      repeating-linear-gradient(
-        90deg,
-        transparent,
-        transparent 2px,
-        rgba(255, 255, 255, 0.03) 2px,
-        rgba(255, 255, 255, 0.03) 4px
-      ),
-      repeating-linear-gradient(
-        0deg,
-        transparent,
-        transparent 2px,
-        rgba(255, 255, 255, 0.03) 2px,
-        rgba(255, 255, 255, 0.03) 4px
-      );
+      radial-gradient(circle at 15% 15%, rgba(0, 245, 155, 0.04) 0%, transparent 40%),
+      radial-gradient(circle at 85% 20%, rgba(255, 51, 102, 0.035) 0%, transparent 45%),
+      radial-gradient(circle at 50% 80%, rgba(0, 229, 255, 0.03) 0%, transparent 50%);
+  }
+
+  .grid-pattern {
+    background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                      linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  /* Glassmorphism */
+  .glass-panel {
+    background: rgba(15, 20, 32, 0.7);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  .glass-card {
+    background: rgba(15, 20, 32, 0.6);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .glass-card:hover {
+    border-color: rgba(0, 245, 155, 0.4);
+    box-shadow: 0 10px 30px -10px rgba(0, 245, 155, 0.15);
+    transform: translateY(-2px);
+  }
+
+  .glass-card-promo:hover {
+    border-color: rgba(255, 51, 102, 0.4);
+    box-shadow: 0 10px 30px -10px rgba(255, 51, 102, 0.15);
+    transform: translateY(-2px);
+  }
+
+  /* Glows */
+  .emerald-glow {
+    text-shadow: 0 0 20px rgba(0, 245, 155, 0.5);
+  }
+
+  .coral-glow {
+    text-shadow: 0 0 20px rgba(255, 51, 102, 0.5);
+  }
+
+  /* Primary Action Buttons */
+  .btn-emerald {
+    background: linear-gradient(135deg, #00F59B 0%, #00D084 100%);
+    color: #04140b;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 20px -2px rgba(0, 245, 155, 0.35);
+  }
+
+  .btn-emerald:hover {
+    transform: translateY(-1px) scale(1.01);
+    box-shadow: 0 6px 25px 0px rgba(0, 245, 155, 0.5);
+  }
+
+  .btn-emerald:active {
+    transform: translateY(0) scale(0.99);
+  }
+
+  .btn-coral {
+    background: linear-gradient(135deg, #FF3366 0%, #E60045 100%);
+    color: #ffffff;
+    font-weight: 700;
+    font-family: 'Outfit', sans-serif;
+    transition: all 0.25s ease;
+    box-shadow: 0 4px 20px -2px rgba(255, 51, 102, 0.35);
+  }
+
+  .btn-coral:hover {
+    transform: translateY(-1px) scale(1.01);
+    box-shadow: 0 6px 25px 0px rgba(255, 51, 102, 0.5);
+  }
+
+  /* Badge styling */
+  .badge-live {
+    background: rgba(255, 51, 102, 0.15);
+    border: 1px solid rgba(255, 51, 102, 0.4);
+    color: #FF5E85;
+  }
+
+  .badge-online {
+    background: rgba(0, 245, 155, 0.12);
+    border: 1px solid rgba(0, 245, 155, 0.35);
+    color: #00F59B;
   }
 }
 
-/* Smooth scrolling */
-html {
-  scroll-behavior: smooth;
+/* Custom modern scrollbars */
+::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
 }
 
-/* Selection color */
-::selection {
-  @apply bg-[#39FF14] text-black;
+::-webkit-scrollbar-track {
+  background: #080b11;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1c2538;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #00F59B;
 }

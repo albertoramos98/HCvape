@@ -1,5 +1,5 @@
 import { useLocation } from "wouter";
-import { ArrowLeft, Clock, Calendar, CheckCircle2, Zap } from "lucide-react";
+import { ArrowLeft, Clock, Calendar, CheckCircle2, Flame, Sparkles, ShieldAlert, ArrowRight } from "lucide-react";
 import { utils, configService, PromoSchedule } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 
@@ -21,82 +21,95 @@ export default function PromocionalInfo() {
     return () => clearInterval(timer);
   }, []);
 
+  const isAtivo = utils.estaEmHorarioPromo(promoConfig);
+
   return (
-    <div className="min-h-screen bg-black text-white p-4 md:p-8 flex flex-col items-center justify-center">
-      <div className="max-w-2xl w-full space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="min-h-screen dark-atmosphere selection:bg-[#00F59B] selection:text-[#04140b] flex flex-col items-center justify-center p-4 sm:p-8">
+      <div className="max-w-2xl w-full space-y-8 animate-in fade-in duration-500">
         
         {/* Header */}
-        <div className="text-center space-y-4">
-          <div className="inline-flex items-center justify-center p-3 bg-[#39FF14]/10 rounded-full mb-4">
-            <Zap className="w-10 h-10 text-[#39FF14] animate-pulse" />
+        <div className="text-center space-y-3">
+          <div className="inline-flex items-center justify-center p-3.5 bg-[#FF3366]/15 rounded-3xl border border-[#FF3366]/30 mb-2">
+            <Flame className="w-8 h-8 text-[#FF3366] animate-pulse" />
           </div>
-          <h1 className="text-4xl md:text-5xl font-bold font-['Orbitron'] neon-glow">
-            OFERTAS RELÂMPAGO
+          <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-100 font-['Outfit'] tracking-tight">
+            Ofertas Relâmpago
           </h1>
-          <p className="text-[#39FF14]/70 font-['Roboto_Mono'] text-lg">
-            Entenda como funcionam as nossas promoções exclusivas.
+          <p className="text-sm sm:text-base text-slate-400 max-w-md mx-auto">
+            Regras, horários e condições especiais para garantir o menor preço nos seus pods.
+          </p>
+        </div>
+
+        {/* Live Status Pill & Clock */}
+        <div className="glass-card rounded-3xl p-6 sm:p-8 text-center space-y-3 border-white/10 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-48 h-48 bg-[#FF3366]/10 rounded-full blur-3xl pointer-events-none" />
+          
+          <div className="flex items-center justify-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${isAtivo ? 'bg-[#00F59B] animate-ping' : 'bg-amber-400'}`} />
+            <span className={`text-xs font-bold uppercase tracking-wider ${isAtivo ? 'text-[#00F59B]' : 'text-amber-300'}`}>
+              {isAtivo ? 'Promoção Aberta Agora' : 'Promoção Encerrada no Momento'}
+            </span>
+          </div>
+
+          <div className="text-5xl sm:text-6xl font-extrabold text-slate-100 font-['Outfit'] tracking-tight tabular-nums py-2">
+            {horaAtual}
+          </div>
+
+          <p className="text-xs text-slate-400 font-medium">
+            Horário Oficial de Brasília
           </p>
         </div>
 
         {/* Info Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="glass-morphism p-6 rounded-xl space-y-4 border-[#39FF14]/20">
-            <div className="flex items-center gap-3 text-[#39FF14]">
-              <Calendar className="w-6 h-6" />
-              <h3 className="text-xl font-bold font-['Orbitron']">DIAS</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="glass-card p-6 rounded-3xl space-y-3 border-white/10">
+            <div className="flex items-center gap-2.5 text-[#FF5E85]">
+              <Calendar className="w-5 h-5" />
+              <h3 className="text-base font-bold text-slate-100 font-['Outfit']">Dias Ativos</h3>
             </div>
-            <p className="text-gray-400 font-['Roboto_Mono']">
-              As ofertas ficam disponíveis de <span className="text-[#39FF14] font-bold">{utils.formatarDiasSemana(promoConfig.dias_semana)}</span>.
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Disponível em dias programados: <span className="text-[#00F59B] font-bold">{utils.formatarDiasSemana(promoConfig.dias_semana)}</span>.
             </p>
           </div>
 
-          <div className="glass-morphism p-6 rounded-xl space-y-4 border-[#39FF14]/20">
-            <div className="flex items-center gap-3 text-[#39FF14]">
-              <Clock className="w-6 h-6" />
-              <h3 className="text-xl font-bold font-['Orbitron']">HORÁRIO</h3>
+          <div className="glass-card p-6 rounded-3xl space-y-3 border-white/10">
+            <div className="flex items-center gap-2.5 text-[#00F59B]">
+              <Clock className="w-5 h-5" />
+              <h3 className="text-base font-bold text-slate-100 font-['Outfit']">Janela de Pedidos</h3>
             </div>
-            <p className="text-gray-400 font-['Roboto_Mono']">
-              Das <span className="text-[#39FF14] font-bold">{promoConfig.hora_inicio} às {promoConfig.hora_fim}</span> (Horário de Brasília).
+            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+              Faça seu pedido das <span className="text-[#00F59B] font-bold">{promoConfig.hora_inicio} às {promoConfig.hora_fim}</span> para entrega às 19:00.
             </p>
           </div>
         </div>
 
-        {/* Current Time Banner */}
-        <div className="bg-[#39FF14]/5 border border-[#39FF14]/30 p-6 rounded-2xl text-center space-y-2">
-          <p className="text-sm uppercase tracking-widest text-[#39FF14]/50 font-bold">Agora são</p>
-          <p className="text-5xl font-bold font-['Orbitron'] text-[#39FF14] tabular-nums">
-            {horaAtual}
-          </p>
-          <p className="text-xs text-gray-500 uppercase">Horário Oficial de Brasília</p>
-        </div>
-
-        {/* Benefits */}
-        <div className="space-y-4">
-          <h4 className="text-center font-['Orbitron'] text-sm tracking-widest text-gray-500 uppercase">
-            Vantagens da aba Promocional
+        {/* Benefits Pills */}
+        <div className="space-y-3">
+          <h4 className="text-center text-xs font-bold text-slate-400 uppercase tracking-wider">
+            Vantagens da Modalidade
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {[
-              "Preços de Custo",
-              "Entrega Prioritária",
-              "Estoque Limitado"
+              "Valores com Super Desconto",
+              "Entrega no Mesmo Dia às 19h",
+              "Originalidade Garantida"
             ].map((benefit, i) => (
-              <div key={i} className="flex items-center gap-2 justify-center py-2 px-4 rounded-full bg-white/5 border border-white/10">
-                <CheckCircle2 className="w-4 h-4 text-[#39FF14]" />
-                <span className="text-xs font-['Roboto_Mono']">{benefit}</span>
+              <div key={i} className="flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-white/[0.03] border border-white/5 text-slate-200 text-xs font-semibold">
+                <CheckCircle2 className="w-4 h-4 text-[#00F59B] flex-shrink-0" />
+                <span>{benefit}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Footer Action */}
-        <div className="flex justify-center pt-4">
+        <div className="flex justify-center pt-2">
           <button 
             onClick={() => setLocation("/")}
-            className="flex items-center gap-2 px-8 py-3 bg-white text-black font-bold font-['Orbitron'] rounded-full hover:bg-[#39FF14] transition-all duration-300"
+            className="inline-flex items-center gap-2.5 px-8 py-4 btn-emerald rounded-2xl text-sm font-bold shadow-xl"
           >
-            <ArrowLeft className="w-5 h-5" />
-            VOLTAR PARA A LOJA
+            <ArrowLeft className="w-4 h-4" />
+            <span>Voltar ao Catálogo</span>
           </button>
         </div>
 

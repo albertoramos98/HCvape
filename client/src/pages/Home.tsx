@@ -1,16 +1,14 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff, Phone, User, CheckCircle2, Loader2, Github, Mail, Search } from 'lucide-react';
+import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff, Phone, User, CheckCircle2, Loader2, Github, Mail, Search, Flame, ArrowRight, Shield, Sparkles, Check, ChevronRight } from 'lucide-react';
 import { produtosService, pedidosService, Produto, utils, PedidoItem, configService, PromoSchedule, HeroBannerConfig } from '@/lib/supabase';
 import { useLocation } from "wouter";
 import { HeroBanner } from '@/components/HeroBanner';
 
 /**
  * HC - Desde 2020 | Catálogo Digital
- * Design: Cyberpunk Futurista Minimalista
- * Cores: Neon Verde (#39FF14) + Prata Cromada (#C0C0C0) + Preto Absoluto (#000000)
- * Tipografia: Orbitron (display) + Roboto Mono (body)
- * Dados: Supabase (tabela produtos)
- * Promoções: Seção "Ofertas Relâmpago" com trava de horário (16h)
+ * Design: Luxury Dark Cyber / Glass
+ * Cores: Cyber Emerald (#00F59B) + Neon Coral (#FF3366) + Obsidian (#080b11)
+ * Tipografia: Outfit (display/headings) + Plus Jakarta Sans (body/UI)
  */
 
 interface CartItem {
@@ -22,18 +20,19 @@ interface CartItem {
   quantidade: number;
   is_promo?: boolean;
   preco_promo?: number;
+  imagem_url?: string | null;
 }
 
-// Componente de imagem do produto com fallback
+// Componente de imagem do produto com fallback elegante
 function ProdutoImagem({ src, alt, className }: { src?: string | null; alt: string; className?: string }) {
   const [erro, setErro] = useState(false);
 
   if (!src || erro) { 
     return (
-      <div className={`flex items-center justify-center bg-black/40 border-b border-[#39FF14]/20 ${className}`}>
-        <div className="flex flex-col items-center gap-2 text-[#39FF14]/30">
-          <ImageOff className="w-10 h-10" />
-          <span className="text-xs font-['Roboto_Mono']">Sem imagem</span>
+      <div className={`flex items-center justify-center bg-white/[0.02] border-b border-white/5 ${className}`}>
+        <div className="flex flex-col items-center gap-2 text-slate-500">
+          <ImageOff className="w-8 h-8 opacity-40" />
+          <span className="text-[11px] font-medium tracking-wide">Sem foto</span>
         </div>
       </div>
     );
@@ -43,8 +42,9 @@ function ProdutoImagem({ src, alt, className }: { src?: string | null; alt: stri
     <img
       src={src}
       alt={alt}
-      className={`object-cover ${className}`}
+      className={`object-contain transition-transform duration-500 group-hover:scale-105 ${className}`}
       onError={() => setErro(true)}
+      loading="lazy"
     />
   );
 }
@@ -63,6 +63,7 @@ export default function Home() {
   const [horarioPromoAtivo, setHorarioPromoAtivo] = useState(true);
   const [abaAtiva, setAbaAtiva] = useState<'expressos' | 'promocionais'>('expressos');
   const [popupAviso, setPopupAviso] = useState(true);
+  const [feedbackAdicionado, setFeedbackAdicionado] = useState<string | null>(null);
   const [promoConfig, setPromoConfig] = useState<PromoSchedule>({
     dias_semana: [1, 2, 3],
     hora_inicio: "09:00",
@@ -75,14 +76,14 @@ export default function Home() {
   const [telefoneCliente, setTelefoneCliente] = useState('');
   const [indicacao, setIndicacao] = useState('');
   const [enviandoPedido, setEnviandoPedido] = useState(false);
-  const [pedidoConcluido, setPedidoConcluido] = useState<{ numero: number; total: number } | null>(null);
+  const [pedidoConcluido, setPedidoConcluido] = useState<{ numero: number; total: number; link: string } | null>(null);
 
   // Fechar pop-up de aviso
   const fecharPopupAviso = () => {
     setPopupAviso(false);
   };
 
-  // Carregar produtos e configurações promocionais do Supabase
+  // Carregar dados
   useEffect(() => {
     let configAtiva: PromoSchedule = {
       dias_semana: [1, 2, 3],
@@ -110,7 +111,7 @@ export default function Home() {
         setHorarioPromoAtivo(ativo);
       } catch (err) {
         console.error('Erro ao carregar dados:', err);
-        setErro('Erro ao carregar dados. Tente novamente.');
+        setErro('Erro ao carregar catálogo. Por favor, tente novamente.');
       } finally {
         setCarregando(false);
       }
@@ -174,7 +175,7 @@ export default function Home() {
     return Array.from(new Set(produtosExpressos.map(p => p.marca))).sort();
   }, [produtosExpressos]);
 
-  // Calcular total do carrinho
+  // Total do carrinho
   const total = useMemo(() => {
     return carrinho.reduce((sum, item) => {
       const preco = item.is_promo && item.preco_promo ? item.preco_promo : item.preco;
@@ -182,18 +183,22 @@ export default function Home() {
     }, 0);
   }, [carrinho]);
 
+  const totalItensCarrinho = useMemo(() => {
+    return carrinho.reduce((sum, item) => sum + item.quantidade, 0);
+  }, [carrinho]);
+
   // Adicionar ao carrinho
   const adicionarAoCarrinho = (produto: Produto) => {
     const sabor = saborSelecionado[produto.id];
     if (!sabor) {
-      alert('Por favor, selecione um sabor!');
+      alert('Por favor, selecione um sabor antes de adicionar.');
       return;
     }
 
     const saborEstoque = produto.sabores_estoque ? (produto.sabores_estoque[sabor] ?? 0) : produto.estoque;
 
     if (saborEstoque <= 0) {
-      alert('Sabor esgotado!');
+      alert('Este sabor está esgotado no momento.');
       return;
     }
 
@@ -208,7 +213,7 @@ export default function Home() {
 
     const quantNoCarrinho = itemExistente ? itemExistente.quantidade : 0;
     if (quantNoCarrinho + 1 > saborEstoque) {
-      alert(`Desculpe, só temos ${saborEstoque} unidades deste sabor no estoque.`);
+      alert(`Desculpe, só temos ${saborEstoque} unidades deste sabor em estoque.`);
       return;
     }
 
@@ -230,9 +235,14 @@ export default function Home() {
           quantidade: 1,
           is_promo: produto.is_promo,
           preco_promo: produto.preco_promo,
+          imagem_url: produto.imagem_url,
         },
       ]);
     }
+
+    // Micro feedback
+    setFeedbackAdicionado(produto.id);
+    setTimeout(() => setFeedbackAdicionado(null), 1200);
 
     setSaborSelecionado({ ...saborSelecionado, [produto.id]: '' });
   };
@@ -253,7 +263,7 @@ export default function Home() {
     if (produto) {
       const saborEstoque = produto.sabores_estoque ? (produto.sabores_estoque[sabor] ?? 0) : produto.estoque;
       if (novaQuantidade > saborEstoque) {
-        alert(`Desculpe, só temos ${saborEstoque} unidades deste sabor no estoque.`);
+        alert(`Desculpe, só temos ${saborEstoque} unidades deste sabor.`);
         return;
       }
     }
@@ -268,7 +278,7 @@ export default function Home() {
   // Iniciar checkout
   const iniciarCheckout = () => {
     if (carrinho.length === 0) {
-      alert('Carrinho vazio!');
+      alert('Seu carrinho está vazio!');
       return;
     }
     setCheckoutAberto(true);
@@ -278,8 +288,8 @@ export default function Home() {
   // Confirmar e salvar pedido
   const confirmarPedido = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nomeCliente || !telefoneCliente) {
-      alert('Por favor, preencha seu nome e telefone!');
+    if (!nomeCliente.trim() || !telefoneCliente.trim()) {
+      alert('Por favor, informe seu nome e WhatsApp!');
       return;
     }
 
@@ -308,7 +318,7 @@ export default function Home() {
         notas: ''
       });
 
-      // Gerar link WhatsApp com formato amigável e preços
+      // Gerar link WhatsApp estilizado
       const mensagemItens = carrinho
         .map(item => {
           const preco = item.is_promo && item.preco_promo ? item.preco_promo : item.preco;
@@ -316,21 +326,24 @@ export default function Home() {
         })
         .join('\n');
 
-      const textoFinal = `Olá! Acabei de fazer um pedido pelo site: 🛒✨\n\n🆔 *Pedido:* #${novoPedido.numero_pedido}\n👤 *Cliente:* ${nomeCliente}\n📞 *WhatsApp:* ${telefoneCliente}\n${indicacao ? `💡 *Vim por:* ${indicacao}\n` : ''}\n---\n📦 *MEUS ITENS:*\n\n${mensagemItens}\n\n---\n💰 *TOTAL:* R$ ${novoPedido.total_final.toFixed(2)}\n\nHC Vape agradece a preferência! 🌬️💨`;
+      const textoFinal = `Olá! Acabei de fazer um pedido pelo catálogo HC Vape: 🛒✨\n\n🆔 *Pedido:* #${novoPedido.numero_pedido}\n👤 *Cliente:* ${nomeCliente}\n📞 *WhatsApp:* ${telefoneCliente}\n${indicacao ? `💡 *Indicação:* ${indicacao}\n` : ''}\n---\n📦 *ITENS:* \n${mensagemItens}\n\n---\n💰 *TOTAL:* R$ ${novoPedido.total_final.toFixed(2)}\n\nAguardando instruções de pagamento e entrega! 🚀`;
       const whatsappUrl = `https://wa.me/5581997390944?text=${encodeURIComponent(textoFinal)}`;
       
-      // Definir pedido concluído para mostrar link de fallback se necessário
-      setPedidoConcluido({ numero: novoPedido.numero_pedido, total: novoPedido.total_final });
+      setPedidoConcluido({ 
+        numero: novoPedido.numero_pedido, 
+        total: novoPedido.total_final, 
+        link: whatsappUrl 
+      });
       
-      // Tentar redirecionar imediatamente usando location.href (mais seguro contra bloqueadores de pop-up)
-      window.location.href = whatsappUrl;
-
       // Limpar carrinho
       setCarrinho([]);
 
+      // Abrir WhatsApp
+      window.location.href = whatsappUrl;
+
     } catch (err) {
       console.error('Erro ao salvar pedido:', err);
-      alert('Erro ao processar pedido. Por favor, verifique sua conexão e tente novamente.');
+      alert('Erro ao processar pedido. Por favor, tente novamente.');
     } finally {
       setEnviandoPedido(false);
     }
@@ -338,78 +351,122 @@ export default function Home() {
 
   if (carregando) {
     return (
-      <div className="min-h-screen bg-black asphalt-texture flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-[#39FF14] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-[#39FF14] font-['Orbitron'] font-bold">Carregando catálogo...</p>
+      <div className="min-h-screen dark-atmosphere flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="relative w-16 h-16">
+            <div className="w-16 h-16 rounded-full border-2 border-white/10 border-t-[#00F59B] animate-spin" />
+            <Sparkles className="w-6 h-6 text-[#00F59B] absolute inset-0 m-auto animate-pulse" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-slate-100 font-['Outfit']">HC VAPE</h2>
+            <p className="text-sm text-slate-400 mt-1">Carregando catálogo premium...</p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-black asphalt-texture">
-      {/* Pop-up de Aviso */}
+    <div className="min-h-screen dark-atmosphere selection:bg-[#00F59B] selection:text-[#04140b]">
+      {/* Pop-up de Aviso Informativo */}
       {popupAviso && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="glass-morphism p-8 rounded-xl border border-red-500/50 max-w-md mx-4 shadow-[0_0_30px_rgba(255,0,0,0.3)]">
-            <div className="flex items-start gap-4 mb-6">
-              <AlertCircle className="w-8 h-8 text-red-500 flex-shrink-0 mt-1" />
-              <div>
-                <h2 className="text-2xl font-bold text-[#E0E0E0] font-['Orbitron']">
-                  ATENCAO!
-                </h2>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-lg bg-[#0e1320] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-[#FF3366]/15 border border-[#FF3366]/30 rounded-2xl">
+                  <AlertCircle className="w-7 h-7 text-[#FF3366]" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-100 font-['Outfit']">Informações de Atendimento</h3>
+                  <p className="text-xs text-slate-400">Horários e condições para seus pedidos</p>
+                </div>
               </div>
+              <button
+                onClick={fecharPopupAviso}
+                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+                aria-label="Fechar aviso"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
 
-            <div className="space-y-4 mb-8">
-              <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed">
-                <strong>PROMOÇÃO 🚀🔥✨</strong> só pode ser pedida das <strong className="text-red-400">{promoConfig.hora_inicio} até as {promoConfig.hora_fim}</strong>.
-              </p>
-              <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-lg leading-relaxed">
-                <strong>Pedidos Expressos</strong> Das 10:00 às 22:00. Fora desse horário, os pedidos serão processados no dia seguinte a partir das 10:00.
-              </p>
-              <div className="bg-red-500/10 p-4 rounded-lg border border-red-500/30">
-                <p className="text-red-400 font-['Roboto_Mono'] font-bold">
-                  Horário atual: {new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+            <div className="space-y-3.5 text-sm text-slate-300 leading-relaxed">
+              <div className="p-4 bg-gradient-to-r from-[#FF3366]/10 to-transparent border-l-4 border-[#FF3366] rounded-r-xl">
+                <span className="font-bold text-[#FF5E85] block text-xs uppercase tracking-wider mb-1">
+                  🔥 OFERTAS PROMOCIONAIS
+                </span>
+                <p>
+                  Pedidos promocionais abertos das <strong className="text-white">{promoConfig.hora_inicio} às {promoConfig.hora_fim}</strong>. Entregas no mesmo dia às 19h ({utils.formatarDiasSemana(promoConfig.dias_semana)}).
+                </p>
+              </div>
+
+              <div className="p-4 bg-gradient-to-r from-[#00F59B]/10 to-transparent border-l-4 border-[#00F59B] rounded-r-xl">
+                <span className="font-bold text-[#00F59B] block text-xs uppercase tracking-wider mb-1">
+                  ⚡ PEDIDOS EXPRESSOS
+                </span>
+                <p>
+                  Atendimento das <strong className="text-white">10:00 às 22:00</strong>. Pronta entrega ágil direto no seu endereço.
                 </p>
               </div>
             </div>
 
             <button
               onClick={fecharPopupAviso}
-              className="w-full px-6 py-3 bg-[#39FF14] text-black rounded-lg font-['Orbitron'] font-bold text-lg hover:shadow-[0_0_20px_rgba(57,255,20,0.6)] transition-all duration-300"
+              className="w-full py-3.5 btn-emerald rounded-2xl text-base shadow-xl flex items-center justify-center gap-2"
             >
-              Tenho Ciencia Disso
+              <span>Entendido, Explorar Catálogo</span>
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </div>
       )}
 
-      {/* Header */}
-      <header className="sticky top-0 z-30 bg-black/80 backdrop-blur-md border-b border-[#39FF14]/30">
-        <div className="container flex items-center justify-between py-4">
-          <div>
-            <h1 className="text-2xl font-bold neon-glow font-['Orbitron']">HC</h1>
-            <p className="text-xs text-[#C0C0C0] font-['Roboto_Mono']">Desde 2020</p>
+      {/* Modern Sticky Glass Navbar */}
+      <header className="sticky top-0 z-40 bg-[#080b11]/85 backdrop-blur-xl border-b border-white/10 transition-all duration-300">
+        <div className="container flex items-center justify-between py-3.5">
+          {/* Logo & Status */}
+          <div className="flex items-center gap-4">
+            <a href="/" className="flex items-center gap-3 group">
+              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#00F59B] to-[#00A86B] flex items-center justify-center font-extrabold text-[#04140b] text-lg font-['Outfit'] shadow-lg group-hover:scale-105 transition-transform">
+                HC
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-xl font-bold text-slate-100 tracking-tight font-['Outfit']">
+                    HC VAPE
+                  </h1>
+                  <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/5 text-slate-400 border border-white/10">
+                    Desde 2020
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                  <span className="w-2 h-2 rounded-full bg-[#00F59B] animate-pulse" />
+                  <span>Catálogo Online</span>
+                </div>
+              </div>
+            </a>
           </div>
 
-          <div className="flex items-center gap-3">
+          {/* Quick Actions & Cart */}
+          <div className="flex items-center gap-2.5 sm:gap-4">
             <a
               href="/como-funciona"
-              className="px-4 py-2 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold text-sm hover:bg-[#39FF14]/30 transition-all duration-300"
+              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200"
             >
-               Como Funciona?
+              <span>Como Funciona</span>
             </a>
 
             <button
-              onClick={() => setCarrinhoAberto(!carrinhoAberto)}
-              className="relative p-3 bg-[#39FF14]/20 border border-[#39FF14] rounded-lg hover:bg-[#39FF14]/30 transition-all duration-300"
+              onClick={() => setCarrinhoAberto(true)}
+              className="relative flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-[#00F59B]/15 to-[#00F59B]/5 hover:from-[#00F59B]/25 hover:to-[#00F59B]/10 border border-[#00F59B]/30 text-[#00F59B] transition-all duration-200 shadow-sm"
+              aria-label="Abrir carrinho"
             >
-              <ShoppingCart className="w-6 h-6 text-[#39FF14]" />
-              {carrinho.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold w-6 h-6 rounded-full flex items-center justify-center">
-                  {carrinho.length}
+              <ShoppingCart className="w-5 h-5" />
+              <span className="hidden sm:inline text-xs font-bold font-['Outfit']">Carrinho</span>
+              {totalItensCarrinho > 0 && (
+                <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-extrabold bg-[#00F59B] text-[#04140b] rounded-full shadow">
+                  {totalItensCarrinho}
                 </span>
               )}
             </button>
@@ -417,25 +474,16 @@ export default function Home() {
         </div>
       </header>
 
-      <main className="container py-8">
+      <main className="container py-6 sm:py-8 space-y-8">
+        {/* Banner de Erro */}
         {erro && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-500" />
-            <p className="text-red-400">{erro}</p>
+          <div className="p-4 bg-red-500/10 border border-red-500/30 rounded-2xl flex items-center gap-3 text-red-300 text-sm">
+            <AlertCircle className="w-5 h-5 flex-shrink-0 text-red-400" />
+            <p>{erro}</p>
           </div>
         )}
 
-        {/* Aviso de Horário */}
-        {!horarioPromoAtivo && (
-          <div className="mb-6 p-4 bg-yellow-500/20 border border-yellow-500 rounded-lg flex items-center gap-3">
-            <Clock className="w-5 h-5 text-yellow-500" />
-            <p className="text-yellow-400 font-['Roboto_Mono']">
-              ⏰ Promoção encerrada! Disponível novamente das {promoConfig.hora_inicio} às {promoConfig.hora_fim}.
-            </p>
-          </div>
-        )}
-
-        {/* Hero Banner (Destaques, Novidades e Ofertas) */}
+        {/* Hero Banner Component */}
         <HeroBanner
           produtos={produtos}
           horarioPromoAtivo={horarioPromoAtivo}
@@ -444,22 +492,24 @@ export default function Home() {
           config={heroBannerConfig}
         />
 
-        {/* Abas de Seleção */}
-        <section className="mb-8">
-          <div className="flex gap-4 mb-8 border-b border-[#39FF14]/30 pb-4">
+        {/* Mode Selector Tabs (Expressos vs Promocionais) */}
+        <div className="space-y-4">
+          <div className="flex p-1.5 bg-[#0e1320] border border-white/10 rounded-2xl max-w-xl mx-auto backdrop-blur-md">
             <button
               onClick={() => {
                 setAbaAtiva('expressos');
                 setMarcaSelecionada(null);
               }}
-              className={`px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm sm:text-base font-bold transition-all duration-200 ${
                 abaAtiva === 'expressos'
-                  ? 'text-[#39FF14] border-b-2 border-[#39FF14] shadow-[0_0_15px_rgba(57,255,20,0.3)]'
-                  : 'text-[#C0C0C0] hover:text-[#39FF14]'
+                  ? 'bg-gradient-to-r from-[#00F59B] to-[#00D084] text-[#04140b] shadow-lg'
+                  : 'text-slate-400 hover:text-slate-200'
               }`}
             >
-              🚀 Pedidos Expressos
+              <Zap className={`w-4 h-4 ${abaAtiva === 'expressos' ? 'fill-current' : ''}`} />
+              <span>Pronta Entrega Express</span>
             </button>
+
             <button
               onClick={() => {
                 if (!horarioPromoAtivo) {
@@ -469,401 +519,520 @@ export default function Home() {
                   setMarcaSelecionada(null);
                 }
               }}
-              className={`px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 ${
+              className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm sm:text-base font-bold transition-all duration-200 ${
                 abaAtiva === 'promocionais'
-                  ? 'text-red-500 border-b-2 border-red-500 shadow-[0_0_15px_rgba(255,0,0,0.3)]'
-                  : 'text-[#C0C0C0] hover:text-red-500'
+                  ? 'bg-gradient-to-r from-[#FF3366] to-[#E60045] text-white shadow-lg'
+                  : 'text-slate-400 hover:text-[#FF5E85]'
               }`}
             >
-              🔥 PROMOÇÃO 🚀🔥
+              <Flame className={`w-4 h-4 ${abaAtiva === 'promocionais' ? 'fill-current' : ''}`} />
+              <span>Ofertas Relâmpago</span>
+              {horarioPromoAtivo && (
+                <span className="hidden sm:inline-block px-1.5 py-0.5 rounded text-[10px] bg-black/40 text-white font-extrabold uppercase">
+                  Ao Vivo
+                </span>
+              )}
             </button>
           </div>
-        </section>
 
-        {/* Barra de Pesquisa */}
-        <section className="mb-6">
-          <div className="relative max-w-md">
-            <input
-              type="text"
-              placeholder="Pesquisar produto..."
-              value={pesquisa}
-              onChange={(e) => setPesquisa(e.target.value)}
-              className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] pl-10 pr-10 py-3 rounded-lg focus:border-[#39FF14] focus:shadow-[0_0_15px_rgba(57,255,20,0.3)] focus:outline-none transition-all duration-300 font-['Roboto_Mono'] text-sm"
-            />
-            <Search className="w-5 h-5 text-[#808080] absolute left-3 top-3.5" />
-            {pesquisa && (
-              <button
-                onClick={() => setPesquisa('')}
-                className="absolute right-3 top-3.5 text-[#808080] hover:text-[#39FF14] transition-colors"
+          {/* Banner de Aviso de Horário de Promoção */}
+          {abaAtiva === 'promocionais' && (
+            <div className="p-4 bg-gradient-to-r from-[#FF3366]/15 via-[#FF3366]/5 to-transparent border border-[#FF3366]/30 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 backdrop-blur-md">
+              <div className="flex items-center gap-3">
+                <Clock className="w-5 h-5 text-[#FF5E85] flex-shrink-0" />
+                <p className="text-xs sm:text-sm text-slate-200">
+                  Ofertas com super desconto disponíveis de <strong className="text-white">{promoConfig.hora_inicio} às {promoConfig.hora_fim}</strong>. Entregas às 19:00!
+                </p>
+              </div>
+              <a
+                href="/promocional-info"
+                className="text-xs font-bold text-[#FF5E85] hover:underline flex items-center gap-1 flex-shrink-0"
               >
-                <X className="w-5 h-5" />
-              </button>
-            )}
-          </div>
-        </section>
+                Regras e Horários <ChevronRight className="w-3.5 h-3.5" />
+              </a>
+            </div>
+          )}
 
-        {/* Filtros de Marca - Apenas para Expressos */}
-        {abaAtiva === 'expressos' && (
-          <section className="mb-8">
-            <h2 className="text-xl font-bold text-[#E0E0E0] mb-4 font-['Orbitron']">
-              Filtrar por Marca
-            </h2>
-            <div className="flex flex-wrap gap-3">
+          {!horarioPromoAtivo && abaAtiva === 'expressos' && (
+            <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between gap-3 text-xs text-amber-300/90">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-amber-400 flex-shrink-0" />
+                <span>Ofertas Relâmpago encerradas por hoje. Voltam às {promoConfig.hora_inicio}.</span>
+              </div>
+              <a href="/promocional-info" className="underline hover:text-amber-200 font-medium">Ver regras</a>
+            </div>
+          )}
+        </div>
+
+        {/* Search & Brand Filters Bar */}
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+            {/* Search Input */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Buscar por produto, marca ou sabor..."
+                value={pesquisa}
+                onChange={(e) => setPesquisa(e.target.value)}
+                className="w-full bg-[#0e1422] border border-white/10 text-slate-100 placeholder-slate-500 pl-10 pr-10 py-2.5 rounded-xl focus:border-[#00F59B]/60 focus:ring-1 focus:ring-[#00F59B]/50 focus:outline-none transition-all text-sm"
+              />
+              {pesquisa && (
+                <button
+                  onClick={() => setPesquisa('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-200 p-1"
+                  aria-label="Limpar busca"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+
+            {/* Total items badge */}
+            <div className="text-xs text-slate-400 font-medium flex items-center gap-1.5 px-3 py-2 bg-white/5 rounded-xl border border-white/5 self-start sm:self-auto">
+              <Sparkles className="w-3.5 h-3.5 text-[#00F59B]" />
+              <span>
+                {(abaAtiva === 'expressos' ? produtosFiltrados : produtosPromoFiltrados).length} produtos listados
+              </span>
+            </div>
+          </div>
+
+          {/* Brand Pills (for Expressos) */}
+          {abaAtiva === 'expressos' && marcasExpressos.length > 0 && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-none">
               <button
                 onClick={() => setMarcaSelecionada(null)}
-                className={`px-4 py-2 rounded-lg font-['Orbitron'] font-bold transition-all duration-300 ${
+                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 ${
                   marcaSelecionada === null
-                    ? 'bg-[#39FF14] text-black shadow-[0_0_15px_rgba(57,255,20,0.5)]'
-                    : 'bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] hover:bg-[#39FF14]/30'
+                    ? 'bg-[#00F59B] text-[#04140b] shadow-md'
+                    : 'bg-[#0e1422] text-slate-300 hover:text-white border border-white/10 hover:border-white/20'
                 }`}
               >
-                Todas
+                <span>Todas as Marcas</span>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${marcaSelecionada === null ? 'bg-[#04140b]/20 text-[#04140b]' : 'bg-white/10 text-slate-400'}`}>
+                  {produtosExpressos.length}
+                </span>
               </button>
-              {marcasExpressos.map((marca: string) => (
-                <button
-                  key={marca}
-                  onClick={() => setMarcaSelecionada(marca)}
-                  className={`px-4 py-2 rounded-lg font-['Orbitron'] font-bold transition-all duration-300 ${
-                    marcaSelecionada === marca
-                      ? 'bg-[#39FF14] text-black shadow-[0_0_15px_rgba(57,255,20,0.5)]'
-                      : 'bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] hover:bg-[#39FF14]/30'
-                  }`}
-                >
-                  {marca}
-                </button>
-              ))}
+
+              {marcasExpressos.map((marca) => {
+                const count = produtosExpressos.filter(p => p.marca === marca).length;
+                const isSelected = marcaSelecionada === marca;
+                return (
+                  <button
+                    key={marca}
+                    onClick={() => setMarcaSelecionada(marca)}
+                    className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 ${
+                      isSelected
+                        ? 'bg-[#00F59B] text-[#04140b] shadow-md'
+                        : 'bg-[#0e1422] text-slate-300 hover:text-white border border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    <span>{marca}</span>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-[#04140b]/20 text-[#04140b]' : 'bg-white/10 text-slate-400'}`}>
+                      {count}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
-          </section>
-        )}
+          )}
+        </div>
 
-        {/* Aviso específico da aba de promoções */}
-        {abaAtiva === 'promocionais' && (
-          <div className="mb-6 p-4 bg-red-500/20 border border-red-500 rounded-lg flex items-center gap-3 shadow-[0_0_15px_rgba(255,0,0,0.3)]">
-            <Clock className="w-5 h-5 text-red-500" />
-            <p className="text-red-400 font-['Roboto_Mono']">
-              ⚠️ PROMOÇÃO 🚀 só pode ser pedida das <strong>{promoConfig.hora_inicio} às {promoConfig.hora_fim}</strong>. Entrega às <strong>19:00</strong> de {utils.formatarDiasSemana(promoConfig.dias_semana)}.
-            </p>
+        {/* Product Grid */}
+        <section className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl sm:text-2xl font-bold text-slate-100 font-['Outfit'] flex items-center gap-2">
+              {abaAtiva === 'expressos' ? (
+                <>
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#00F59B]" />
+                  <span>{marcaSelecionada ? `Modelos ${marcaSelecionada}` : 'Catálogo Pronta Entrega'}</span>
+                </>
+              ) : (
+                <>
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#FF3366] animate-pulse" />
+                  <span>Ofertas Relâmpago com Desconto</span>
+                </>
+              )}
+            </h2>
           </div>
-        )}
-
-        {/* Grid de Produtos */}
-        <section>
-          <h2 className="text-2xl font-bold text-[#E0E0E0] mb-6 font-['Orbitron']">
-            {abaAtiva === 'expressos'
-              ? marcaSelecionada ? `${marcaSelecionada}` : 'Pedidos Expressos'
-              : '🔥 PROMOÇÃO 🚀🔥✨'}
-          </h2>
 
           {(abaAtiva === 'expressos' ? produtosFiltrados : produtosPromoFiltrados).length === 0 ? (
-            <p className="text-center text-[#808080] py-12">Nenhum produto encontrado</p>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {(abaAtiva === 'expressos' ? produtosFiltrados : produtosPromoFiltrados).map(produto => (
-                <div
-                  key={produto.id}
-                  className={`glass-morphism rounded-xl border transition-all duration-300 overflow-hidden ${
-                    produto.is_promo 
-                      ? 'border-red-500 shadow-[0_0_20px_rgba(255,0,0,0.3)] hover:shadow-[0_0_30px_rgba(255,0,0,0.5)]' 
-                      : 'border-[#39FF14]/30 hover:border-[#39FF14] hover:shadow-[0_0_20px_rgba(57,255,20,0.3)]'
-                  }`}
+            <div className="glass-card rounded-3xl p-12 text-center space-y-4 max-w-md mx-auto">
+              <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mx-auto text-slate-400">
+                <Search className="w-8 h-8" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-200 font-['Outfit']">Nenhum produto encontrado</h3>
+              <p className="text-xs text-slate-400">Tente ajustar sua busca ou selecionar outra marca.</p>
+              {pesquisa && (
+                <button
+                  onClick={() => setPesquisa('')}
+                  className="px-4 py-2 bg-white/10 hover:bg-white/15 text-slate-200 text-xs font-bold rounded-xl transition-colors"
                 >
-                  {/* Imagem do produto */}
-                  <div className="relative h-48 bg-black/40 border-b border-inherit">
-                    <ProdutoImagem
-                      src={produto.imagem_url}
-                      alt={produto.nome}
-                      className="w-full h-full object-cover"
-                    />
+                  Limpar pesquisa
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6">
+              {(abaAtiva === 'expressos' ? produtosFiltrados : produtosPromoFiltrados).map((produto) => {
+                const isPromo = produto.is_promo;
+                const selecionado = saborSelecionado[produto.id] || '';
+                const saborEstoque = selecionado && produto.sabores_estoque ? (produto.sabores_estoque[selecionado] ?? 0) : produto.estoque;
+                const feedbackOk = feedbackAdicionado === produto.id;
 
-                    {/* Badge Promoção sobre a imagem */}
-                    {produto.is_promo && (
-                      <div className="absolute top-3 left-3 bg-red-500 text-white px-3 py-1 rounded-full text-xs font-['Orbitron'] font-bold shadow-[0_0_10px_rgba(255,0,0,0.5)] animate-pulse">
-                        🔥 PROMOÇÃO 🚀
+                return (
+                  <div
+                    key={produto.id}
+                    className={`group relative glass-card rounded-3xl overflow-hidden flex flex-col justify-between ${
+                      isPromo ? 'glass-card-promo' : ''
+                    }`}
+                  >
+                    {/* Top image section */}
+                    <div className="relative h-56 bg-gradient-to-b from-white/[0.03] to-transparent p-4 flex items-center justify-center overflow-hidden">
+                      {/* Badges */}
+                      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+                        {isPromo ? (
+                          <span className="flex items-center gap-1 bg-gradient-to-r from-[#FF3366] to-[#E60045] text-white text-[11px] font-extrabold px-3 py-1 rounded-full shadow-lg uppercase tracking-wider">
+                            <Flame className="w-3 h-3" /> Oferta
+                          </span>
+                        ) : (
+                          <span className="bg-white/10 backdrop-blur-md text-slate-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-white/10 uppercase tracking-wider">
+                            {produto.marca}
+                          </span>
+                        )}
                       </div>
-                    )}
-                  </div>
 
-                  {/* Conteúdo do card */}
-                  <div className="p-5 relative z-10 bg-black/20">
-                    <h3 className="text-lg font-bold text-[#E0E0E0] mb-1 font-['Orbitron']">
-                      {produto.is_promo && '⚡ '} {produto.nome}
-                    </h3>
-
-                    <p className="text-xs text-[#C0C0C0] mb-4 font-['Roboto_Mono']">
-                      {produto.marca}
-                    </p>
-
-                    {/* Preço */}
-                    <div className="mb-4">
-                      {produto.is_promo && produto.preco_promo ? (
-                        <div className="flex flex-col">
-                          <p className="text-sm text-[#808080] line-through font-['Roboto_Mono']">
-                            R$ {produto.preco.toFixed(2)}
-                          </p>
-                          <p className="text-2xl font-bold text-red-500 font-['Roboto_Mono'] flex items-center gap-2">
-                            R$ {produto.preco_promo.toFixed(2)} <span className="text-sm bg-red-500/20 px-2 py-0.5 rounded text-red-400">-{Math.round((1 - produto.preco_promo/produto.preco) * 100)}%</span>
-                          </p>
+                      {produto.estoque <= 0 && (
+                        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-20 flex items-center justify-center">
+                          <span className="bg-red-500/90 text-white font-bold text-xs uppercase px-4 py-1.5 rounded-full shadow-lg">
+                            Esgotado
+                          </span>
                         </div>
-                      ) : (
-                        <p className="text-2xl font-bold neon-glow font-['Roboto_Mono']">
-                          R$ {produto.preco.toFixed(2)}
-                        </p>
                       )}
+
+                      <ProdutoImagem
+                        src={produto.imagem_url}
+                        alt={produto.nome}
+                        className="w-full h-full max-h-48"
+                      />
                     </div>
 
-                    {/* Sabor */}
-                    <div className="space-y-2 mb-4">
-                      <label className="text-[10px] text-[#808080] uppercase font-bold font-['Roboto_Mono']">Selecione o Sabor:</label>
-                      <select
-                        value={saborSelecionado[produto.id] || ''}
-                        onChange={(e) =>
-                          setSaborSelecionado({ ...saborSelecionado, [produto.id]: e.target.value })
-                        }
-                        className={`w-full bg-black/60 border text-[#E0E0E0] px-3 py-2 rounded-lg focus:outline-none transition-all duration-300 font-['Roboto_Mono'] text-sm ${
-                          produto.is_promo ? 'border-red-500/50 focus:border-red-500' : 'border-[#39FF14]/50 focus:border-[#39FF14]'
-                        }`}
-                      >
-                        <option value="">Escolha uma opção...</option>
-                        {produto.sabores.map(sabor => {
-                          const saborEstoque = produto.sabores_estoque ? (produto.sabores_estoque[sabor] ?? 0) : produto.estoque;
-                          const esgotado = saborEstoque <= 0;
-                          return (
-                            <option key={sabor} value={sabor} disabled={esgotado}>
-                              {sabor} {esgotado ? '— ESGOTADO' : ''}
-                            </option>
-                          );
-                        })}
-                      </select>
-                    </div>
+                    {/* Card Content */}
+                    <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
+                      <div>
+                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                          {produto.marca}
+                        </div>
+                        <h3 className="text-base font-bold text-slate-100 font-['Outfit'] group-hover:text-[#00F59B] transition-colors line-clamp-1">
+                          {produto.nome}
+                        </h3>
 
-                    {/* Botão */}
-                    <button
-                      onClick={() => adicionarAoCarrinho(produto)}
-                      disabled={produto.estoque <= 0 || (produto.is_promo && !horarioPromoAtivo)}
-                      className={`w-full py-3 rounded-lg font-['Orbitron'] font-bold transition-all duration-300 ${
-                        produto.estoque <= 0
-                          ? 'bg-gray-500 text-gray-400 cursor-not-allowed'
-                          : produto.is_promo && !horarioPromoAtivo
-                          ? 'bg-gray-500/50 text-gray-500 cursor-not-allowed border border-gray-500/30'
-                          : produto.is_promo 
-                          ? 'bg-red-500 text-white hover:bg-red-600 hover:shadow-[0_0_20px_rgba(255,0,0,0.5)]'
-                          : 'bg-[#39FF14] text-black hover:shadow-[0_0_20px_rgba(57,255,20,0.5)]'
-                      }`}
-                    >
-                      {produto.estoque <= 0
-                        ? '🚫 ESGOTADO'
-                        : produto.is_promo && !horarioPromoAtivo
-                        ? '⏰ ENCERRADO'
-                        : produto.is_promo ? '🔥 ADICIONAR' : '🚀 ADICIONAR'}
-                    </button>
+                        {/* Price Display */}
+                        <div className="mt-3 flex items-baseline gap-2">
+                          {isPromo && produto.preco_promo ? (
+                            <>
+                              <span className="text-xl font-extrabold text-[#FF3366] font-['Outfit']">
+                                R$ {produto.preco_promo.toFixed(2)}
+                              </span>
+                              <span className="text-xs text-slate-400 line-through">
+                                R$ {produto.preco.toFixed(2)}
+                              </span>
+                              <span className="text-[10px] font-bold text-[#FF5E85] bg-[#FF3366]/15 px-2 py-0.5 rounded-md border border-[#FF3366]/20">
+                                -{Math.round((1 - produto.preco_promo / produto.preco) * 100)}%
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-xl font-extrabold text-[#00F59B] font-['Outfit']">
+                              R$ {produto.preco.toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Flavor selector and Add Button */}
+                      <div className="space-y-3 pt-2 border-t border-white/5">
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">
+                            Escolha o Sabor:
+                          </label>
+                          <select
+                            value={selecionado}
+                            onChange={(e) =>
+                              setSaborSelecionado({ ...saborSelecionado, [produto.id]: e.target.value })
+                            }
+                            className={`w-full bg-[#121827] border text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none transition-all ${
+                              isPromo 
+                                ? 'border-white/10 focus:border-[#FF3366]' 
+                                : 'border-white/10 focus:border-[#00F59B]'
+                            }`}
+                          >
+                            <option value="">Selecione uma opção...</option>
+                            {produto.sabores.map((sabor) => {
+                              const sEstoque = produto.sabores_estoque ? (produto.sabores_estoque[sabor] ?? 0) : produto.estoque;
+                              const esgotado = sEstoque <= 0;
+                              return (
+                                <option key={sabor} value={sabor} disabled={esgotado} className="bg-[#0e1320] text-slate-200">
+                                  {sabor} {esgotado ? '— (Esgotado)' : `(${sEstoque} un)`}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+
+                        <button
+                          onClick={() => adicionarAoCarrinho(produto)}
+                          disabled={produto.estoque <= 0 || (isPromo && !horarioPromoAtivo)}
+                          className={`w-full py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all duration-200 shadow-md ${
+                            feedbackOk
+                              ? 'bg-emerald-500 text-white'
+                              : produto.estoque <= 0
+                              ? 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/5'
+                              : isPromo && !horarioPromoAtivo
+                              ? 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/5'
+                              : isPromo
+                              ? 'btn-coral'
+                              : 'btn-emerald'
+                          }`}
+                        >
+                          {feedbackOk ? (
+                            <>
+                              <Check className="w-4 h-4" /> Adicionado!
+                            </>
+                          ) : produto.estoque <= 0 ? (
+                            'Produto Esgotado'
+                          ) : isPromo && !horarioPromoAtivo ? (
+                            'Horário Encerrado'
+                          ) : (
+                            <>
+                              <ShoppingCart className="w-4 h-4" />
+                              Adicionar ao Pedido
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </section>
       </main>
 
-      {/* Footer Discreto - Portfolio */}
-      <footer className="py-8 mt-12 border-t border-[#39FF14]/10">
-        <div className="container flex flex-col items-center justify-center gap-4">
-          <p className="text-[#606060] font-['Roboto_Mono'] text-[10px] tracking-widest uppercase text-center">
-            Desenvolvido por <span className="text-[#808080]">Alberto Ramos</span>
-          </p>
-          <div className="flex items-center gap-6">
-            <a 
-              href="https://github.com/albertoramos98" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="group flex items-center gap-2 text-[#606060] hover:text-[#39FF14] transition-all duration-300"
-              title="GitHub"
-            >
-              <Github className="w-4 h-4" />
-              <span className="text-[10px] font-['Orbitron'] font-bold opacity-0 group-hover:opacity-100 transition-opacity">GITHUB</span>
-            </a>
-            <a 
-              href="mailto:alpemc.dev@gmail.com" 
-              className="group flex items-center gap-2 text-[#606060] hover:text-[#39FF14] transition-all duration-300"
-              title="Email para contato"
-            >
-              <Mail className="w-4 h-4" />
-              <span className="text-[10px] font-['Orbitron'] font-bold opacity-0 group-hover:opacity-100 transition-opacity">CONTATO</span>
-            </a>
-          </div>
-          <p className="text-[#404040] font-['Roboto_Mono'] text-[8px]">
-            &copy; {new Date().getFullYear()} — Fullstack Developer
-          </p>
-        </div>
-      </footer>
-
-      {/* Carrinho Flutuante */}
+      {/* Modern Slide-over Cart Drawer */}
       {carrinhoAberto && (
-        <div className="fixed inset-0 z-40 flex items-end md:items-center justify-end p-4 bg-black/50 backdrop-blur-sm">
-          <div className="w-full md:w-96 glass-morphism p-6 rounded-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Carrinho</h2>
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-[#0d121e] border-l border-white/10 h-full flex flex-col justify-between shadow-2xl p-6 overflow-hidden">
+            {/* Drawer Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-[#00F59B]/10 rounded-xl text-[#00F59B]">
+                  <ShoppingCart className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-100 font-['Outfit']">Seu Carrinho</h3>
+                  <p className="text-xs text-slate-400">{totalItensCarrinho} {totalItensCarrinho === 1 ? 'item' : 'itens'}</p>
+                </div>
+              </div>
               <button
                 onClick={() => setCarrinhoAberto(false)}
-                className="p-2 hover:bg-[#39FF14]/20 rounded-lg transition-all duration-300"
+                className="p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/5 transition-colors"
+                aria-label="Fechar carrinho"
               >
-                <X className="w-6 h-6 text-[#39FF14]" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            {carrinho.length === 0 ? (
-              <p className="text-center text-[#808080] py-8">Carrinho vazio</p>
-            ) : (
-              <>
-                <div className="space-y-4 mb-6">
-                  {carrinho.map(item => (
+            {/* Cart Items List */}
+            <div className="flex-1 overflow-y-auto py-4 space-y-3">
+              {carrinho.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-center p-6 space-y-3">
+                  <ShoppingCart className="w-12 h-12 text-slate-600" />
+                  <p className="text-sm text-slate-300 font-semibold">Seu carrinho está vazio</p>
+                  <p className="text-xs text-slate-500 max-w-xs">Selecione o sabor desejado nos produtos e clique em adicionar.</p>
+                </div>
+              ) : (
+                carrinho.map((item) => {
+                  const unitPrice = item.is_promo && item.preco_promo ? item.preco_promo : item.preco;
+                  return (
                     <div
                       key={`${item.id}-${item.sabor}`}
-                      className="flex items-center gap-3 p-3 bg-black/40 rounded-lg border border-[#39FF14]/20"
+                      className="p-3.5 bg-white/[0.02] border border-white/10 rounded-2xl flex items-center justify-between gap-3 hover:border-white/20 transition-all"
                     >
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-[#E0E0E0] font-['Orbitron'] truncate">
-                          {item.is_promo && <span className="text-red-400 mr-1">🔥</span>}
-                          {item.nome}
+                        <div className="flex items-center gap-1.5">
+                          {item.is_promo && (
+                            <span className="text-[10px] bg-[#FF3366]/20 text-[#FF5E85] font-bold px-1.5 py-0.2 rounded">
+                              PROMO
+                            </span>
+                          )}
+                          <h4 className="text-sm font-bold text-slate-100 font-['Outfit'] truncate">
+                            {item.nome}
+                          </h4>
+                        </div>
+                        <p className="text-xs text-[#00F59B] truncate mt-0.5">
+                          Sabor: {item.sabor}
                         </p>
-                        <p className="text-xs text-[#C0C0C0] font-['Roboto_Mono'] truncate">
-                          {item.sabor}
-                        </p>
-                        <p className="text-sm font-bold text-[#39FF14] font-['Roboto_Mono']">
-                          R$ {((item.is_promo && item.preco_promo ? item.preco_promo : item.preco) * item.quantidade).toFixed(2)}
+                        <p className="text-xs font-semibold text-slate-300 mt-1">
+                          R$ {(unitPrice * item.quantidade).toFixed(2)}
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      {/* Quantity Stepper */}
+                      <div className="flex items-center gap-1.5 bg-[#141b2b] p-1 rounded-xl border border-white/10">
                         <button
                           onClick={() => alterarQuantidade(item.id, item.sabor, item.quantidade - 1)}
-                          className="w-7 h-7 bg-[#39FF14]/20 border border-[#39FF14]/50 text-[#39FF14] rounded flex items-center justify-center hover:bg-[#39FF14]/30 transition-all duration-300"
+                          className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 flex items-center justify-center transition-colors"
+                          aria-label="Diminuir quantidade"
                         >
                           <Minus className="w-3 h-3" />
                         </button>
-                        <span className="text-[#E0E0E0] font-['Roboto_Mono'] w-6 text-center">
+                        <span className="w-6 text-center text-xs font-bold text-slate-100">
                           {item.quantidade}
                         </span>
                         <button
                           onClick={() => alterarQuantidade(item.id, item.sabor, item.quantidade + 1)}
-                          className="w-7 h-7 bg-[#39FF14]/20 border border-[#39FF14]/50 text-[#39FF14] rounded flex items-center justify-center hover:bg-[#39FF14]/30 transition-all duration-300"
+                          className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 flex items-center justify-center transition-colors"
+                          aria-label="Aumentar quantidade"
                         >
                           <Plus className="w-3 h-3" />
                         </button>
                         <button
                           onClick={() => removerDoCarrinho(item.id, item.sabor)}
-                          className="w-7 h-7 bg-red-500/20 border border-red-500/50 text-red-400 rounded flex items-center justify-center hover:bg-red-500/30 transition-all duration-300 ml-1"
+                          className="w-7 h-7 rounded-lg text-red-400 hover:bg-red-500/20 flex items-center justify-center transition-colors ml-1"
+                          aria-label="Remover item"
                         >
-                          <X className="w-3 h-3" />
+                          <X className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
-                  ))}
-                </div>
+                  );
+                })
+              )}
+            </div>
 
-                <div className="border-t border-[#39FF14]/30 pt-4 mb-4">
-                  <div className="flex justify-between items-center">
-                    <span className="text-[#C0C0C0] font-['Orbitron'] font-bold">Total:</span>
-                    <span className="text-2xl font-bold neon-glow font-['Roboto_Mono']">
-                      R$ {total.toFixed(2)}
-                    </span>
-                  </div>
+            {/* Cart Footer */}
+            {carrinho.length > 0 && (
+              <div className="pt-4 border-t border-white/10 space-y-4">
+                <div className="flex items-center justify-between text-slate-300 text-sm">
+                  <span>Subtotal:</span>
+                  <span className="text-2xl font-extrabold text-[#00F59B] font-['Outfit']">
+                    R$ {total.toFixed(2)}
+                  </span>
                 </div>
 
                 <button
                   onClick={iniciarCheckout}
-                  className="w-full py-3 bg-green-500 text-white rounded-lg font-['Orbitron'] font-bold hover:bg-green-600 hover:shadow-[0_0_15px_rgba(34,197,94,0.5)] transition-all duration-300"
+                  className="w-full py-4 btn-emerald rounded-2xl text-base shadow-xl flex items-center justify-center gap-2"
                 >
-                  📱 Pedir pelo WhatsApp
+                  <Phone className="w-5 h-5" />
+                  <span>Avançar para WhatsApp</span>
                 </button>
-              </>
+              </div>
             )}
           </div>
         </div>
       )}
 
-      {/* Modal de Checkout */}
+      {/* Checkout Modal */}
       {checkoutAberto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-md glass-morphism p-8 rounded-xl border border-[#39FF14]/30 shadow-[0_0_50px_rgba(57,255,20,0.2)]">
-            <div className="flex items-center justify-between mb-8">
-              <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Finalizar Pedido</h2>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-[#0e1320] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2.5 bg-[#00F59B]/15 text-[#00F59B] rounded-2xl border border-[#00F59B]/30">
+                  <Phone className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-slate-100 font-['Outfit']">Finalizar Pedido</h3>
+                  <p className="text-xs text-slate-400">Enviaremos seu pedido direto no WhatsApp</p>
+                </div>
+              </div>
               <button
                 onClick={() => setCheckoutAberto(false)}
                 disabled={enviandoPedido}
-                className="p-2 hover:bg-[#39FF14]/20 rounded-lg transition-all duration-300 disabled:opacity-50"
+                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors"
+                aria-label="Fechar checkout"
               >
-                <X className="w-6 h-6 text-[#39FF14]" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={confirmarPedido} className="space-y-6">
-              <div className="space-y-4">
+            <form onSubmit={confirmarPedido} className="space-y-4">
+              <div className="space-y-3">
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">
-                    <User className="w-4 h-4 text-[#39FF14]" />
-                    Seu Nome
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                    Seu Nome Completo *
                   </label>
-                  <input
-                    type="text"
-                    required
-                    value={nomeCliente}
-                    onChange={(e) => setNomeCliente(e.target.value)}
-                    className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
-                    placeholder="Ex: João Silva"
-                  />
+                  <div className="relative">
+                    <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Ex: João da Silva"
+                      value={nomeCliente}
+                      onChange={(e) => setNomeCliente(e.target.value)}
+                      className="w-full bg-[#131a29] border border-white/10 text-slate-100 text-sm pl-10 pr-4 py-3 rounded-xl focus:border-[#00F59B] focus:outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">
-                    <Phone className="w-4 h-4 text-[#39FF14]" />
-                    WhatsApp (com DDD)
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                    WhatsApp com DDD *
                   </label>
-                  <input
-                    type="tel"
-                    required
-                    value={telefoneCliente}
-                    onChange={(e) => setTelefoneCliente(e.target.value)}
-                    className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
-                    placeholder="Ex: 81 99999-9999"
-                  />
+                  <div className="relative">
+                    <Phone className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="tel"
+                      required
+                      placeholder="Ex: (81) 99999-9999"
+                      value={telefoneCliente}
+                      onChange={(e) => setTelefoneCliente(e.target.value)}
+                      className="w-full bg-[#131a29] border border-white/10 text-slate-100 text-sm pl-10 pr-4 py-3 rounded-xl focus:border-[#00F59B] focus:outline-none"
+                    />
+                  </div>
                 </div>
 
                 <div>
-                  <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">
-                    <Zap className="w-4 h-4 text-[#39FF14]" />
-                    Indicação (Opcional)
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                    Como nos conheceu? (Opcional)
                   </label>
-                  <input
-                    type="text"
-                    value={indicacao}
-                    onChange={(e) => setIndicacao(e.target.value)}
-                    className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
-                    placeholder="Ex: Breno, Instagram, etc."
-                  />
+                  <div className="relative">
+                    <Zap className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                    <input
+                      type="text"
+                      placeholder="Ex: Instagram, Indicação do Amigo, etc."
+                      value={indicacao}
+                      onChange={(e) => setIndicacao(e.target.value)}
+                      className="w-full bg-[#131a29] border border-white/10 text-slate-100 text-sm pl-10 pr-4 py-3 rounded-xl focus:border-[#00F59B] focus:outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="p-4 bg-black/40 rounded-lg border border-[#39FF14]/20 space-y-2">
-                <div className="flex justify-between text-sm">
-                  <span className="text-[#808080] font-['Roboto_Mono']">Total do Pedido:</span>
-                  <span className="text-[#39FF14] font-bold font-['Roboto_Mono']">R$ {total.toFixed(2)}</span>
-                </div>
+              {/* Summary box */}
+              <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/10 flex items-center justify-between">
+                <span className="text-xs text-slate-400">Total a pagar:</span>
+                <span className="text-xl font-extrabold text-[#00F59B] font-['Outfit']">
+                  R$ {total.toFixed(2)}
+                </span>
               </div>
 
               <button
                 type="submit"
                 disabled={enviandoPedido}
-                className="w-full py-4 bg-[#39FF14] text-black rounded-lg font-['Orbitron'] font-bold text-lg hover:shadow-[0_0_25px_rgba(57,255,20,0.6)] transition-all duration-300 flex items-center justify-center gap-3 disabled:opacity-50"
+                className="w-full py-4 btn-emerald rounded-2xl text-base shadow-xl flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {enviandoPedido ? (
                   <>
-                    <Loader2 className="w-6 h-6 animate-spin" />
-                    ENVIANDO...
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Processando Pedido...</span>
                   </>
                 ) : (
                   <>
-                    <Phone className="w-6 h-6" />
-                    CONFIRMAR E IR PARA WHATSAPP
+                    <Phone className="w-5 h-5" />
+                    <span>Enviar Pedido pelo WhatsApp</span>
                   </>
                 )}
               </button>
@@ -871,6 +1040,79 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* Pedido Concluído Fallback Modal */}
+      {pedidoConcluido && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+          <div className="w-full max-w-md bg-[#0e1320] border border-[#00F59B]/40 rounded-3xl p-6 sm:p-8 text-center space-y-5 shadow-2xl">
+            <div className="w-16 h-16 rounded-full bg-[#00F59B]/20 text-[#00F59B] flex items-center justify-center mx-auto border border-[#00F59B]/40">
+              <CheckCircle2 className="w-8 h-8" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-slate-100 font-['Outfit']">Pedido #{pedidoConcluido.numero} Gerado!</h3>
+              <p className="text-xs text-slate-400 mt-1">Total: R$ {pedidoConcluido.total.toFixed(2)}</p>
+            </div>
+            <p className="text-xs text-slate-300">
+              Se o WhatsApp não abriu automaticamente, clique no botão abaixo para enviar os detalhes da sua compra:
+            </p>
+            <a
+              href={pedidoConcluido.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full py-3.5 btn-emerald rounded-2xl text-sm font-bold flex items-center justify-center gap-2"
+            >
+              <Phone className="w-4 h-4" />
+              <span>Abrir WhatsApp Agora</span>
+            </a>
+            <button
+              onClick={() => setPedidoConcluido(null)}
+              className="text-xs text-slate-400 hover:text-slate-200 underline block mx-auto"
+            >
+              Fechar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modern Luxury Footer */}
+      <footer className="mt-16 border-t border-white/10 bg-[#06080e] py-10">
+        <div className="container flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
+          <div className="space-y-1">
+            <div className="flex items-center justify-center md:justify-start gap-2">
+              <span className="font-extrabold text-slate-100 font-['Outfit'] text-base tracking-tight">HC VAPE</span>
+              <span className="text-[11px] text-slate-500 font-semibold">• Desde 2020</span>
+            </div>
+            <p className="text-xs text-slate-400">
+              Qualidade, atendimento ágil e os melhores pods do mercado.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-6 text-xs text-slate-400">
+            <a href="/como-funciona" className="hover:text-[#00F59B] transition-colors">Como Funciona</a>
+            <a href="/promocional-info" className="hover:text-[#00F59B] transition-colors">Regras Promoção</a>
+            <a href="/admin" className="hover:text-[#00F59B] transition-colors">Acesso Restrito</a>
+          </div>
+
+          <div className="flex items-center gap-4 text-slate-500">
+            <a
+              href="https://github.com/albertoramos98"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 hover:text-[#00F59B] transition-all"
+              title="GitHub Alberto Ramos"
+            >
+              <Github className="w-4 h-4" />
+            </a>
+            <a
+              href="mailto:alpemc.dev@gmail.com"
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 hover:text-[#00F59B] transition-all"
+              title="Contato Desenvolvedor"
+            >
+              <Mail className="w-4 h-4" />
+            </a>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
