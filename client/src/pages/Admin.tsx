@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles } from 'lucide-react';
-import { authService, produtosService, pedidosService, imagemService, visitasService, Produto, Pedido, utils, configService, PromoSchedule, HeroBannerConfig, HeroSlideConfig, DEFAULT_HERO_BANNER_CONFIG } from '@/lib/supabase';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles, MapPin, Compass } from 'lucide-react';
+import { authService, produtosService, pedidosService, imagemService, visitasService, Produto, Pedido, utils, configService, PromoSchedule, HeroBannerConfig, HeroSlideConfig, DEFAULT_HERO_BANNER_CONFIG, ZonaId, ZONAS_DISPONIVEIS } from '@/lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Legend } from 'recharts';
 import { HeroBanner } from '@/components/HeroBanner';
 
@@ -20,6 +20,7 @@ interface FormProduto {
   preco: string;
   estoque: string;
   sabores: string;
+  zonas: string[];
   is_promo: boolean;
   preco_promo: string;
 }
@@ -42,6 +43,8 @@ export default function Admin() {
   const [statusPedidoFiltro, setStatusPedidoFiltro] = useState<'todos' | 'concluidos'>('todos');
   const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos' | 'metricas' | 'saude' | 'configuracoes' | 'herobanner'>('produtos');
   const [pesquisa, setPesquisa] = useState('');
+  const [filtroZonaProduto, setFiltroZonaProduto] = useState<string>('todas');
+  const [filtroZonaPedido, setFiltroZonaPedido] = useState<string>('todas');
 
   // Estados para configuração do horário promocional
   const [promoConfig, setPromoConfig] = useState<PromoSchedule>({
@@ -56,17 +59,31 @@ export default function Admin() {
   const [heroConfig, setHeroConfig] = useState<HeroBannerConfig>(DEFAULT_HERO_BANNER_CONFIG);
   const [salvandoHero, setSalvandoHero] = useState(false);
 
-  // Filtrar produtos por termo de pesquisa
+  // Filtrar produtos por termo de pesquisa e por zona
   const produtosFiltrados = useMemo(() => {
-    if (!pesquisa.trim()) return produtos;
-    const termo = utils.normalizarTexto(pesquisa);
-    return produtos.filter(p => {
-      const nomeMatch = utils.normalizarTexto(p.nome).includes(termo);
-      const marcaMatch = utils.normalizarTexto(p.marca).includes(termo);
-      const saborMatch = p.sabores.some(s => utils.normalizarTexto(s).includes(termo));
-      return nomeMatch || marcaMatch || saborMatch;
-    });
-  }, [produtos, pesquisa]);
+    let lista = produtos;
+    if (pesquisa.trim()) {
+      const termo = utils.normalizarTexto(pesquisa);
+      lista = lista.filter(p => {
+        const nomeMatch = utils.normalizarTexto(p.nome).includes(termo);
+        const marcaMatch = utils.normalizarTexto(p.marca).includes(termo);
+        const saborMatch = p.sabores.some(s => utils.normalizarTexto(s).includes(termo));
+        return nomeMatch || marcaMatch || saborMatch;
+      });
+    }
+    if (filtroZonaProduto !== 'todas') {
+      lista = lista.filter(p => {
+        if (p.zonas && p.zonas.length > 0) {
+          return p.zonas.some(z => utils.normalizarTexto(z) === filtroZonaProduto || utils.normalizarTexto(z).includes(filtroZonaProduto));
+        }
+        if (p.estoque_zonas && p.estoque_zonas[filtroZonaProduto as ZonaId]) {
+          return (p.estoque_zonas[filtroZonaProduto as ZonaId]?.estoque ?? 0) > 0;
+        }
+        return true;
+      });
+    }
+    return lista;
+  }, [produtos, pesquisa, filtroZonaProduto]);
 
   // Lógica de processamento de métricas ricas com preenchimento de gaps
   const { diasArray, dataAgrupada, resumoMetricas, topProdutosEmarcas } = useMemo(() => {
@@ -317,18 +334,22 @@ export default function Admin() {
   // Estados para financeiro (desconto)
   const [editandoFinanceiro, setEditandoFinanceiro] = useState<{ id: string; desconto: string } | null>(null);
 
-  // Memo para pedidos filtrados por data
+  // Memo para pedidos filtrados por data e por zona
   const pedidosFiltrados = useMemo(() => {
-    const lista = subAbaPedidos === 'ativos' ? pedidos : pedidosExcluidos;
-    if (!filtroData) return lista;
-    
-    return lista.filter(p => {
-      if (!p.created_at) return false;
-      // Compara apenas a parte da data (YYYY-MM-DD) usando o horário local
-      const dataPedido = new Date(p.created_at).toLocaleDateString('en-CA');
-      return dataPedido === filtroData;
-    });
-  }, [pedidos, pedidosExcluidos, subAbaPedidos, filtroData]);
+    let lista = subAbaPedidos === 'ativos' ? pedidos : pedidosExcluidos;
+    if (filtroData) {
+      lista = lista.filter(p => {
+        if (!p.created_at) return false;
+        // Compara apenas a parte da data (YYYY-MM-DD) usando o horário local
+        const dataPedido = new Date(p.created_at).toLocaleDateString('en-CA');
+        return dataPedido === filtroData;
+      });
+    }
+    if (filtroZonaPedido !== 'todas') {
+      lista = lista.filter(p => (p.zona || '').toLowerCase().includes(filtroZonaPedido.toLowerCase()));
+    }
+    return lista;
+  }, [pedidos, pedidosExcluidos, subAbaPedidos, filtroData, filtroZonaPedido]);
 
   // Estados para modal de criar/editar
   const [modalAberto, setModalAberto] = useState(false);
@@ -340,6 +361,7 @@ export default function Admin() {
     preco: '',
     estoque: '',
     sabores: '',
+    zonas: ['norte', 'sul', 'oeste'],
     is_promo: false,
     preco_promo: '',
   });
@@ -488,6 +510,7 @@ export default function Admin() {
       preco: '',
       estoque: '',
       sabores: '',
+      zonas: ['norte', 'sul', 'oeste'],
       is_promo: false,
       preco_promo: '',
     });
@@ -509,6 +532,7 @@ export default function Admin() {
       preco: produto.preco.toString(),
       estoque: produto.estoque.toString(),
       sabores: produto.sabores.join(', '),
+      zonas: produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul', 'oeste'],
       is_promo: produto.is_promo || false,
       preco_promo: produto.preco_promo?.toString() || '',
     });
@@ -545,6 +569,7 @@ export default function Admin() {
       preco: '',
       estoque: '',
       sabores: '',
+      zonas: ['norte', 'sul', 'oeste'],
       is_promo: false,
       preco_promo: '',
     });
@@ -646,6 +671,10 @@ export default function Admin() {
       }
     }
 
+    const zonasSelecionadas = formProduto.zonas && formProduto.zonas.length > 0
+      ? formProduto.zonas
+      : ['norte', 'sul', 'oeste'];
+
     try {
       setSalvando(true);
 
@@ -676,6 +705,7 @@ export default function Admin() {
           estoque,
           sabores,
           sabores_estoque: saboresEstoqueObj,
+          zonas: zonasSelecionadas,
           is_promo: formProduto.is_promo,
           preco_promo: precoPromo || null,
         };
@@ -685,7 +715,7 @@ export default function Admin() {
         }
 
         await produtosService.editar(editandoId, updates);
-        setSucesso('Produto updated com sucesso!');
+        setSucesso('Produto atualizado com sucesso!');
       } else {
         // --- CRIAR ---
         const novoProduto = await produtosService.criar({
@@ -695,6 +725,7 @@ export default function Admin() {
           estoque,
           sabores,
           sabores_estoque: saboresEstoqueObj,
+          zonas: zonasSelecionadas,
           is_promo: formProduto.is_promo,
           preco_promo: precoPromo || undefined,
           imagem_url: null,
@@ -1361,29 +1392,45 @@ export default function Admin() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {/* Barra de Pesquisa */}
-                  <div className="relative max-w-md">
-                    <input
-                      type="text"
-                      placeholder="Pesquisar produto..."
-                      value={pesquisa}
-                      onChange={(e) => setPesquisa(e.target.value)}
-                      className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] pl-10 pr-10 py-2.5 rounded-lg focus:border-[#39FF14] focus:shadow-[0_0_15px_rgba(57,255,20,0.3)] focus:outline-none transition-all duration-300 font-['Roboto_Mono'] text-sm"
-                    />
-                    <Search className="w-4 h-4 text-[#808080] absolute left-3 top-[13px]" />
-                    {pesquisa && (
-                      <button
-                        onClick={() => setPesquisa('')}
-                        className="absolute right-3 top-[11px] text-[#808080] hover:text-[#39FF14] transition-colors"
+                  {/* Barra de Pesquisa e Filtro de Zonas */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div className="relative flex-1 max-w-md">
+                      <input
+                        type="text"
+                        placeholder="Pesquisar produto, marca ou sabor..."
+                        value={pesquisa}
+                        onChange={(e) => setPesquisa(e.target.value)}
+                        className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] pl-10 pr-10 py-2.5 rounded-lg focus:border-[#39FF14] focus:shadow-[0_0_15px_rgba(57,255,20,0.3)] focus:outline-none transition-all duration-300 font-['Roboto_Mono'] text-sm"
+                      />
+                      <Search className="w-4 h-4 text-[#808080] absolute left-3 top-[13px]" />
+                      {pesquisa && (
+                        <button
+                          onClick={() => setPesquisa('')}
+                          className="absolute right-3 top-[11px] text-[#808080] hover:text-[#39FF14] transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-lg border border-[#39FF14]/30">
+                      <MapPin className="w-4 h-4 text-[#39FF14] ml-1" />
+                      <select
+                        value={filtroZonaProduto}
+                        onChange={(e) => setFiltroZonaProduto(e.target.value)}
+                        className="bg-black/80 text-[#E0E0E0] text-xs font-['Orbitron'] font-bold rounded px-2.5 py-1.5 outline-none border border-transparent focus:border-[#39FF14]"
                       >
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
+                        <option value="todas">Todas as Regiões</option>
+                        <option value="norte">Zona Norte</option>
+                        <option value="sul">Zona Sul</option>
+                        <option value="oeste">Zona Oeste</option>
+                      </select>
+                    </div>
                   </div>
 
                   {produtosFiltrados.length === 0 ? (
                     <div className="glass-morphism p-12 rounded-xl text-center border border-[#39FF14]/20 bg-black/40">
-                      <p className="text-[#808080] font-['Roboto_Mono']">Nenhum produto encontrado com a pesquisa "{pesquisa}"</p>
+                      <p className="text-[#808080] font-['Roboto_Mono']">Nenhum produto encontrado com os filtros aplicados</p>
                     </div>
                   ) : (
                     <div className="glass-morphism rounded-xl overflow-hidden overflow-x-auto">
@@ -1392,7 +1439,7 @@ export default function Admin() {
                           <tr className="border-b border-[#39FF14]/30 text-left text-xs font-bold text-[#39FF14] font-['Orbitron'] uppercase">
                             <th className="py-3 px-4">Img</th>
                             <th className="py-3 px-4">Marca</th>
-                            <th className="py-3 px-4">Nome</th>
+                            <th className="py-3 px-4">Nome / Zonas</th>
                             <th className="py-3 px-4">Preço</th>
                             <th className="py-3 px-4">Estoque</th>
                             <th className="py-3 px-4">Novo Est.</th>
@@ -1406,7 +1453,25 @@ export default function Admin() {
                                 {produto.imagem_url ? <img src={produto.imagem_url} alt={produto.nome} className="w-10 h-10 object-cover rounded border border-[#39FF14]/30" /> : <ImageOff className="w-6 h-6 text-[#606060]" />}
                               </td>
                               <td className="py-3 px-4 text-[#C0C0C0] font-['Roboto_Mono']">{produto.marca}</td>
-                              <td className="py-3 px-4 text-[#E0E0E0] font-['Roboto_Mono']">{produto.nome} {produto.is_promo && <Zap className="inline w-3 h-3 text-red-400" />}</td>
+                              <td className="py-3 px-4 text-[#E0E0E0] font-['Roboto_Mono']">
+                                <div className="font-bold flex items-center gap-1.5">
+                                  <span>{produto.nome}</span>
+                                  {produto.is_promo && <Zap className="inline w-3 h-3 text-red-400" />}
+                                </div>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {(produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul', 'oeste']).map(z => {
+                                    const isNorte = z.toLowerCase().includes('norte');
+                                    const isSul = z.toLowerCase().includes('sul');
+                                    const label = isNorte ? 'Norte' : isSul ? 'Sul' : 'Oeste';
+                                    const colorClass = isNorte ? 'bg-[#00F59B]/15 text-[#00F59B] border-[#00F59B]/40' : isSul ? 'bg-sky-500/15 text-sky-400 border-sky-500/40' : 'bg-purple-500/15 text-purple-400 border-purple-500/40';
+                                    return (
+                                      <span key={z} className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${colorClass}`}>
+                                        {label}
+                                      </span>
+                                    );
+                                  })}
+                                </div>
+                              </td>
                               <td className="py-3 px-4 text-[#39FF14] font-bold">R$ {produto.preco.toFixed(2)}</td>
                               <td className="py-3 px-4">
                                 {produto.sabores_estoque && Object.keys(produto.sabores_estoque).length > 0 ? (
@@ -1516,6 +1581,20 @@ export default function Admin() {
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
+                <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-lg border border-[#39FF14]/30">
+                  <MapPin className="w-4 h-4 text-[#39FF14] ml-1" />
+                  <select
+                    value={filtroZonaPedido}
+                    onChange={(e) => setFiltroZonaPedido(e.target.value)}
+                    className="bg-black/80 text-[#E0E0E0] text-xs font-['Orbitron'] font-bold rounded px-2.5 py-1.5 outline-none border border-transparent focus:border-[#39FF14]"
+                  >
+                    <option value="todas">Todas as Regiões</option>
+                    <option value="norte">Zona Norte</option>
+                    <option value="sul">Zona Sul</option>
+                    <option value="oeste">Zona Oeste</option>
+                  </select>
+                </div>
+
                 <div className="relative flex items-center">
                   <div className="absolute left-3 text-[#39FF14]/60">
                     <Calendar className="w-4 h-4" />
@@ -1568,6 +1647,11 @@ export default function Admin() {
                             ) : (
                               <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded text-[10px] font-bold">PENDENTE</span>
                             )}
+                            {pedido.zona && (
+                              <span className="px-2 py-0.5 bg-[#00F59B]/20 text-[#00F59B] border border-[#00F59B]/40 rounded text-[10px] font-bold flex items-center gap-1">
+                                <MapPin className="w-2.5 h-2.5" /> {pedido.zona}
+                              </span>
+                            )}
                             {subAbaPedidos === 'excluidos' && (
                               <span className="px-2 py-0.5 bg-red-500/20 text-red-400 rounded text-[10px] font-bold flex items-center gap-1">
                                 <Trash2 className="w-2 h-2" /> EXCLUÍDO
@@ -1615,9 +1699,15 @@ export default function Admin() {
                           <div><h4 className="text-[10px] text-[#808080] uppercase">Cliente</h4><p className="text-[#E0E0E0]">{pedido.nome_cliente}</p></div>
                           <div className="text-right"><h4 className="text-[10px] text-[#808080] uppercase">WhatsApp</h4><p className={subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#39FF14]'}>{pedido.telefone_cliente}</p></div>
                         </div>
-                        <div className="px-2">
-                          <h4 className="text-[10px] text-[#808080] uppercase">Indicação</h4>
-                          <p className="text-blue-400 font-bold">{pedido.indicacao || 'Nenhuma'}</p>
+                        <div className="flex justify-between px-2">
+                          <div>
+                            <h4 className="text-[10px] text-[#808080] uppercase">Região</h4>
+                            <p className="text-[#39FF14] font-bold">{pedido.zona || 'Não informada'}</p>
+                          </div>
+                          <div className="text-right">
+                            <h4 className="text-[10px] text-[#808080] uppercase">Indicação</h4>
+                            <p className="text-blue-400 font-bold">{pedido.indicacao || 'Nenhuma'}</p>
+                          </div>
                         </div>
                       </div>
 
@@ -2747,6 +2837,60 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                   <span>Estoque Total: {formSaboresEstoque.reduce((sum, item) => sum + (item.sabor.trim() !== '' ? item.estoque : 0), 0)}</span>
                 </div>
               </div>
+
+              {/* Seletor de Regiões / Zonas */}
+              <div className="border border-[#39FF14]/30 rounded-xl p-4 bg-black/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">
+                    <MapPin className="w-4 h-4 text-[#39FF14]" /> Regiões / Zonas de Atendimento
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (formProduto.zonas.length === 3) {
+                        setFormProduto({ ...formProduto, zonas: [] });
+                      } else {
+                        setFormProduto({ ...formProduto, zonas: ['norte', 'sul', 'oeste'] });
+                      }
+                    }}
+                    className="text-[10px] text-[#39FF14] hover:underline font-bold font-['Roboto_Mono']"
+                  >
+                    {formProduto.zonas.length === 3 ? 'Desmarcar todas' : 'Marcar todas'}
+                  </button>
+                </div>
+                <p className="text-[11px] text-[#808080]">
+                  Selecione em quais regiões este vape aparecerá disponível no catálogo:
+                </p>
+                <div className="grid grid-cols-3 gap-2 pt-1">
+                  {ZONAS_DISPONIVEIS.map(z => {
+                    const active = formProduto.zonas.some(item => utils.normalizarTexto(item) === z.id || utils.normalizarTexto(item).includes(z.id));
+                    return (
+                      <button
+                        key={z.id}
+                        type="button"
+                        onClick={() => {
+                          let novasZonas = [...formProduto.zonas];
+                          if (active) {
+                            novasZonas = novasZonas.filter(item => utils.normalizarTexto(item) !== z.id && !utils.normalizarTexto(item).includes(z.id));
+                          } else {
+                            novasZonas.push(z.id);
+                          }
+                          setFormProduto({ ...formProduto, zonas: novasZonas });
+                        }}
+                        className={`py-2 px-2.5 rounded-lg text-xs font-bold font-['Orbitron'] border transition-all flex items-center justify-center gap-1.5 ${
+                          active
+                            ? 'bg-[#39FF14]/20 border-[#39FF14] text-[#39FF14] shadow-[0_0_10px_rgba(57,255,20,0.2)]'
+                            : 'bg-black/50 border-white/10 text-slate-400 hover:border-white/30'
+                        }`}
+                      >
+                        <span>{active ? '✓' : '+'}</span>
+                        <span>{z.nome}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               <div className="flex items-center gap-2">
                 <input type="checkbox" checked={formProduto.is_promo} onChange={(e) => setFormProduto({ ...formProduto, is_promo: e.target.checked })} className="accent-[#39FF14]" />
                 <label className="text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Promoção?</label>

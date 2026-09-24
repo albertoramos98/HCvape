@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
-import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff, Phone, User, CheckCircle2, Loader2, Github, Mail, Search, Flame, ArrowRight, Shield, Sparkles, Check, ChevronRight } from 'lucide-react';
-import { produtosService, pedidosService, Produto, utils, PedidoItem, configService, PromoSchedule, HeroBannerConfig } from '@/lib/supabase';
+import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff, Phone, User, CheckCircle2, Loader2, Github, Mail, Search, Flame, ArrowRight, Shield, Sparkles, Check, ChevronRight, MapPin, Compass } from 'lucide-react';
+import { produtosService, pedidosService, Produto, utils, PedidoItem, configService, PromoSchedule, HeroBannerConfig, ZonaId, ZONAS_DISPONIVEIS } from '@/lib/supabase';
 import { useLocation } from "wouter";
 import { HeroBanner } from '@/components/HeroBanner';
 
@@ -62,7 +62,16 @@ export default function Home() {
   const [saborSelecionado, setSaborSelecionado] = useState<Record<string, string>>({});
   const [horarioPromoAtivo, setHorarioPromoAtivo] = useState(true);
   const [abaAtiva, setAbaAtiva] = useState<'expressos' | 'promocionais'>('expressos');
+  
+  // Estado de Pop-up de Aviso e Modal de Seleção de Zona
   const [popupAviso, setPopupAviso] = useState(true);
+  const [zonaSelecionada, setZonaSelecionada] = useState<ZonaId | null>(() => {
+    const salva = localStorage.getItem('hcvape_zona_selecionada');
+    if (salva === 'norte' || salva === 'sul' || salva === 'oeste') return salva as ZonaId;
+    return null;
+  });
+  const [modalZonaAberto, setModalZonaAberto] = useState(false);
+
   const [feedbackAdicionado, setFeedbackAdicionado] = useState<string | null>(null);
   const [promoConfig, setPromoConfig] = useState<PromoSchedule>({
     dias_semana: [1, 2, 3],
@@ -78,9 +87,21 @@ export default function Home() {
   const [enviandoPedido, setEnviandoPedido] = useState(false);
   const [pedidoConcluido, setPedidoConcluido] = useState<{ numero: number; total: number; link: string } | null>(null);
 
-  // Fechar pop-up de aviso
+  // Fechar pop-up de aviso e engatilhar escolha de zona se ainda não definida
   const fecharPopupAviso = () => {
     setPopupAviso(false);
+    if (!zonaSelecionada) {
+      setModalZonaAberto(true);
+    }
+  };
+
+  // Selecionar zona e persistir
+  const handleSelecionarZona = (zona: ZonaId) => {
+    setZonaSelecionada(zona);
+    localStorage.setItem('hcvape_zona_selecionada', zona);
+    setModalZonaAberto(false);
+    // Limpar sabores selecionados para evitar inconsistência com novo estoque da zona
+    setSaborSelecionado({});
   };
 
   // Carregar dados
@@ -127,15 +148,23 @@ export default function Home() {
     return () => clearInterval(intervalo);
   }, []);
 
-  // Produtos Expressos (não promocionais)
+  // Produtos Expressos (não promocionais) disponíveis na zona selecionada
   const produtosExpressos = useMemo(() => {
-    return produtos.filter(p => !p.is_promo && p.estoque > 0);
-  }, [produtos]);
+    return produtos.filter(p => {
+      if (p.is_promo) return false;
+      const info = utils.obterEstoqueProdutoPorZona(p, zonaSelecionada);
+      return info.possuiEstoqueNaZona;
+    });
+  }, [produtos, zonaSelecionada]);
 
-  // Produtos Promocionais
+  // Produtos Promocionais disponíveis na zona selecionada
   const produtosPromo = useMemo(() => {
-    return produtos.filter(p => p.is_promo && p.estoque > 0);
-  }, [produtos]);
+    return produtos.filter(p => {
+      if (!p.is_promo) return false;
+      const info = utils.obterEstoqueProdutoPorZona(p, zonaSelecionada);
+      return info.possuiEstoqueNaZona;
+    });
+  }, [produtos, zonaSelecionada]);
 
   // Filtrar produtos Expressos por marca e pesquisa
   const produtosFiltrados = useMemo(() => {
@@ -195,10 +224,11 @@ export default function Home() {
       return;
     }
 
-    const saborEstoque = produto.sabores_estoque ? (produto.sabores_estoque[sabor] ?? 0) : produto.estoque;
+    const estoqueInfo = utils.obterEstoqueProdutoPorZona(produto, zonaSelecionada);
+    const saborEstoque = estoqueInfo.saboresEstoque[sabor] ?? (Object.keys(estoqueInfo.saboresEstoque).length > 0 ? 0 : estoqueInfo.estoque);
 
     if (saborEstoque <= 0) {
-      alert('Este sabor está esgotado no momento.');
+      alert('Este sabor está esgotado nesta região.');
       return;
     }
 
@@ -213,7 +243,7 @@ export default function Home() {
 
     const quantNoCarrinho = itemExistente ? itemExistente.quantidade : 0;
     if (quantNoCarrinho + 1 > saborEstoque) {
-      alert(`Desculpe, só temos ${saborEstoque} unidades deste sabor em estoque.`);
+      alert(`Desculpe, só temos ${saborEstoque} unidades deste sabor em estoque para a sua região.`);
       return;
     }
 
@@ -261,9 +291,10 @@ export default function Home() {
 
     const produto = produtos.find(p => p.id === id);
     if (produto) {
-      const saborEstoque = produto.sabores_estoque ? (produto.sabores_estoque[sabor] ?? 0) : produto.estoque;
+      const estoqueInfo = utils.obterEstoqueProdutoPorZona(produto, zonaSelecionada);
+      const saborEstoque = estoqueInfo.saboresEstoque[sabor] ?? (Object.keys(estoqueInfo.saboresEstoque).length > 0 ? 0 : estoqueInfo.estoque);
       if (novaQuantidade > saborEstoque) {
-        alert(`Desculpe, só temos ${saborEstoque} unidades deste sabor.`);
+        alert(`Desculpe, só temos ${saborEstoque} unidades deste sabor nesta região.`);
         return;
       }
     }
@@ -286,6 +317,7 @@ export default function Home() {
   };
 
   // Confirmar e salvar pedido
+  // Confirmar e salvar pedido
   const confirmarPedido = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nomeCliente.trim() || !telefoneCliente.trim()) {
@@ -306,10 +338,15 @@ export default function Home() {
         is_promo: item.is_promo
       }));
 
+      const zonaNome = zonaSelecionada
+        ? (ZONAS_DISPONIVEIS.find(z => z.id === zonaSelecionada)?.nome || zonaSelecionada)
+        : 'Não informada';
+
       const novoPedido = await pedidosService.criar({
         nome_cliente: nomeCliente,
         telefone_cliente: telefoneCliente,
         indicacao: indicacao,
+        zona: zonaNome,
         itens: itensPedido,
         total: total,
         desconto: 0,
@@ -318,7 +355,7 @@ export default function Home() {
         notas: ''
       });
 
-      // Gerar link WhatsApp estilizado
+      // Gerar link WhatsApp estilizado com a Zona
       const mensagemItens = carrinho
         .map(item => {
           const preco = item.is_promo && item.preco_promo ? item.preco_promo : item.preco;
@@ -326,7 +363,7 @@ export default function Home() {
         })
         .join('\n');
 
-      const textoFinal = `Olá! Acabei de fazer um pedido pelo catálogo HC Vape: 🛒✨\n\n🆔 *Pedido:* #${novoPedido.numero_pedido}\n👤 *Cliente:* ${nomeCliente}\n📞 *WhatsApp:* ${telefoneCliente}\n${indicacao ? `💡 *Indicação:* ${indicacao}\n` : ''}\n---\n📦 *ITENS:* \n${mensagemItens}\n\n---\n💰 *TOTAL:* R$ ${novoPedido.total_final.toFixed(2)}\n\nAguardando instruções de pagamento e entrega! 🚀`;
+      const textoFinal = `Olá! Acabei de fazer um pedido pelo catálogo HC Vape: 🛒✨\n\n🆔 *Pedido:* #${novoPedido.numero_pedido}\n👤 *Cliente:* ${nomeCliente}\n📞 *WhatsApp:* ${telefoneCliente}\n📍 *Região / Zona:* ${zonaNome}\n${indicacao ? `💡 *Indicação:* ${indicacao}\n` : ''}\n---\n📦 *ITENS:* \n${mensagemItens}\n\n---\n💰 *TOTAL:* R$ ${novoPedido.total_final.toFixed(2)}\n\nAguardando instruções de pagamento e entrega! 🚀`;
       const whatsappUrl = `https://wa.me/5581997390944?text=${encodeURIComponent(textoFinal)}`;
       
       setPedidoConcluido({ 
@@ -366,11 +403,13 @@ export default function Home() {
     );
   }
 
+  const zonaAtualInfo = ZONAS_DISPONIVEIS.find(z => z.id === zonaSelecionada);
+
   return (
     <div className="min-h-screen dark-atmosphere selection:bg-[#00F59B] selection:text-[#04140b]">
-      {/* Pop-up de Aviso Informativo */}
+      {/* 1. Pop-up de Aviso Informativo Inicial */}
       {popupAviso && (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
           <div className="w-full max-w-lg bg-[#0e1320] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
@@ -415,9 +454,85 @@ export default function Home() {
               onClick={fecharPopupAviso}
               className="w-full py-3.5 btn-emerald rounded-2xl text-base shadow-xl flex items-center justify-center gap-2"
             >
-              <span>Entendido, Explorar Catálogo</span>
+              <span>Entendido, Escolher Minha Região</span>
               <ArrowRight className="w-4 h-4" />
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 2. Pop-up / Modal de Seleção de Zona / Região */}
+      {modalZonaAberto && (
+        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-xl bg-[#0e1320] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-3 bg-[#00F59B]/15 border border-[#00F59B]/30 rounded-2xl text-[#00F59B]">
+                  <MapPin className="w-7 h-7" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-slate-100 font-['Outfit']">Escolha sua Região</h3>
+                  <p className="text-xs text-slate-400">Filtre os pods com pronta entrega para o seu bairro</p>
+                </div>
+              </div>
+              {zonaSelecionada && (
+                <button
+                  onClick={() => setModalZonaAberto(false)}
+                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+                  aria-label="Fechar seleção de zona"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              )}
+            </div>
+
+            <p className="text-sm text-slate-300">
+              Selecione a sua zona para visualizarmos o estoque em tempo real e garantirmos agilidade na sua entrega:
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+              {ZONAS_DISPONIVEIS.map((zona) => {
+                const isSelected = zonaSelecionada === zona.id;
+                return (
+                  <button
+                    key={zona.id}
+                    onClick={() => handleSelecionarZona(zona.id)}
+                    className={`relative p-5 rounded-2xl border text-left transition-all duration-300 flex flex-col justify-between gap-3 group ${
+                      isSelected
+                        ? 'bg-[#00F59B]/15 border-[#00F59B] shadow-[0_0_20px_rgba(0,245,155,0.2)]'
+                        : 'bg-white/[0.03] border-white/10 hover:border-white/25 hover:bg-white/[0.06]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className={`p-2.5 rounded-xl ${isSelected ? 'bg-[#00F59B] text-[#04140b]' : 'bg-white/5 text-slate-300 group-hover:text-white'}`}>
+                        <Compass className="w-5 h-5" />
+                      </div>
+                      {isSelected && (
+                        <span className="w-2 h-2 rounded-full bg-[#00F59B] animate-pulse" />
+                      )}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-100 font-['Outfit'] text-base group-hover:text-[#00F59B] transition-colors">
+                        {zona.nome}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">
+                        {zona.descricao}
+                      </p>
+                    </div>
+                    <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] font-bold">
+                      <span className={isSelected ? 'text-[#00F59B]' : 'text-slate-400'}>
+                        {isSelected ? 'Região Ativa' : 'Selecionar'}
+                      </span>
+                      <ChevronRight className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-1 ${isSelected ? 'text-[#00F59B]' : 'text-slate-500'}`} />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex items-center justify-between text-xs text-slate-400 pt-2 border-t border-white/5">
+              <span>💡 Você pode alterar sua zona a qualquer momento no topo do site.</span>
+            </div>
           </div>
         </div>
       )}
@@ -449,10 +564,21 @@ export default function Home() {
           </div>
 
           {/* Quick Actions & Cart */}
-          <div className="flex items-center gap-2.5 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Botão Seletor de Região / Zona */}
+            <button
+              onClick={() => setModalZonaAberto(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#00F59B]/40 transition-all duration-200"
+              title="Trocar região de entrega"
+            >
+              <MapPin className="w-3.5 h-3.5 text-[#00F59B]" />
+              <span>{zonaAtualInfo ? zonaAtualInfo.nome : 'Escolher Zona'}</span>
+              <span className="text-[10px] text-slate-400">▾</span>
+            </button>
+
             <a
               href="/como-funciona"
-              className="hidden sm:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200"
+              className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200"
             >
               <span>Como Funciona</span>
             </a>
@@ -677,7 +803,7 @@ export default function Home() {
               {(abaAtiva === 'expressos' ? produtosFiltrados : produtosPromoFiltrados).map((produto) => {
                 const isPromo = produto.is_promo;
                 const selecionado = saborSelecionado[produto.id] || '';
-                const saborEstoque = selecionado && produto.sabores_estoque ? (produto.sabores_estoque[selecionado] ?? 0) : produto.estoque;
+                const estoqueInfo = utils.obterEstoqueProdutoPorZona(produto, zonaSelecionada);
                 const feedbackOk = feedbackAdicionado === produto.id;
 
                 return (
@@ -702,10 +828,10 @@ export default function Home() {
                         )}
                       </div>
 
-                      {produto.estoque <= 0 && (
+                      {!estoqueInfo.possuiEstoqueNaZona && (
                         <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-20 flex items-center justify-center">
                           <span className="bg-red-500/90 text-white font-bold text-xs uppercase px-4 py-1.5 rounded-full shadow-lg">
-                            Esgotado
+                            Esgotado nesta Zona
                           </span>
                         </div>
                       )}
@@ -768,7 +894,7 @@ export default function Home() {
                           >
                             <option value="">Selecione uma opção...</option>
                             {produto.sabores.map((sabor) => {
-                              const sEstoque = produto.sabores_estoque ? (produto.sabores_estoque[sabor] ?? 0) : produto.estoque;
+                              const sEstoque = estoqueInfo.saboresEstoque[sabor] ?? (Object.keys(estoqueInfo.saboresEstoque).length > 0 ? 0 : estoqueInfo.estoque);
                               const esgotado = sEstoque <= 0;
                               return (
                                 <option key={sabor} value={sabor} disabled={esgotado} className="bg-[#0e1320] text-slate-200">
@@ -781,11 +907,11 @@ export default function Home() {
 
                         <button
                           onClick={() => adicionarAoCarrinho(produto)}
-                          disabled={produto.estoque <= 0 || (isPromo && !horarioPromoAtivo)}
+                          disabled={!estoqueInfo.possuiEstoqueNaZona || (isPromo && !horarioPromoAtivo)}
                           className={`w-full py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all duration-200 shadow-md ${
                             feedbackOk
                               ? 'bg-emerald-500 text-white'
-                              : produto.estoque <= 0
+                              : !estoqueInfo.possuiEstoqueNaZona
                               ? 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/5'
                               : isPromo && !horarioPromoAtivo
                               ? 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/5'
@@ -798,8 +924,8 @@ export default function Home() {
                             <>
                               <Check className="w-4 h-4" /> Adicionado!
                             </>
-                          ) : produto.estoque <= 0 ? (
-                            'Produto Esgotado'
+                          ) : !estoqueInfo.possuiEstoqueNaZona ? (
+                            'Esgotado nesta Zona'
                           ) : isPromo && !horarioPromoAtivo ? (
                             'Horário Encerrado'
                           ) : (
@@ -1008,6 +1134,27 @@ export default function Home() {
                       className="w-full bg-[#131a29] border border-white/10 text-slate-100 text-sm pl-10 pr-4 py-3 rounded-xl focus:border-[#00F59B] focus:outline-none"
                     />
                   </div>
+                </div>
+
+                {/* Zona de Entrega Indicator */}
+                <div className="p-3.5 bg-[#00F59B]/10 border border-[#00F59B]/30 rounded-2xl flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs">
+                    <MapPin className="w-4 h-4 text-[#00F59B] flex-shrink-0" />
+                    <span className="text-slate-300">Região:</span>
+                    <span className="font-bold text-[#00F59B] font-['Outfit']">
+                      {zonaAtualInfo ? zonaAtualInfo.nome : 'Não selecionada'}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCheckoutAberto(false);
+                      setModalZonaAberto(true);
+                    }}
+                    className="text-[11px] text-[#00F59B] hover:underline font-bold"
+                  >
+                    Alterar Região
+                  </button>
                 </div>
               </div>
 

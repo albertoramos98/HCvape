@@ -12,6 +12,48 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Nome do bucket de imagens no Supabase Storage
 const BUCKET_IMAGENS = 'produto-imagens';
 
+// Tipos de Zonas
+export type ZonaId = 'norte' | 'sul' | 'oeste';
+
+export interface ZonaInfo {
+  id: ZonaId;
+  nome: string;
+  badge: string;
+  descricao: string;
+  cor: string;
+}
+
+export const ZONAS_DISPONIVEIS: ZonaInfo[] = [
+  { 
+    id: 'norte', 
+    nome: 'Zona Norte', 
+    badge: 'Atendimento Rápido', 
+    descricao: 'Disponibilidade e estoque para Zona Norte',
+    cor: '#00F59B' 
+  },
+  { 
+    id: 'sul', 
+    nome: 'Zona Sul', 
+    badge: 'Atendimento Rápido', 
+    descricao: 'Disponibilidade e estoque para Zona Sul',
+    cor: '#38bdf8' 
+  },
+  { 
+    id: 'oeste', 
+    nome: 'Zona Oeste', 
+    badge: 'Atendimento Rápido', 
+    descricao: 'Disponibilidade e estoque para Zona Oeste',
+    cor: '#a855f7' 
+  }
+];
+
+export interface EstoqueZona {
+  estoque: number;
+  sabores_estoque?: { [sabor: string]: number };
+}
+
+export type EstoqueZonasMap = Partial<Record<ZonaId, EstoqueZona>>;
+
 // Tipos para o banco de dados
 export interface Produto {
   id: string;
@@ -21,6 +63,8 @@ export interface Produto {
   estoque: number;
   sabores: string[];
   sabores_estoque?: { [sabor: string]: number } | null;
+  zonas?: string[] | null;
+  estoque_zonas?: EstoqueZonasMap | null;
   is_promo?: boolean;
   preco_promo?: number;
   imagem_url?: string | null;
@@ -43,6 +87,7 @@ export interface Pedido {
   numero_pedido: number;
   nome_cliente: string;
   telefone_cliente: string;
+  zona?: string;
   itens: PedidoItem[];
   total: number;
   desconto: number;
@@ -657,4 +702,90 @@ export const utils = {
     
     return dias.map(d => nomes[d]).join(', ');
   },
+
+  // Obter estoque e sabores disponíveis de um produto filtrado por zona
+  obterEstoqueProdutoPorZona(
+    produto: Produto,
+    zona: ZonaId | null
+  ): {
+    estoque: number;
+    saboresEstoque: { [sabor: string]: number };
+    saboresDisponiveis: string[];
+    possuiEstoqueNaZona: boolean;
+  } {
+    // Se o produto tiver lista de zonas cadastradas e a zona não estiver inclusa
+    if (zona && produto.zonas && Array.isArray(produto.zonas) && produto.zonas.length > 0) {
+      const atende = produto.zonas.some(z => {
+        const norm = utils.normalizarTexto(z);
+        return norm === zona || norm.includes(zona);
+      });
+      if (!atende) {
+        return {
+          estoque: 0,
+          saboresEstoque: {},
+          saboresDisponiveis: [],
+          possuiEstoqueNaZona: false
+        };
+      }
+    }
+
+    // Se nenhuma zona foi especificada, usar estoque geral
+    if (!zona) {
+      const saboresEstoque = produto.sabores_estoque || {};
+      const temControleSabores = Object.keys(saboresEstoque).length > 0;
+      const saboresDisponiveis = produto.sabores.filter(sabor => {
+        if (temControleSabores) {
+          return (saboresEstoque[sabor] ?? 0) > 0;
+        }
+        return produto.estoque > 0;
+      });
+
+      return {
+        estoque: produto.estoque,
+        saboresEstoque,
+        saboresDisponiveis,
+        possuiEstoqueNaZona: produto.estoque > 0
+      };
+    }
+
+    // Se o produto possui configuração de estoque_zonas
+    if (produto.estoque_zonas && produto.estoque_zonas[zona] !== undefined) {
+      const zonaData = produto.estoque_zonas[zona];
+      const estoqueZona = zonaData?.estoque ?? 0;
+      const saboresEstoque = zonaData?.sabores_estoque || {};
+      const temControleSabores = Object.keys(saboresEstoque).length > 0;
+
+      const saboresDisponiveis = produto.sabores.filter(sabor => {
+        if (temControleSabores) {
+          return (saboresEstoque[sabor] ?? 0) > 0;
+        }
+        return estoqueZona > 0;
+      });
+
+      return {
+        estoque: estoqueZona,
+        saboresEstoque,
+        saboresDisponiveis,
+        possuiEstoqueNaZona: estoqueZona > 0 && saboresDisponiveis.length > 0
+      };
+    }
+
+    // Fallback para produtos legados sem estoque_zonas configurado ainda
+    const saboresEstoque = produto.sabores_estoque || {};
+    const temControleSabores = Object.keys(saboresEstoque).length > 0;
+    const saboresDisponiveis = produto.sabores.filter(sabor => {
+      if (temControleSabores) {
+        return (saboresEstoque[sabor] ?? 0) > 0;
+      }
+      return produto.estoque > 0;
+    });
+
+    return {
+      estoque: produto.estoque,
+      saboresEstoque,
+      saboresDisponiveis,
+      possuiEstoqueNaZona: produto.estoque > 0 && saboresDisponiveis.length > 0
+    };
+  }
 };
+

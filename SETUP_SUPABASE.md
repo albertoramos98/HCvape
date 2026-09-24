@@ -56,6 +56,13 @@ CREATE INDEX IF NOT EXISTS idx_produtos_is_promo ON produtos(is_promo);
 
 -- Adicionar coluna de controle de estoque por sabor (JSONB)
 ALTER TABLE produtos ADD COLUMN IF NOT EXISTS sabores_estoque JSONB DEFAULT '{}'::jsonb;
+
+-- Adicionar suporte a Zonas de Atendimento no produto (Zona Norte, Zona Sul, Zona Oeste)
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS zonas TEXT[] DEFAULT ARRAY['norte', 'sul', 'oeste']::TEXT[];
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS estoque_zonas JSONB DEFAULT '{}'::jsonb;
+
+-- Adicionar registro de Zona na tabela de pedidos
+ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS zona VARCHAR(50);
 ```
 
 ---
