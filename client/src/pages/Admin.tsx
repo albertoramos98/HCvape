@@ -885,10 +885,12 @@ export default function Admin() {
 
     const saboresEstoqueObj: { [sabor: string]: number } = {};
     saboresFiltrados.forEach(item => {
-      saboresEstoqueObj[item.sabor.trim()] = Math.max(0, item.estoque);
+      saboresEstoqueObj[item.sabor.trim()] = formProduto.is_promo ? 999 : Math.max(0, item.estoque);
     });
 
-    const estoque = Object.values(saboresEstoqueObj).reduce((a, b) => a + b, 0);
+    const estoque = formProduto.is_promo
+      ? 999
+      : Object.values(saboresEstoqueObj).reduce((a, b) => a + b, 0);
     const sabores = Object.keys(saboresEstoqueObj);
 
     let precoPromo: number | null = null;
@@ -1978,7 +1980,6 @@ export default function Admin() {
                             <th className="py-3 px-4">Vape / Puffs</th>
                             <th className="py-3 px-4">Preço Original</th>
                             <th className="py-3 px-4">Preço Promo</th>
-                            <th className="py-3 px-4">Estoque</th>
                             <th className="py-3 px-4">Ações</th>
                           </tr>
                         </thead>
@@ -2018,7 +2019,7 @@ export default function Admin() {
                                   <div className="font-bold flex items-center gap-2">
                                     <span>{produto.nome}</span>
                                     {puffs > 0 && (
-                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FF3366]/20 text-[#FF3366] border border-[#FF3366]/40">
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FF3366]/20 text-[#FF5E85] border border-[#FF3366]/40">
                                         {puffs.toLocaleString('pt-BR')} Puffs
                                       </span>
                                     )}
@@ -2036,26 +2037,6 @@ export default function Admin() {
                                       </span>
                                     )}
                                   </div>
-                                </td>
-                                <td className="py-3 px-4">
-                                  {produto.sabores_estoque && Object.keys(produto.sabores_estoque).length > 0 ? (
-                                    <div className="flex flex-col gap-1 text-xs">
-                                      {Object.entries(produto.sabores_estoque).map(([sabor, est]) => (
-                                        <div key={sabor} className="flex justify-between gap-3">
-                                          <span className="text-slate-400">{sabor}:</span>
-                                          <span className={est > 0 ? 'text-[#76FF03] font-bold' : 'text-red-400 font-bold'}>{est}</span>
-                                        </div>
-                                      ))}
-                                      <div className="border-t border-[#FF3366]/20 mt-1 pt-1 flex justify-between font-bold text-[10px]">
-                                        <span className="text-slate-300">TOTAL:</span>
-                                        <span className={produto.estoque > 0 ? 'text-[#76FF03]' : 'text-red-400'}>{produto.estoque} un</span>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${produto.estoque > 0 ? 'bg-[#76FF03]/20 text-[#76FF03]' : 'bg-red-500/20 text-red-400'}`}>
-                                      {produto.estoque} un
-                                    </span>
-                                  )}
                                 </td>
                                 <td className="py-3 px-4">
                                   <div className="flex gap-1.5">
@@ -2092,12 +2073,12 @@ export default function Admin() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="glass-morphism p-5 rounded-xl border border-[#76FF03]/20 bg-black/40">
                       <h3 className="text-sm font-bold text-[#76FF03] uppercase font-['Outfit'] mb-4 flex items-center gap-2">
-                        <Box className="w-4 h-4" /> Estoque por Modelo (100K ➔ 1K Puffs)
+                        <Box className="w-4 h-4" /> Estoque por Modelo - Expressos (100K ➔ 1K Puffs)
                       </h3>
                       <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
                         {(() => {
                           const resumoModelo: { [chave: string]: { total: number; produto: Produto } } = {};
-                          produtosFiltrados.forEach(p => {
+                          produtosFiltrados.filter(p => !p.is_promo).forEach(p => {
                             const chave = `${p.marca} ${p.nome}`;
                             if (!resumoModelo[chave]) {
                               resumoModelo[chave] = { total: 0, produto: p };
@@ -2110,7 +2091,7 @@ export default function Admin() {
                             if (puffsA !== puffsB) return puffsB - puffsA;
                             return `${a.produto.marca} ${a.produto.nome}`.localeCompare(`${b.produto.marca} ${b.produto.nome}`, 'pt-BR');
                           });
-                          if (modelosOrdenados.length === 0) return <p className="text-xs text-slate-400">Nenhum dado disponível</p>;
+                          if (modelosOrdenados.length === 0) return <p className="text-xs text-slate-400">Nenhum estoque expresso cadastrado</p>;
                           return modelosOrdenados.map(({ produto, total }) => {
                             const puffs = utils.extrairPuffs(produto.nome);
                             return (
@@ -2133,21 +2114,30 @@ export default function Admin() {
 
                     <div className="glass-morphism p-5 rounded-xl border border-blue-500/20 bg-black/40">
                       <h3 className="text-sm font-bold text-blue-400 uppercase font-['Outfit'] mb-4 flex items-center gap-2">
-                        <Zap className="w-4 h-4" /> Estoque por Sabor
+                        <Zap className="w-4 h-4" /> Estoque por Sabor - Expressos
                       </h3>
                       <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
                         {(() => {
                           const resumoSabor: { [key: string]: number } = {};
-                          produtosFiltrados.forEach(p => {
-                            p.sabores.forEach(s => {
-                              const sabor = s.trim();
-                              if (sabor) {
-                                resumoSabor[sabor] = (resumoSabor[sabor] || 0) + p.estoque;
-                              }
-                            });
+                          produtosFiltrados.filter(p => !p.is_promo).forEach(p => {
+                            if (p.sabores_estoque && Object.keys(p.sabores_estoque).length > 0) {
+                              Object.entries(p.sabores_estoque).forEach(([sabor, qtd]) => {
+                                const s = sabor.trim();
+                                if (s) {
+                                  resumoSabor[s] = (resumoSabor[s] || 0) + (qtd as number);
+                                }
+                              });
+                            } else {
+                              p.sabores.forEach(s => {
+                                const sabor = s.trim();
+                                if (sabor) {
+                                  resumoSabor[sabor] = (resumoSabor[sabor] || 0) + p.estoque;
+                                }
+                              });
+                            }
                           });
                           const saboresOrdenados = Object.entries(resumoSabor).sort((a, b) => b[1] - a[1]);
-                          if (saboresOrdenados.length === 0) return <p className="text-xs text-slate-400">Nenhum dado disponível</p>;
+                          if (saboresOrdenados.length === 0) return <p className="text-xs text-slate-400">Nenhum estoque expresso cadastrado</p>;
                           return saboresOrdenados.map(([sabor, total]) => (
                             <div key={sabor} className="flex justify-between items-center text-xs border-b border-blue-500/5 pb-1">
                               <span className="text-slate-300 truncate pr-4">{sabor}</span>
@@ -2221,7 +2211,7 @@ export default function Admin() {
                             <th className="py-3 px-4">Marca</th>
                             <th className="py-3 px-4">Nome / Puffs</th>
                             <th className="py-3 px-4">Preço</th>
-                            <th className="py-3 px-4">Estoque Total</th>
+                            <th className="py-3 px-4">Estoque</th>
                             <th className="py-3 px-4">Ações</th>
                           </tr>
                         </thead>
@@ -2270,9 +2260,15 @@ export default function Admin() {
                                   )}
                                 </td>
                                 <td className="py-3 px-4">
-                                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${produto.estoque > 0 ? 'bg-[#76FF03]/20 text-[#76FF03]' : 'bg-red-500/20 text-red-400'}`}>
-                                    {produto.estoque} un
-                                  </span>
+                                  {produto.is_promo ? (
+                                    <span className="px-2 py-0.5 rounded text-xs font-bold bg-[#FF3366]/20 text-[#FF3366] border border-[#FF3366]/30">
+                                      Livre (Ativo)
+                                    </span>
+                                  ) : (
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${produto.estoque > 0 ? 'bg-[#76FF03]/20 text-[#76FF03]' : 'bg-red-500/20 text-red-400'}`}>
+                                      {produto.estoque} un
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="py-3 px-4">
                                   <div className="flex gap-1">
@@ -3989,10 +3985,12 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
               
               <div className="border border-[#76FF03]/30 rounded-xl p-4 bg-black/30 space-y-3">
                 <div className="flex justify-between items-center">
-                  <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Sabores e Estoques</label>
+                  <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">
+                    {formProduto.is_promo ? 'Sabores Disponíveis (Promoção)' : 'Sabores e Estoques (Expresso)'}
+                  </label>
                   <button
                     type="button"
-                    onClick={() => setFormSaboresEstoque([...formSaboresEstoque, { sabor: '', estoque: 10 }])}
+                    onClick={() => setFormSaboresEstoque([...formSaboresEstoque, { sabor: '', estoque: formProduto.is_promo ? 999 : 10 }])}
                     className="flex items-center gap-1 text-xs font-bold text-[#76FF03] hover:text-[#76FF03]/80 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" /> Adicionar Sabor
@@ -4014,26 +4012,28 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                         placeholder="ex: Menta Ice"
                         required
                       />
-                      <input
-                        type="number"
-                        min="0"
-                        value={item.estoque}
-                        onChange={(e) => {
-                          const newItems = [...formSaboresEstoque];
-                          newItems[index].estoque = parseInt(e.target.value) || 0;
-                          setFormSaboresEstoque(newItems);
-                        }}
-                        className="w-24 bg-black/60 border border-[#76FF03]/50 text-slate-100 px-3 py-1.5 rounded-lg outline-none text-sm"
-                        placeholder="Estoque"
-                        required
-                      />
+                      {!formProduto.is_promo && (
+                        <input
+                          type="number"
+                          min="0"
+                          value={item.estoque}
+                          onChange={(e) => {
+                            const newItems = [...formSaboresEstoque];
+                            newItems[index].estoque = parseInt(e.target.value) || 0;
+                            setFormSaboresEstoque(newItems);
+                          }}
+                          className="w-24 bg-black/60 border border-[#76FF03]/50 text-slate-100 px-3 py-1.5 rounded-lg outline-none text-sm"
+                          placeholder="Estoque"
+                          required
+                        />
+                      )}
                       <button
                         type="button"
                         onClick={() => {
                           if (formSaboresEstoque.length > 1) {
                             setFormSaboresEstoque(formSaboresEstoque.filter((_, idx) => idx !== index));
                           } else {
-                            setFormSaboresEstoque([{ sabor: '', estoque: 0 }]);
+                            setFormSaboresEstoque([{ sabor: '', estoque: formProduto.is_promo ? 999 : 0 }]);
                           }
                         }}
                         className="p-1.5 text-red-500 hover:bg-red-500/20 rounded transition-all"
@@ -4046,7 +4046,11 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                 
                 <div className="text-[10px] text-slate-400 flex justify-between border-t border-[#76FF03]/20 pt-2 mt-2 font-bold uppercase">
                   <span>Sabores: {formSaboresEstoque.filter(i => i.sabor.trim() !== '').length}</span>
-                  <span>Estoque Total: {formSaboresEstoque.reduce((sum, item) => sum + (item.sabor.trim() !== '' ? item.estoque : 0), 0)}</span>
+                  {formProduto.is_promo ? (
+                    <span className="text-[#76FF03]">Estoque Livre (Controle por Ativo/Inativo)</span>
+                  ) : (
+                    <span>Estoque Total: {formSaboresEstoque.reduce((sum, item) => sum + (item.sabor.trim() !== '' ? item.estoque : 0), 0)}</span>
+                  )}
                 </div>
               </div>
 

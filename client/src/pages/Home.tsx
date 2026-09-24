@@ -160,16 +160,15 @@ export default function Home() {
     return utils.ordenarProdutosPorMarcaEPuffs(expressos);
   }, [produtos, zonaSelecionada]);
 
-  // Produtos Promocionais disponíveis na zona selecionada e ativos
+  // Produtos Promocionais ativos (disponibilidade controlada pelo status ativo/inativo, sem limite numérico)
   const produtosPromo = useMemo(() => {
     const promos = produtos.filter(p => {
       if (!p.is_promo) return false;
       if (p.ativo === false) return false;
-      const info = utils.obterEstoqueProdutoPorZona(p, zonaSelecionada);
-      return info.possuiEstoqueNaZona;
+      return true;
     });
     return utils.ordenarProdutosPorMarcaEPuffs(promos);
-  }, [produtos, zonaSelecionada]);
+  }, [produtos]);
 
   // Filtrar produtos Expressos por marca e pesquisa
   const produtosFiltrados = useMemo(() => {
@@ -229,28 +228,36 @@ export default function Home() {
       return;
     }
 
-    const estoqueInfo = utils.obterEstoqueProdutoPorZona(produto, zonaSelecionada);
-    const saborEstoque = estoqueInfo.saboresEstoque[sabor] ?? (Object.keys(estoqueInfo.saboresEstoque).length > 0 ? 0 : estoqueInfo.estoque);
+    // Se for promocional, valida apenas se o horário de promoção está ativo
+    if (produto.is_promo) {
+      if (!horarioPromoAtivo) {
+        setLocation("/promocional-info");
+        return;
+      }
+    } else {
+      // Para pedidos expressos, valida estoque real da zona selecionada
+      const estoqueInfo = utils.obterEstoqueProdutoPorZona(produto, zonaSelecionada);
+      const saborEstoque = estoqueInfo.saboresEstoque[sabor] ?? (Object.keys(estoqueInfo.saboresEstoque).length > 0 ? 0 : estoqueInfo.estoque);
 
-    if (saborEstoque <= 0) {
-      alert('Este sabor está esgotado nesta região.');
-      return;
-    }
+      if (saborEstoque <= 0) {
+        alert('Este sabor está esgotado nesta região.');
+        return;
+      }
 
-    if (produto.is_promo && !horarioPromoAtivo) {
-      setLocation("/promocional-info");
-      return;
+      const itemExistente = carrinho.find(
+        item => item.id === produto.id && item.sabor === sabor
+      );
+
+      const quantNoCarrinho = itemExistente ? itemExistente.quantidade : 0;
+      if (quantNoCarrinho + 1 > saborEstoque) {
+        alert(`Desculpe, só temos ${saborEstoque} unidades deste sabor em estoque para a sua região.`);
+        return;
+      }
     }
 
     const itemExistente = carrinho.find(
       item => item.id === produto.id && item.sabor === sabor
     );
-
-    const quantNoCarrinho = itemExistente ? itemExistente.quantidade : 0;
-    if (quantNoCarrinho + 1 > saborEstoque) {
-      alert(`Desculpe, só temos ${saborEstoque} unidades deste sabor em estoque para a sua região.`);
-      return;
-    }
 
     if (itemExistente) {
       setCarrinho(carrinho.map(item =>
@@ -295,7 +302,7 @@ export default function Home() {
     }
 
     const produto = produtos.find(p => p.id === id);
-    if (produto) {
+    if (produto && !produto.is_promo) {
       const estoqueInfo = utils.obterEstoqueProdutoPorZona(produto, zonaSelecionada);
       const saborEstoque = estoqueInfo.saboresEstoque[sabor] ?? (Object.keys(estoqueInfo.saboresEstoque).length > 0 ? 0 : estoqueInfo.estoque);
       if (novaQuantidade > saborEstoque) {
@@ -873,7 +880,7 @@ export default function Home() {
                         )}
                       </div>
 
-                      {!estoqueInfo.possuiEstoqueNaZona && (
+                      {!isPromo && !estoqueInfo.possuiEstoqueNaZona && (
                         <div className="absolute inset-0 bg-black/75 backdrop-blur-sm z-20 flex items-center justify-center">
                           <span className="bg-red-500/90 text-white font-bold text-xs uppercase px-4 py-1.5 rounded-full shadow-lg">
                             Esgotado nesta Zona
@@ -946,6 +953,13 @@ export default function Home() {
                           >
                             <option value="">Selecione uma opção...</option>
                             {produto.sabores.map((sabor) => {
+                              if (isPromo) {
+                                return (
+                                  <option key={sabor} value={sabor} className="bg-black text-slate-200">
+                                    {sabor}
+                                  </option>
+                                );
+                              }
                               const sEstoque = estoqueInfo.saboresEstoque[sabor] ?? (Object.keys(estoqueInfo.saboresEstoque).length > 0 ? 0 : estoqueInfo.estoque);
                               const esgotado = sEstoque <= 0;
                               return (
@@ -959,11 +973,11 @@ export default function Home() {
 
                         <button
                           onClick={() => adicionarAoCarrinho(produto)}
-                          disabled={!estoqueInfo.possuiEstoqueNaZona || (isPromo && !horarioPromoAtivo)}
+                          disabled={(!isPromo && !estoqueInfo.possuiEstoqueNaZona) || (isPromo && !horarioPromoAtivo)}
                           className={`w-full py-3 rounded-xl font-bold text-xs sm:text-sm flex items-center justify-center gap-2 transition-all duration-200 shadow-md ${
                             feedbackOk
                               ? 'bg-emerald-500 text-white'
-                              : !estoqueInfo.possuiEstoqueNaZona
+                              : !isPromo && !estoqueInfo.possuiEstoqueNaZona
                               ? 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/5'
                               : isPromo && !horarioPromoAtivo
                               ? 'bg-white/5 text-slate-500 cursor-not-allowed border border-white/5'
@@ -976,7 +990,7 @@ export default function Home() {
                             <>
                               <Check className="w-4 h-4" /> Adicionado!
                             </>
-                          ) : !estoqueInfo.possuiEstoqueNaZona ? (
+                          ) : !isPromo && !estoqueInfo.possuiEstoqueNaZona ? (
                             'Esgotado nesta Zona'
                           ) : isPromo && !horarioPromoAtivo ? (
                             'Horário Encerrado'
