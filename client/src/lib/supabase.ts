@@ -29,7 +29,7 @@ export const ZONAS_DISPONIVEIS: ZonaInfo[] = [
     nome: 'Zona Norte', 
     badge: 'Atendimento Rápido', 
     descricao: 'Disponibilidade e estoque para Zona Norte',
-    cor: '#00F59B' 
+    cor: '#76FF03' 
   },
   { 
     id: 'sul', 

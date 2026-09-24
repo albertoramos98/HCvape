@@ -388,14 +388,14 @@ export default function Home() {
 
   if (carregando) {
     return (
-      <div className="min-h-screen dark-atmosphere flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <div className="flex flex-col items-center gap-4 text-center">
           <div className="relative w-16 h-16">
-            <div className="w-16 h-16 rounded-full border-2 border-white/10 border-t-[#00F59B] animate-spin" />
-            <Sparkles className="w-6 h-6 text-[#00F59B] absolute inset-0 m-auto animate-pulse" />
+            <div className="w-16 h-16 rounded-full border-2 border-white/10 border-t-[#76FF03] animate-spin" />
+            <Sparkles className="w-6 h-6 text-[#76FF03] absolute inset-0 m-auto animate-pulse" />
           </div>
           <div>
-            <h2 className="text-xl font-bold text-slate-100 font-['Outfit']">HC VAPE</h2>
+            <h2 className="text-xl font-black text-white font-['Outfit']">HC VAPE</h2>
             <p className="text-sm text-slate-400 mt-1">Carregando catálogo premium...</p>
           </div>
         </div>
@@ -409,8 +409,8 @@ export default function Home() {
     <div className="min-h-screen dark-atmosphere selection:bg-[#76FF03] selection:text-[#041202]">
       {/* 1. Pop-up de Aviso Informativo Inicial */}
       {popupAviso && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-lg bg-[#0d1310] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-lg bg-[#080808] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
                 <img
@@ -468,8 +468,8 @@ export default function Home() {
 
       {/* 2. Pop-up / Modal de Seleção de Zona / Região */}
       {modalZonaAberto && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-xl bg-[#0d1310] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-xl bg-[#080808] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3.5">
                 <img
@@ -588,13 +588,6 @@ export default function Home() {
               <span className="text-[10px] text-slate-400">▾</span>
             </button>
 
-            <a
-              href="/como-funciona"
-              className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200"
-            >
-              <span>Como Funciona</span>
-            </a>
-
             <button
               onClick={() => setCarrinhoAberto(true)}
               className="relative flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-[#76FF03]/15 to-[#76FF03]/5 hover:from-[#76FF03]/25 hover:to-[#76FF03]/10 border border-[#76FF03]/40 text-[#76FF03] transition-all duration-200 shadow-sm"
@@ -640,7 +633,7 @@ export default function Home() {
               }}
               className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm sm:text-base font-bold transition-all duration-200 ${
                 abaAtiva === 'expressos'
-                  ? 'bg-gradient-to-r from-[#00F59B] to-[#00D084] text-[#04140b] shadow-lg'
+                  ? 'bg-gradient-to-r from-[#76FF03] to-[#52C41A] text-[#000000] shadow-lg font-extrabold'
                   : 'text-slate-400 hover:text-slate-200'
               }`}
             >
@@ -659,7 +652,7 @@ export default function Home() {
               }}
               className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm sm:text-base font-bold transition-all duration-200 ${
                 abaAtiva === 'promocionais'
-                  ? 'bg-gradient-to-r from-[#FF3366] to-[#E60045] text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-[#FF3366] to-[#E60045] text-white shadow-lg font-extrabold'
                   : 'text-slate-400 hover:text-[#FF5E85]'
               }`}
             >
@@ -713,7 +706,7 @@ export default function Home() {
                 placeholder="Buscar por produto, marca ou sabor..."
                 value={pesquisa}
                 onChange={(e) => setPesquisa(e.target.value)}
-                className="w-full bg-[#0e1422] border border-white/10 text-slate-100 placeholder-slate-500 pl-10 pr-10 py-2.5 rounded-xl focus:border-[#00F59B]/60 focus:ring-1 focus:ring-[#00F59B]/50 focus:outline-none transition-all text-sm"
+                className="w-full bg-[#111111] border border-white/10 text-white placeholder-slate-500 pl-10 pr-10 py-2.5 rounded-xl focus:border-[#76FF03]/60 focus:ring-1 focus:ring-[#76FF03]/50 focus:outline-none transition-all text-sm"
               />
               {pesquisa && (
                 <button
@@ -728,7 +721,7 @@ export default function Home() {
 
             {/* Total items badge */}
             <div className="text-xs text-slate-400 font-medium flex items-center gap-1.5 px-3 py-2 bg-white/5 rounded-xl border border-white/5 self-start sm:self-auto">
-              <Sparkles className="w-3.5 h-3.5 text-[#00F59B]" />
+              <Sparkles className="w-3.5 h-3.5 text-[#76FF03]" />
               <span>
                 {(abaAtiva === 'expressos' ? produtosFiltrados : produtosPromoFiltrados).length} produtos listados
               </span>
@@ -742,12 +735,12 @@ export default function Home() {
                 onClick={() => setMarcaSelecionada(null)}
                 className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 ${
                   marcaSelecionada === null
-                    ? 'bg-[#00F59B] text-[#04140b] shadow-md'
-                    : 'bg-[#0e1422] text-slate-300 hover:text-white border border-white/10 hover:border-white/20'
+                    ? 'bg-[#76FF03] text-[#000000] shadow-md font-extrabold'
+                    : 'bg-[#111111] text-slate-300 hover:text-white border border-white/10 hover:border-white/20'
                 }`}
               >
                 <span>Todas as Marcas</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${marcaSelecionada === null ? 'bg-[#04140b]/20 text-[#04140b]' : 'bg-white/10 text-slate-400'}`}>
+                <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${marcaSelecionada === null ? 'bg-[#000000]/20 text-[#000000]' : 'bg-white/10 text-slate-400'}`}>
                   {produtosExpressos.length}
                 </span>
               </button>
@@ -761,12 +754,12 @@ export default function Home() {
                     onClick={() => setMarcaSelecionada(marca)}
                     className={`px-3.5 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all duration-200 flex items-center gap-1.5 ${
                       isSelected
-                        ? 'bg-[#00F59B] text-[#04140b] shadow-md'
-                        : 'bg-[#0e1422] text-slate-300 hover:text-white border border-white/10 hover:border-white/20'
+                        ? 'bg-[#76FF03] text-[#000000] shadow-md font-extrabold'
+                        : 'bg-[#111111] text-slate-300 hover:text-white border border-white/10 hover:border-white/20'
                     }`}
                   >
                     <span>{marca}</span>
-                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-[#04140b]/20 text-[#04140b]' : 'bg-white/10 text-slate-400'}`}>
+                    <span className={`text-[10px] px-1.5 py-0.2 rounded-full ${isSelected ? 'bg-[#000000]/20 text-[#000000]' : 'bg-white/10 text-slate-400'}`}>
                       {count}
                     </span>
                   </button>
@@ -779,10 +772,10 @@ export default function Home() {
         {/* Product Grid */}
         <section className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl sm:text-2xl font-bold text-slate-100 font-['Outfit'] flex items-center gap-2">
+            <h2 className="text-xl sm:text-2xl font-bold text-white font-['Outfit'] flex items-center gap-2">
               {abaAtiva === 'expressos' ? (
                 <>
-                  <span className="w-2.5 h-2.5 rounded-full bg-[#00F59B]" />
+                  <span className="w-2.5 h-2.5 rounded-full bg-[#76FF03] shadow-[0_0_8px_#76FF03]" />
                   <span>{marcaSelecionada ? `Modelos ${marcaSelecionada}` : 'Catálogo Pronta Entrega'}</span>
                 </>
               ) : (
@@ -841,7 +834,7 @@ export default function Home() {
                       </div>
 
                       {!estoqueInfo.possuiEstoqueNaZona && (
-                        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm z-20 flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/75 backdrop-blur-sm z-20 flex items-center justify-center">
                           <span className="bg-red-500/90 text-white font-bold text-xs uppercase px-4 py-1.5 rounded-full shadow-lg">
                             Esgotado nesta Zona
                           </span>
@@ -861,7 +854,7 @@ export default function Home() {
                         <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
                           {produto.marca}
                         </div>
-                        <h3 className="text-base font-bold text-slate-100 font-['Outfit'] group-hover:text-[#00F59B] transition-colors line-clamp-1">
+                        <h3 className="text-base font-bold text-white font-['Outfit'] group-hover:text-[#76FF03] transition-colors line-clamp-1">
                           {produto.nome}
                         </h3>
 
@@ -880,7 +873,7 @@ export default function Home() {
                               </span>
                             </>
                           ) : (
-                            <span className="text-xl font-extrabold text-[#00F59B] font-['Outfit']">
+                            <span className="text-xl font-extrabold text-[#76FF03] font-['Outfit']">
                               R$ {produto.preco.toFixed(2)}
                             </span>
                           )}
@@ -898,10 +891,10 @@ export default function Home() {
                             onChange={(e) =>
                               setSaborSelecionado({ ...saborSelecionado, [produto.id]: e.target.value })
                             }
-                            className={`w-full bg-[#121827] border text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none transition-all ${
+                            className={`w-full bg-[#111111] border text-slate-200 text-xs rounded-xl px-3 py-2.5 focus:outline-none transition-all ${
                               isPromo 
                                 ? 'border-white/10 focus:border-[#FF3366]' 
-                                : 'border-white/10 focus:border-[#00F59B]'
+                                : 'border-white/10 focus:border-[#76FF03]'
                             }`}
                           >
                             <option value="">Selecione uma opção...</option>
@@ -909,7 +902,7 @@ export default function Home() {
                               const sEstoque = estoqueInfo.saboresEstoque[sabor] ?? (Object.keys(estoqueInfo.saboresEstoque).length > 0 ? 0 : estoqueInfo.estoque);
                               const esgotado = sEstoque <= 0;
                               return (
-                                <option key={sabor} value={sabor} disabled={esgotado} className="bg-[#0e1320] text-slate-200">
+                                <option key={sabor} value={sabor} disabled={esgotado} className="bg-black text-slate-200">
                                   {sabor} {esgotado ? '— (Esgotado)' : `(${sEstoque} un)`}
                                 </option>
                               );
@@ -959,16 +952,16 @@ export default function Home() {
 
       {/* Modern Slide-over Cart Drawer */}
       {carrinhoAberto && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
-          <div className="w-full max-w-md bg-[#0d121e] border-l border-white/10 h-full flex flex-col justify-between shadow-2xl p-6 overflow-hidden">
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/85 backdrop-blur-sm animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-[#080808] border-l border-white/10 h-full flex flex-col justify-between shadow-2xl p-6 overflow-hidden">
             {/* Drawer Header */}
             <div className="flex items-center justify-between pb-4 border-b border-white/10">
               <div className="flex items-center gap-2.5">
-                <div className="p-2 bg-[#00F59B]/10 rounded-xl text-[#00F59B]">
+                <div className="p-2 bg-[#76FF03]/15 rounded-xl text-[#76FF03]">
                   <ShoppingCart className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-100 font-['Outfit']">Seu Carrinho</h3>
+                  <h3 className="text-lg font-bold text-white font-['Outfit']">Seu Carrinho</h3>
                   <p className="text-xs text-slate-400">{totalItensCarrinho} {totalItensCarrinho === 1 ? 'item' : 'itens'}</p>
                 </div>
               </div>
@@ -1008,7 +1001,7 @@ export default function Home() {
                             {item.nome}
                           </h4>
                         </div>
-                        <p className="text-xs text-[#00F59B] truncate mt-0.5">
+                        <p className="text-xs text-[#76FF03] truncate mt-0.5">
                           Sabor: {item.sabor}
                         </p>
                         <p className="text-xs font-semibold text-slate-300 mt-1">
@@ -1017,7 +1010,7 @@ export default function Home() {
                       </div>
 
                       {/* Quantity Stepper */}
-                      <div className="flex items-center gap-1.5 bg-[#141b2b] p-1 rounded-xl border border-white/10">
+                      <div className="flex items-center gap-1.5 bg-[#111111] p-1 rounded-xl border border-white/10">
                         <button
                           onClick={() => alterarQuantidade(item.id, item.sabor, item.quantidade - 1)}
                           className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/15 text-slate-300 flex items-center justify-center transition-colors"
@@ -1054,7 +1047,7 @@ export default function Home() {
               <div className="pt-4 border-t border-white/10 space-y-4">
                 <div className="flex items-center justify-between text-slate-300 text-sm">
                   <span>Subtotal:</span>
-                  <span className="text-2xl font-extrabold text-[#00F59B] font-['Outfit']">
+                  <span className="text-2xl font-extrabold text-[#76FF03] font-['Outfit']">
                     R$ {total.toFixed(2)}
                   </span>
                 </div>
@@ -1074,15 +1067,15 @@ export default function Home() {
 
       {/* Checkout Modal */}
       {checkoutAberto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="w-full max-w-md bg-[#0e1320] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-[#080808] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2.5">
-                <div className="p-2.5 bg-[#00F59B]/15 text-[#00F59B] rounded-2xl border border-[#00F59B]/30">
+                <div className="p-2.5 bg-[#76FF03]/15 text-[#76FF03] rounded-2xl border border-[#76FF03]/30">
                   <Phone className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-slate-100 font-['Outfit']">Finalizar Pedido</h3>
+                  <h3 className="text-lg font-bold text-white font-['Outfit']">Finalizar Pedido</h3>
                   <p className="text-xs text-slate-400">Enviaremos seu pedido direto no WhatsApp</p>
                 </div>
               </div>
@@ -1110,7 +1103,7 @@ export default function Home() {
                       placeholder="Ex: João da Silva"
                       value={nomeCliente}
                       onChange={(e) => setNomeCliente(e.target.value)}
-                      className="w-full bg-[#131a29] border border-white/10 text-slate-100 text-sm pl-10 pr-4 py-3 rounded-xl focus:border-[#00F59B] focus:outline-none"
+                      className="w-full bg-[#111111] border border-white/10 text-white text-sm pl-10 pr-4 py-3 rounded-xl focus:border-[#76FF03] focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1127,7 +1120,7 @@ export default function Home() {
                       placeholder="Ex: (81) 99999-9999"
                       value={telefoneCliente}
                       onChange={(e) => setTelefoneCliente(e.target.value)}
-                      className="w-full bg-[#131a29] border border-white/10 text-slate-100 text-sm pl-10 pr-4 py-3 rounded-xl focus:border-[#00F59B] focus:outline-none"
+                      className="w-full bg-[#111111] border border-white/10 text-white text-sm pl-10 pr-4 py-3 rounded-xl focus:border-[#76FF03] focus:outline-none"
                     />
                   </div>
                 </div>
@@ -1143,17 +1136,17 @@ export default function Home() {
                       placeholder="Ex: Instagram, Indicação do Amigo, etc."
                       value={indicacao}
                       onChange={(e) => setIndicacao(e.target.value)}
-                      className="w-full bg-[#131a29] border border-white/10 text-slate-100 text-sm pl-10 pr-4 py-3 rounded-xl focus:border-[#00F59B] focus:outline-none"
+                      className="w-full bg-[#111111] border border-white/10 text-white text-sm pl-10 pr-4 py-3 rounded-xl focus:border-[#76FF03] focus:outline-none"
                     />
                   </div>
                 </div>
 
                 {/* Zona de Entrega Indicator */}
-                <div className="p-3.5 bg-[#00F59B]/10 border border-[#00F59B]/30 rounded-2xl flex items-center justify-between">
+                <div className="p-3.5 bg-[#76FF03]/10 border border-[#76FF03]/30 rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs">
-                    <MapPin className="w-4 h-4 text-[#00F59B] flex-shrink-0" />
+                    <MapPin className="w-4 h-4 text-[#76FF03] flex-shrink-0" />
                     <span className="text-slate-300">Região:</span>
-                    <span className="font-bold text-[#00F59B] font-['Outfit']">
+                    <span className="font-bold text-[#76FF03] font-['Outfit']">
                       {zonaAtualInfo ? zonaAtualInfo.nome : 'Não selecionada'}
                     </span>
                   </div>
@@ -1163,7 +1156,7 @@ export default function Home() {
                       setCheckoutAberto(false);
                       setModalZonaAberto(true);
                     }}
-                    className="text-[11px] text-[#00F59B] hover:underline font-bold"
+                    className="text-[11px] text-[#76FF03] hover:underline font-bold"
                   >
                     Alterar Região
                   </button>
@@ -1173,7 +1166,7 @@ export default function Home() {
               {/* Summary box */}
               <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/10 flex items-center justify-between">
                 <span className="text-xs text-slate-400">Total a pagar:</span>
-                <span className="text-xl font-extrabold text-[#00F59B] font-['Outfit']">
+                <span className="text-xl font-extrabold text-[#76FF03] font-['Outfit']">
                   R$ {total.toFixed(2)}
                 </span>
               </div>
@@ -1202,13 +1195,13 @@ export default function Home() {
 
       {/* Pedido Concluído Fallback Modal */}
       {pedidoConcluido && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-          <div className="w-full max-w-md bg-[#0e1320] border border-[#00F59B]/40 rounded-3xl p-6 sm:p-8 text-center space-y-5 shadow-2xl">
-            <div className="w-16 h-16 rounded-full bg-[#00F59B]/20 text-[#00F59B] flex items-center justify-center mx-auto border border-[#00F59B]/40">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-md bg-[#080808] border border-[#76FF03]/40 rounded-3xl p-6 sm:p-8 text-center space-y-5 shadow-2xl">
+            <div className="w-16 h-16 rounded-full bg-[#76FF03]/15 text-[#76FF03] flex items-center justify-center mx-auto border border-[#76FF03]/40 shadow-[0_0_20px_rgba(118,255,3,0.25)]">
               <CheckCircle2 className="w-8 h-8" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-slate-100 font-['Outfit']">Pedido #{pedidoConcluido.numero} Gerado!</h3>
+              <h3 className="text-xl font-bold text-white font-['Outfit']">Pedido #{pedidoConcluido.numero} Gerado!</h3>
               <p className="text-xs text-slate-400 mt-1">Total: R$ {pedidoConcluido.total.toFixed(2)}</p>
             </div>
             <p className="text-xs text-slate-300">
@@ -1233,8 +1226,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* Modern Luxury Footer */}
-      <footer className="mt-16 border-t border-white/10 bg-[#060807] py-12">
+      {/* Modern Luxury Pure Black Footer */}
+      <footer className="mt-16 border-t border-white/10 bg-black py-10">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div className="flex flex-col md:flex-row items-center gap-4">
             <img
@@ -1244,7 +1237,7 @@ export default function Home() {
             />
             <div className="space-y-1">
               <div className="flex items-center justify-center md:justify-start gap-2">
-                <span className="font-black text-slate-100 font-['Outfit'] text-lg tracking-tight">HC <span className="text-[#76FF03]">VAPE</span></span>
+                <span className="font-black text-white font-['Outfit'] text-lg tracking-tight">HC <span className="text-[#76FF03]">VAPE</span></span>
                 <span className="text-[11px] text-[#76FF03] font-bold px-2 py-0.5 rounded-full bg-[#76FF03]/10 border border-[#76FF03]/30">Desde 2020</span>
               </div>
               <p className="text-xs text-slate-400 font-medium">
@@ -1253,25 +1246,19 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="flex items-center gap-6 text-xs text-slate-400 font-semibold">
-            <a href="/como-funciona" className="hover:text-[#76FF03] transition-colors">Como Funciona</a>
-            <a href="/promocional-info" className="hover:text-[#76FF03] transition-colors">Regras Promoção</a>
-            <a href="/admin" className="hover:text-[#76FF03] transition-colors">Acesso Restrito</a>
-          </div>
-
           <div className="flex items-center gap-4 text-slate-500">
             <a
               href="https://github.com/albertoramos98"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 hover:text-[#76FF03] transition-all"
+              className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 hover:text-[#76FF03] transition-all"
               title="GitHub Alberto Ramos"
             >
               <Github className="w-4 h-4" />
             </a>
             <a
               href="mailto:alpemc.dev@gmail.com"
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 hover:text-[#76FF03] transition-all"
+              className="p-2.5 rounded-xl bg-white/5 hover:bg-white/10 hover:text-[#76FF03] transition-all"
               title="Contato Desenvolvedor"
             >
               <Mail className="w-4 h-4" />

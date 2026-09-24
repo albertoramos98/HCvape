@@ -1480,7 +1480,7 @@ export default function Admin() {
                                     const isNorte = z.toLowerCase().includes('norte');
                                     const isSul = z.toLowerCase().includes('sul');
                                     const label = isNorte ? 'Norte' : isSul ? 'Sul' : 'Oeste';
-                                    const colorClass = isNorte ? 'bg-[#00F59B]/15 text-[#00F59B] border-[#00F59B]/40' : isSul ? 'bg-sky-500/15 text-sky-400 border-sky-500/40' : 'bg-purple-500/15 text-purple-400 border-purple-500/40';
+                                    const colorClass = isNorte ? 'bg-[#76FF03]/15 text-[#76FF03] border-[#76FF03]/40' : isSul ? 'bg-sky-500/15 text-sky-400 border-sky-500/40' : 'bg-purple-500/15 text-purple-400 border-purple-500/40';
                                     return (
                                       <span key={z} className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${colorClass}`}>
                                         {label}
@@ -1665,7 +1665,7 @@ export default function Admin() {
                               <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded text-[10px] font-bold">PENDENTE</span>
                             )}
                             {pedido.zona && (
-                              <span className="px-2 py-0.5 bg-[#00F59B]/20 text-[#00F59B] border border-[#00F59B]/40 rounded text-[10px] font-bold flex items-center gap-1">
+                              <span className="px-2 py-0.5 bg-[#76FF03]/20 text-[#76FF03] border border-[#76FF03]/40 rounded text-[10px] font-bold flex items-center gap-1">
                                 <MapPin className="w-2.5 h-2.5" /> {pedido.zona}
                               </span>
                             )}

@@ -49,8 +49,8 @@ export default function PromocionalInfo() {
           <div className="absolute top-0 right-0 w-48 h-48 bg-[#FF3366]/10 rounded-full blur-3xl pointer-events-none" />
           
           <div className="flex items-center justify-center gap-2">
-            <span className={`w-2.5 h-2.5 rounded-full ${isAtivo ? 'bg-[#00F59B] animate-ping' : 'bg-amber-400'}`} />
-            <span className={`text-xs font-bold uppercase tracking-wider ${isAtivo ? 'text-[#00F59B]' : 'text-amber-300'}`}>
+            <span className={`w-2.5 h-2.5 rounded-full ${isAtivo ? 'bg-[#76FF03] animate-ping' : 'bg-amber-400'}`} />
+            <span className={`text-xs font-bold uppercase tracking-wider ${isAtivo ? 'text-[#76FF03]' : 'text-amber-300'}`}>
               {isAtivo ? 'Promoção Aberta Agora' : 'Promoção Encerrada no Momento'}
             </span>
           </div>
@@ -72,17 +72,17 @@ export default function PromocionalInfo() {
               <h3 className="text-base font-bold text-slate-100 font-['Outfit']">Dias Ativos</h3>
             </div>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Disponível em dias programados: <span className="text-[#00F59B] font-bold">{utils.formatarDiasSemana(promoConfig.dias_semana)}</span>.
+              Disponível em dias programados: <span className="text-[#76FF03] font-bold">{utils.formatarDiasSemana(promoConfig.dias_semana)}</span>.
             </p>
           </div>
 
           <div className="glass-card p-6 rounded-3xl space-y-3 border-white/10">
-            <div className="flex items-center gap-2.5 text-[#00F59B]">
+            <div className="flex items-center gap-2.5 text-[#76FF03]">
               <Clock className="w-5 h-5" />
               <h3 className="text-base font-bold text-slate-100 font-['Outfit']">Janela de Pedidos</h3>
             </div>
             <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
-              Faça seu pedido das <span className="text-[#00F59B] font-bold">{promoConfig.hora_inicio} às {promoConfig.hora_fim}</span> para entrega às 19:00.
+              Faça seu pedido das <span className="text-[#76FF03] font-bold">{promoConfig.hora_inicio} às {promoConfig.hora_fim}</span> para entrega às 19:00.
             </p>
           </div>
         </div>

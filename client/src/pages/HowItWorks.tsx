@@ -54,11 +54,11 @@ export default function HowItWorks() {
         {/* Intro Section */}
         <section className="text-center space-y-4">
           <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-300">
-            <Sparkles className="w-3.5 h-3.5 text-[#00F59B]" />
+            <Sparkles className="w-3.5 h-3.5 text-[#76FF03]" />
             <span>Transparência e Rapidez</span>
           </div>
 
-          <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-100 font-['Outfit'] tracking-tight">
+          <h1 className="text-3xl sm:text-5xl font-black text-white font-['Outfit'] tracking-tight">
             Nossas Formas de Atendimento
           </h1>
 
@@ -69,12 +69,12 @@ export default function HowItWorks() {
 
         {/* Interactive Mode Switcher */}
         <section className="space-y-8">
-          <div className="flex p-1.5 bg-[#0e1320] border border-white/10 rounded-2xl max-w-md mx-auto">
+          <div className="flex p-1.5 bg-[#111111] border border-white/10 rounded-2xl max-w-md mx-auto">
             <button
               onClick={() => setModeloSelecionado('promocional')}
               className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 ${
                 modeloSelecionado === 'promocional'
-                  ? 'bg-gradient-to-r from-[#FF3366] to-[#E60045] text-white shadow-lg'
+                  ? 'bg-gradient-to-r from-[#FF3366] to-[#E60045] text-white shadow-lg font-extrabold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -86,7 +86,7 @@ export default function HowItWorks() {
               onClick={() => setModeloSelecionado('estoque')}
               className={`flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl text-sm font-bold transition-all duration-200 ${
                 modeloSelecionado === 'estoque'
-                  ? 'bg-gradient-to-r from-[#00F59B] to-[#00D084] text-[#04140b] shadow-lg'
+                  ? 'bg-gradient-to-r from-[#76FF03] to-[#52C41A] text-[#000000] shadow-lg font-extrabold'
                   : 'text-slate-400 hover:text-white'
               }`}
             >
@@ -153,10 +153,10 @@ export default function HowItWorks() {
 
           {/* Expresso Detail Card */}
           {modeloSelecionado === 'estoque' && (
-            <div className="glass-card rounded-3xl p-6 sm:p-8 border-[#00F59B]/30 shadow-2xl space-y-6 animate-in fade-in duration-300">
+            <div className="glass-card rounded-3xl p-6 sm:p-8 border-[#76FF03]/30 shadow-2xl space-y-6 animate-in fade-in duration-300">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-white/10">
                 <div className="flex items-center gap-3.5">
-                  <div className="p-3 bg-[#00F59B]/15 rounded-2xl text-[#00F59B] border border-[#00F59B]/30">
+                  <div className="p-3 bg-[#76FF03]/15 rounded-2xl text-[#76FF03] border border-[#76FF03]/30">
                     <Truck className="w-7 h-7" />
                   </div>
                   <div>
@@ -169,7 +169,7 @@ export default function HowItWorks() {
                   </div>
                 </div>
 
-                <span className="self-start sm:self-auto px-3 py-1 rounded-full text-xs font-bold bg-[#00F59B]/15 text-[#00F59B] border border-[#00F59B]/30">
+                <span className="self-start sm:self-auto px-3 py-1 rounded-full text-xs font-bold bg-[#76FF03]/15 text-[#76FF03] border border-[#76FF03]/30">
                   Pronta Entrega
                 </span>
               </div>
@@ -179,19 +179,19 @@ export default function HowItWorks() {
                 <h3 className="text-sm font-bold text-slate-200 uppercase tracking-wider">Passo a Passo:</h3>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                   <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-                    <span className="w-6 h-6 rounded-full bg-[#00F59B]/20 text-[#00F59B] text-xs font-bold flex items-center justify-center">1</span>
+                    <span className="w-6 h-6 rounded-full bg-[#76FF03]/20 text-[#76FF03] text-xs font-bold flex items-center justify-center">1</span>
                     <h4 className="text-sm font-bold text-slate-100">Escolha no Catálogo</h4>
                     <p className="text-xs text-slate-400 leading-relaxed">Produtos com estoque real atualizado prontos para envio imediato.</p>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-                    <span className="w-6 h-6 rounded-full bg-[#00F59B]/20 text-[#00F59B] text-xs font-bold flex items-center justify-center">2</span>
+                    <span className="w-6 h-6 rounded-full bg-[#76FF03]/20 text-[#76FF03] text-xs font-bold flex items-center justify-center">2</span>
                     <h4 className="text-sm font-bold text-slate-100">Finalize no WhatsApp</h4>
                     <p className="text-xs text-slate-400 leading-relaxed">Atendimento das 10h às 22h com confirmação instantânea de Pix.</p>
                   </div>
 
                   <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
-                    <span className="w-6 h-6 rounded-full bg-[#00F59B]/20 text-[#00F59B] text-xs font-bold flex items-center justify-center">3</span>
+                    <span className="w-6 h-6 rounded-full bg-[#76FF03]/20 text-[#76FF03] text-xs font-bold flex items-center justify-center">3</span>
                     <h4 className="text-sm font-bold text-slate-100">Envio ou Retirada</h4>
                     <p className="text-xs text-slate-400 leading-relaxed">Retirada no local ou envio por motoboy / Uber Moto no mesmo instante.</p>
                   </div>
@@ -221,7 +221,7 @@ export default function HowItWorks() {
                   <tr className="border-b border-white/10 bg-white/[0.02]">
                     <th className="py-4 px-5 font-bold text-slate-300">Característica</th>
                     <th className="py-4 px-5 font-bold text-[#FF5E85]">🔥 Promocional</th>
-                    <th className="py-4 px-5 font-bold text-[#00F59B]">⚡ Expresso</th>
+                    <th className="py-4 px-5 font-bold text-[#76FF03]">⚡ Expresso</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-white/5 text-slate-300">
