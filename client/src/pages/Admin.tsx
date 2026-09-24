@@ -44,6 +44,7 @@ export default function Admin() {
   const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'relogio_mensal' | 'pedidos' | 'metricas' | 'saude' | 'configuracoes' | 'herobanner'>('produtos');
   const [subAbaEstoque, setSubAbaEstoque] = useState<'expressos' | 'promocional' | 'todos'>('expressos');
   const [filtroZonaEstoqueExpresso, setFiltroZonaEstoqueExpresso] = useState<'todas' | 'norte' | 'sul_oeste'>('todas');
+  const [direcaoPuffs, setDirecaoPuffs] = useState<'asc' | 'desc'>('desc');
   const [pesquisa, setPesquisa] = useState('');
   const [filtroZonaProduto, setFiltroZonaProduto] = useState<string>('todas');
   const [filtroZonaPedido, setFiltroZonaPedido] = useState<string>('todas');
@@ -76,17 +77,17 @@ export default function Admin() {
   const [heroConfig, setHeroConfig] = useState<HeroBannerConfig>(DEFAULT_HERO_BANNER_CONFIG);
   const [salvandoHero, setSalvandoHero] = useState(false);
 
-  // Separar e ordenar produtos: Marca (A-Z) e Puffs em ordem crescente
+  // Separar e ordenar produtos: Marca (A-Z) e Puffs/modelo (crescente ou decrescente)
   const { produtosExpressosOrdenados, produtosPromocionaisOrdenados, produtosTodosOrdenados } = useMemo(() => {
     const expressos = produtos.filter(p => !p.is_promo);
     const promocionais = produtos.filter(p => p.is_promo);
 
     return {
-      produtosExpressosOrdenados: utils.ordenarProdutosPorMarcaEPuffs(expressos),
-      produtosPromocionaisOrdenados: utils.ordenarProdutosPorMarcaEPuffs(promocionais),
-      produtosTodosOrdenados: utils.ordenarProdutosPorMarcaEPuffs(produtos)
+      produtosExpressosOrdenados: utils.ordenarProdutosPorMarcaEPuffs(expressos, direcaoPuffs),
+      produtosPromocionaisOrdenados: utils.ordenarProdutosPorMarcaEPuffs(promocionais, direcaoPuffs),
+      produtosTodosOrdenados: utils.ordenarProdutosPorMarcaEPuffs(produtos, direcaoPuffs)
     };
-  }, [produtos]);
+  }, [produtos, direcaoPuffs]);
 
   // Lista de produtos Expressos filtrados por pesquisa e zona em tempo real
   const produtosExpressosFiltrados = useMemo(() => {
@@ -1734,21 +1735,40 @@ export default function Admin() {
                     </div>
                   </div>
 
-                  {/* Barra de Pesquisa */}
-                  <div className="relative max-w-md">
-                    <input
-                      type="text"
-                      placeholder="Pesquisar vape expresso, marca ou sabor..."
-                      value={pesquisa}
-                      onChange={(e) => setPesquisa(e.target.value)}
-                      className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 pl-10 pr-10 py-2.5 rounded-lg focus:border-[#76FF03] focus:shadow-[0_0_15px_rgba(118,255,3,0.3)] focus:outline-none transition-all duration-300 text-sm"
-                    />
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-[13px]" />
-                    {pesquisa && (
-                      <button onClick={() => setPesquisa('')} className="absolute right-3 top-[11px] text-slate-400 hover:text-[#76FF03]">
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
+                  {/* Barra de Pesquisa e Ordenação */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div className="relative flex-1 max-w-md">
+                      <input
+                        type="text"
+                        placeholder="Pesquisar vape expresso, marca ou sabor..."
+                        value={pesquisa}
+                        onChange={(e) => setPesquisa(e.target.value)}
+                        className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 pl-10 pr-10 py-2.5 rounded-lg focus:border-[#76FF03] focus:shadow-[0_0_15px_rgba(118,255,3,0.3)] focus:outline-none transition-all duration-300 text-sm"
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-[13px]" />
+                      {pesquisa && (
+                        <button onClick={() => setPesquisa('')} className="absolute right-3 top-[11px] text-slate-400 hover:text-[#76FF03]">
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => setDirecaoPuffs(p => p === 'desc' ? 'asc' : 'desc')}
+                      className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-black/60 border border-[#76FF03]/30 hover:border-[#76FF03] rounded-lg text-xs font-bold text-slate-200 transition-all shadow-sm select-none"
+                      title="Clique para alternar a ordem dos puffs/modelos"
+                    >
+                      <span className="text-slate-400">Ordem Puffs:</span>
+                      {direcaoPuffs === 'desc' ? (
+                        <span className="text-[#76FF03] flex items-center gap-1 font-extrabold">
+                          Decrescente (Maior ➔ Menor) <ArrowDown className="w-3.5 h-3.5 text-[#76FF03]" />
+                        </span>
+                      ) : (
+                        <span className="text-sky-400 flex items-center gap-1 font-extrabold">
+                          Crescente (Menor ➔ Maior) <ArrowUp className="w-3.5 h-3.5 text-sky-400" />
+                        </span>
+                      )}
+                    </button>
                   </div>
 
                   {/* Tabela de Expressos */}
@@ -1906,21 +1926,40 @@ export default function Admin() {
                     </div>
                   </div>
 
-                  {/* Barra de Pesquisa */}
-                  <div className="relative max-w-md">
-                    <input
-                      type="text"
-                      placeholder="Pesquisar vape promocional..."
-                      value={pesquisa}
-                      onChange={(e) => setPesquisa(e.target.value)}
-                      className="w-full bg-black/60 border border-[#FF3366]/50 text-slate-100 pl-10 pr-10 py-2.5 rounded-lg focus:border-[#FF3366] focus:shadow-[0_0_15px_rgba(255,51,102,0.3)] focus:outline-none transition-all duration-300 text-sm"
-                    />
-                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-[13px]" />
-                    {pesquisa && (
-                      <button onClick={() => setPesquisa('')} className="absolute right-3 top-[11px] text-slate-400 hover:text-[#FF3366]">
-                        <X className="w-4 h-4" />
-                      </button>
-                    )}
+                  {/* Barra de Pesquisa e Ordenação */}
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+                    <div className="relative flex-1 max-w-md">
+                      <input
+                        type="text"
+                        placeholder="Pesquisar vape promocional..."
+                        value={pesquisa}
+                        onChange={(e) => setPesquisa(e.target.value)}
+                        className="w-full bg-black/60 border border-[#FF3366]/50 text-slate-100 pl-10 pr-10 py-2.5 rounded-lg focus:border-[#FF3366] focus:shadow-[0_0_15px_rgba(255,51,102,0.3)] focus:outline-none transition-all duration-300 text-sm"
+                      />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-[13px]" />
+                      {pesquisa && (
+                        <button onClick={() => setPesquisa('')} className="absolute right-3 top-[11px] text-slate-400 hover:text-[#FF3366]">
+                          <X className="w-4 h-4" />
+                        </button>
+                      )}
+                    </div>
+
+                    <button
+                      onClick={() => setDirecaoPuffs(p => p === 'desc' ? 'asc' : 'desc')}
+                      className="flex items-center justify-center gap-2 px-3.5 py-2.5 bg-black/60 border border-[#FF3366]/30 hover:border-[#FF3366] rounded-lg text-xs font-bold text-slate-200 transition-all shadow-sm select-none"
+                      title="Clique para alternar a ordem dos puffs/modelos"
+                    >
+                      <span className="text-slate-400">Ordem Puffs:</span>
+                      {direcaoPuffs === 'desc' ? (
+                        <span className="text-[#FF3366] flex items-center gap-1 font-extrabold">
+                          Decrescente (Maior ➔ Menor) <ArrowDown className="w-3.5 h-3.5 text-[#FF3366]" />
+                        </span>
+                      ) : (
+                        <span className="text-sky-400 flex items-center gap-1 font-extrabold">
+                          Crescente (Menor ➔ Maior) <ArrowUp className="w-3.5 h-3.5 text-sky-400" />
+                        </span>
+                      )}
+                    </button>
                   </div>
 
                   {/* Tabela de Promocionais */}
@@ -2120,17 +2159,32 @@ export default function Admin() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-lg border border-[#76FF03]/30">
-                      <MapPin className="w-4 h-4 text-[#76FF03] ml-1" />
-                      <select
-                        value={filtroZonaProduto}
-                        onChange={(e) => setFiltroZonaProduto(e.target.value)}
-                        className="bg-black/80 text-slate-100 text-xs font-bold rounded px-2.5 py-1.5 outline-none border border-transparent focus:border-[#76FF03]"
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button
+                        onClick={() => setDirecaoPuffs(p => p === 'desc' ? 'asc' : 'desc')}
+                        className="flex items-center gap-1.5 px-3 py-2 bg-black/60 border border-white/10 hover:border-[#76FF03] rounded-lg text-xs font-bold text-slate-200 transition-all select-none"
+                        title="Alternar ordem dos modelos"
                       >
-                        <option value="todas">Todas as Regiões</option>
-                        <option value="norte">Zona Norte (ZN)</option>
-                        <option value="sul_oeste">Zona Oeste/Sul (ZS/ZO)</option>
-                      </select>
+                        <span className="text-slate-400">Ordem:</span>
+                        {direcaoPuffs === 'desc' ? (
+                          <span className="text-[#76FF03] flex items-center gap-1">Decrescente ⬇️</span>
+                        ) : (
+                          <span className="text-sky-400 flex items-center gap-1">Crescente ⬆️</span>
+                        )}
+                      </button>
+
+                      <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-lg border border-[#76FF03]/30">
+                        <MapPin className="w-4 h-4 text-[#76FF03] ml-1" />
+                        <select
+                          value={filtroZonaProduto}
+                          onChange={(e) => setFiltroZonaProduto(e.target.value)}
+                          className="bg-black/80 text-slate-100 text-xs font-bold rounded px-2.5 py-1.5 outline-none border border-transparent focus:border-[#76FF03]"
+                        >
+                          <option value="todas">Todas as Regiões</option>
+                          <option value="norte">Zona Norte (ZN)</option>
+                          <option value="sul_oeste">Zona Oeste/Sul (ZS/ZO)</option>
+                        </select>
+                      </div>
                     </div>
                   </div>
 

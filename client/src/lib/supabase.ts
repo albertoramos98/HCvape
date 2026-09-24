@@ -812,56 +812,63 @@ export const utils = {
     return dias.map(d => nomes[d]).join(', ');
   },
 
-  // Extrair número aproximado de puffs para ordenação
+  // Extrair número de puffs ou numeração de modelo pós-V (ex: V250, V150, V80, V55, V50, V40, V25, V15, 10k, 15000)
   extrairPuffs(nome: string): number {
     if (!nome) return 0;
     const texto = nome.toLowerCase();
 
-    // 1. Caso "15k", "10k", "20k", "8.5k"
-    const matchK = texto.match(/(\d+(?:[.,]\d+)?)\s*k\b/);
+    // 1. Padrão pós-V explícito (ex: "IGNITE V55", "IGNITE_V55", "IGNITEV55", "V-50", "V 80", "V150", "V250", "V15", "V25", "V40", "V60")
+    const matchV = texto.match(/(?:^|[^a-z0-9]|ignite)\s*v\s*[-_]?\s*(\d+)/i) || texto.match(/v\s*[-_]?\s*(\d+)/i);
+    if (matchV) {
+      const vNum = parseInt(matchV[1], 10);
+      if (vNum < 1000) {
+        // Converte V55 => 5500, V50 => 5000, V80 => 8000, V150 => 15000, V250 => 25000, V15 => 1500, etc.
+        return vNum * 100;
+      }
+      return vNum;
+    }
+
+    // 2. Caso "15k", "10k", "20k", "8.5k"
+    const matchK = texto.match(/(\d+(?:[.,]\d+)?)\s*k\b/i);
     if (matchK) {
       const num = parseFloat(matchK[1].replace(',', '.'));
       return Math.round(num * 1000);
     }
 
-    // 2. Caso "15000 puffs", "10.000 puffs", "8000 puff"
-    const matchPuffs = texto.match(/(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:puffs?|puf)/);
+    // 3. Caso "15000 puffs", "10.000 puffs", "8000 puff"
+    const matchPuffs = texto.match(/(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:puffs?|puf)/i);
     if (matchPuffs) {
       const num = parseInt(matchPuffs[1].replace(/\./g, ''), 10);
       if (!isNaN(num)) return num;
     }
 
-    // 3. Caso "V50" => 5000, "V80" => 8000, "V150" => 15000, "V250" => 25000
-    const matchV = texto.match(/\bv(\d+)\b/);
-    if (matchV) {
-      const vNum = parseInt(matchV[1], 10);
-      if (vNum === 50) return 5000;
-      if (vNum === 60) return 6000;
-      if (vNum === 80) return 8000;
-      if (vNum === 150) return 15000;
-      if (vNum === 250) return 25000;
-      if (vNum >= 1000) return vNum;
-    }
-
-    // 4. Caso número direto de 4 ou mais dígitos (ex: "10000", "8000", "5000")
+    // 4. Caso número direto de 4 ou mais dígitos (ex: "10000", "8000", "5000", "4000")
     const matchNum = texto.match(/\b(\d{4,6})\b/);
     if (matchNum) {
       const num = parseInt(matchNum[1], 10);
       if (!isNaN(num)) return num;
     }
 
-    // 5. Caso número grudado em letras (ex: "MO20000", "BC10000", "G8000")
-    const matchEmbedded = texto.match(/[a-z](\d{4,6})/);
+    // 5. Caso número grudado em letras (ex: "MO20000", "BC10000", "G8000", "V55")
+    const matchEmbedded = texto.match(/[a-z]\s*[-_]?\s*(\d{2,6})/i);
     if (matchEmbedded) {
       const num = parseInt(matchEmbedded[1], 10);
+      if (num < 1000) return num * 100;
       if (!isNaN(num)) return num;
+    }
+
+    // 6. Número isolado de 2 ou 3 dígitos (ex: "55", "50", "80", "150")
+    const matchDoisDigitos = texto.match(/\b(\d{2,3})\b/);
+    if (matchDoisDigitos) {
+      const num = parseInt(matchDoisDigitos[1], 10);
+      if (!isNaN(num)) return num * 100;
     }
 
     return 0;
   },
 
-  // Ordenar lista de vapes por Marca (A-Z) e Puffs em ordem crescente
-  ordenarProdutosPorMarcaEPuffs(produtos: Produto[]): Produto[] {
+  // Ordenar lista de vapes por Marca (A-Z) e Puffs/modelo (padrão: decrescente 'desc' - maior para o menor)
+  ordenarProdutosPorMarcaEPuffs(produtos: Produto[], direcaoPuffs: 'asc' | 'desc' = 'desc'): Produto[] {
     return [...produtos].sort((a, b) => {
       // 1. Marca alfabética
       const marcaA = (a.marca || '').trim().toLowerCase();
@@ -869,10 +876,12 @@ export const utils = {
       const compMarca = marcaA.localeCompare(marcaB, 'pt-BR');
       if (compMarca !== 0) return compMarca;
 
-      // 2. Puffs em ordem crescente
+      // 2. Puffs / Numeração pós-V (maior para o menor quando desc)
       const puffsA = utils.extrairPuffs(a.nome);
       const puffsB = utils.extrairPuffs(b.nome);
-      if (puffsA !== puffsB) return puffsA - puffsB;
+      if (puffsA !== puffsB) {
+        return direcaoPuffs === 'asc' ? puffsA - puffsB : puffsB - puffsA;
+      }
 
       // 3. Nome alfabético
       return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
