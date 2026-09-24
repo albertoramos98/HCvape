@@ -67,6 +67,37 @@ ALTER TABLE produtos ADD COLUMN IF NOT EXISTS estoque_zonas JSONB DEFAULT '{}'::
 
 -- Adicionar registro de Zona na tabela de pedidos
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS zona VARCHAR(50);
+
+-- Criar tabela de trocas / garantia de produtos com defeito
+CREATE TABLE IF NOT EXISTS trocas (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cliente_nome VARCHAR(255) NOT NULL,
+  cliente_telefone VARCHAR(50),
+  data_troca TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  vape_defeito VARCHAR(255) NOT NULL,
+  sabor_defeito VARCHAR(255),
+  motivo VARCHAR(255) NOT NULL,
+  motivo_detalhes TEXT,
+  vape_trocado VARCHAR(255) NOT NULL,
+  sabor_trocado VARCHAR(255),
+  produto_trocado_id UUID,
+  zona VARCHAR(50),
+  abateu_estoque BOOLEAN DEFAULT false,
+  status VARCHAR(50) DEFAULT 'concluida',
+  observacoes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_trocas_data ON trocas(data_troca);
+CREATE INDEX IF NOT EXISTS idx_trocas_cliente ON trocas(cliente_nome);
+CREATE INDEX IF NOT EXISTS idx_trocas_vape_defeito ON trocas(vape_defeito);
+
+ALTER TABLE trocas ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Usuários autenticados podem gerenciar trocas"
+  ON trocas FOR ALL
+  USING (auth.role() = 'authenticated');
 ```
 
 ---

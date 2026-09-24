@@ -96,6 +96,26 @@ export interface Pedido {
   created_at?: string;
 }
 
+export interface Troca {
+  id: string;
+  cliente_nome: string;
+  cliente_telefone?: string;
+  data_troca: string;
+  vape_defeito: string;
+  sabor_defeito?: string;
+  motivo: string;
+  motivo_detalhes?: string;
+  vape_trocado: string;
+  sabor_trocado?: string;
+  produto_trocado_id?: string;
+  zona?: string;
+  abateu_estoque?: boolean;
+  status?: 'concluida' | 'pendente' | 'cancelada';
+  observacoes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
 export interface Visita {
   id: string;
   created_at: string;
@@ -481,6 +501,167 @@ export const pedidosService = {
   },
 };
 
+// Serviço de Trocas e Garantia
+export const trocasService = {
+  // Obter trocas do fallback local caso a tabela ainda não exista no Supabase
+  obterDoLocalStorage(): Troca[] {
+    try {
+      const local = localStorage.getItem('hcvape_trocas_registros');
+      return local ? JSON.parse(local) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  salvarNoLocalStorage(trocas: Troca[]): void {
+    try {
+      localStorage.setItem('hcvape_trocas_registros', JSON.stringify(trocas));
+    } catch (e) {
+      console.warn('Erro ao salvar trocas no localStorage:', e);
+    }
+  },
+
+  // Obter todas as trocas
+  async obterTodas(): Promise<{ trocas: Troca[]; usandoFallback: boolean }> {
+    try {
+      const { data, error } = await supabase
+        .from('trocas')
+        .select('*')
+        .order('data_troca', { ascending: false });
+
+      if (error) throw error;
+      const lista = (data || []) as Troca[];
+      this.salvarNoLocalStorage(lista);
+      return { trocas: lista, usandoFallback: false };
+    } catch (err: any) {
+      console.warn('Tabela trocas não acessível no Supabase, usando armazenamento local/fallback:', err);
+      // Tenta ler de configuracoes como segundo fallback
+      try {
+        const { data: configData } = await supabase
+          .from('configuracoes')
+          .select('valor')
+          .eq('chave', 'trocas_registros')
+          .single();
+        if (configData?.valor && Array.isArray(configData.valor)) {
+          this.salvarNoLocalStorage(configData.valor);
+          return { trocas: configData.valor as Troca[], usandoFallback: true };
+        }
+      } catch {}
+
+      const local = this.obterDoLocalStorage();
+      return { trocas: local, usandoFallback: true };
+    }
+  },
+
+  // Criar nova troca
+  async criar(troca: Omit<Troca, 'id' | 'created_at' | 'updated_at'>): Promise<Troca> {
+    const novaTrocaId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `troca_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const trocaCompleta: Troca = {
+      ...troca,
+      id: novaTrocaId,
+      status: troca.status || 'concluida',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from('trocas')
+        .insert([{
+          ...troca,
+          status: troca.status || 'concluida'
+        }])
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      const locais = this.obterDoLocalStorage();
+      this.salvarNoLocalStorage([data as Troca, ...locais.filter(t => t.id !== (data as any).id)]);
+      return data as Troca;
+    } catch (err) {
+      console.warn('Salvando troca em fallback (tabela trocas pode não existir):', err);
+      const locais = this.obterDoLocalStorage();
+      const atualizados = [trocaCompleta, ...locais];
+      this.salvarNoLocalStorage(atualizados);
+      
+      try {
+        await supabase.from('configuracoes').upsert({
+          chave: 'trocas_registros',
+          valor: atualizados,
+          updated_at: new Date().toISOString()
+        });
+      } catch {}
+
+      return trocaCompleta;
+    }
+  },
+
+  // Atualizar troca existente
+  async atualizar(id: string, updates: Partial<Omit<Troca, 'id' | 'created_at'>>): Promise<Troca> {
+    try {
+      const { data, error } = await supabase
+        .from('trocas')
+        .update({
+          ...updates,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      
+      const locais = this.obterDoLocalStorage();
+      this.salvarNoLocalStorage(locais.map(t => t.id === id ? (data as Troca) : t));
+      return data as Troca;
+    } catch (err) {
+      console.warn('Atualizando troca no fallback:', err);
+      const locais = this.obterDoLocalStorage();
+      const atualizados = locais.map(t => t.id === id ? { ...t, ...updates, updated_at: new Date().toISOString() } : t);
+      this.salvarNoLocalStorage(atualizados);
+
+      try {
+        await supabase.from('configuracoes').upsert({
+          chave: 'trocas_registros',
+          valor: atualizados,
+          updated_at: new Date().toISOString()
+        });
+      } catch {}
+
+      const editada = atualizados.find(t => t.id === id);
+      if (!editada) throw new Error('Troca não encontrada');
+      return editada;
+    }
+  },
+
+  // Deletar troca
+  async deletar(id: string): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('trocas')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+    } catch (err) {
+      console.warn('Deletando troca no fallback:', err);
+    }
+
+    const locais = this.obterDoLocalStorage();
+    const filtrados = locais.filter(t => t.id !== id);
+    this.salvarNoLocalStorage(filtrados);
+
+    try {
+      await supabase.from('configuracoes').upsert({
+        chave: 'trocas_registros',
+        valor: filtrados,
+        updated_at: new Date().toISOString()
+      });
+    } catch {}
+  }
+};
+
 // Serviço de imagens (Supabase Storage)
 export const imagemService = {
   // Fazer upload de imagem e retornar a URL pública
@@ -733,15 +914,14 @@ export const utils = {
   async obterMarcas(): Promise<string[]> {
     const { data, error } = await supabase
       .from('produtos')
-      .select('marca')
-      .order('marca', { ascending: true });
+      .select('marca');
 
     if (error) throw error;
     
-    // Remover duplicatas
+    // Remover duplicatas e ordenar pelas marcas principais (Ignite, Elfbar, etc.)
     const marcasSet = new Set((data || []).map(p => p.marca));
     const marcas = Array.from(marcasSet);
-    return marcas;
+    return utils.ordenarMarcas(marcas);
   },
 
   // Verificar se está no horário de promoção baseado em uma configuração dinâmica (com fallback)
@@ -882,21 +1062,57 @@ export const utils = {
     return 0;
   },
 
-  // Ordenar lista de vapes primariamente por Puffs/Capacidade (100K ➔ 70K ➔ 55K ➔ 50K ➔ ... ➔ 1K) e desempate por Marca e Nome
+  // Ordenar lista de marcas com prioridade para as marcas principais (Ignite, Elfbar, Black Sheep, Waka, Sex Addict)
+  ordenarMarcas(marcas: string[]): string[] {
+    const prioridade = ['ignite', 'elf bar', 'elfbar', 'black sheep', 'waka', 'sex addict'];
+    return [...marcas].sort((a, b) => {
+      const normA = (a || '').trim().toLowerCase();
+      const normB = (b || '').trim().toLowerCase();
+      if (normA === normB) return 0;
+      const idxA = prioridade.findIndex(m => normA.includes(m) || m.includes(normA));
+      const idxB = prioridade.findIndex(m => normB.includes(m) || m.includes(normB));
+      if (idxA !== -1 && idxB !== -1) {
+        if (idxA !== idxB) return idxA - idxB;
+      } else if (idxA !== -1) {
+        return -1;
+      } else if (idxB !== -1) {
+        return 1;
+      }
+      return normA.localeCompare(normB, 'pt-BR');
+    });
+  },
+
+  // Ordenar lista de vapes: 1º por Marca (Ignite, Elfbar, Black Sheep, etc.), 2º dentro da marca por Puffs (do MAIOR para o MENOR), 3º desempate por Nome
   ordenarProdutosPorMarcaEPuffs(produtos: Produto[], direcaoPuffs: 'asc' | 'desc' = 'desc'): Produto[] {
+    const prioridadeMarcas = ['ignite', 'elf bar', 'elfbar', 'black sheep', 'waka', 'sex addict'];
+
     return [...produtos].sort((a, b) => {
-      // 1. Puffs / Numeração de Capacidade (ex: 100k -> 70k -> 55k -> 50k -> 40k -> 30k -> 8k -> 5.5k -> 1k)
+      // 1. Marca (Ignite -> Elfbar -> Black Sheep -> Waka -> Sex Addict -> outras A-Z)
+      const marcaA = (a.marca || '').trim().toLowerCase();
+      const marcaB = (b.marca || '').trim().toLowerCase();
+
+      if (marcaA !== marcaB) {
+        const idxA = prioridadeMarcas.findIndex(m => marcaA.includes(m) || m.includes(marcaA));
+        const idxB = prioridadeMarcas.findIndex(m => marcaB.includes(m) || m.includes(marcaB));
+
+        if (idxA !== -1 && idxB !== -1) {
+          if (idxA !== idxB) return idxA - idxB;
+        } else if (idxA !== -1) {
+          return -1;
+        } else if (idxB !== -1) {
+          return 1;
+        }
+
+        const compMarca = marcaA.localeCompare(marcaB, 'pt-BR');
+        if (compMarca !== 0) return compMarca;
+      }
+
+      // 2. Dentro da mesma marca: Puffs do maior para o menor (ou ascendente se configurado)
       const puffsA = utils.extrairPuffs(a.nome);
       const puffsB = utils.extrairPuffs(b.nome);
       if (puffsA !== puffsB) {
         return direcaoPuffs === 'asc' ? puffsA - puffsB : puffsB - puffsA;
       }
-
-      // 2. Desempate por Marca (A-Z)
-      const marcaA = (a.marca || '').trim().toLowerCase();
-      const marcaB = (b.marca || '').trim().toLowerCase();
-      const compMarca = marcaA.localeCompare(marcaB, 'pt-BR');
-      if (compMarca !== 0) return compMarca;
 
       // 3. Desempate por Nome do Produto (A-Z)
       return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');

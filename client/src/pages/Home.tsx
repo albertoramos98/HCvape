@@ -205,7 +205,7 @@ export default function Home() {
 
   // Marcas apenas de Expressos
   const marcasExpressos = useMemo(() => {
-    return Array.from(new Set(produtosExpressos.map(p => p.marca))).sort();
+    return utils.ordenarMarcas(Array.from(new Set(produtosExpressos.map(p => p.marca))));
   }, [produtosExpressos]);
 
   // Total do carrinho

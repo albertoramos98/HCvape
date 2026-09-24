@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles, MapPin, Compass, Clock, Target, Flame, Eye, EyeOff, Gauge, Award, ChevronRight, ChevronLeft, Check, Layers } from 'lucide-react';
-import { authService, produtosService, pedidosService, imagemService, visitasService, Produto, Pedido, utils, configService, PromoSchedule, HeroBannerConfig, HeroSlideConfig, DEFAULT_HERO_BANNER_CONFIG, ZonaId, ZONAS_DISPONIVEIS } from '@/lib/supabase';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles, MapPin, Compass, Clock, Target, Flame, Eye, EyeOff, Gauge, Award, ChevronRight, ChevronLeft, Check, Layers, Phone, ArrowRight, ShieldCheck, ShieldAlert, AlertTriangle, MessageSquare, Repeat } from 'lucide-react';
+import { authService, produtosService, pedidosService, imagemService, visitasService, trocasService, Produto, Pedido, Troca, utils, configService, PromoSchedule, HeroBannerConfig, HeroSlideConfig, DEFAULT_HERO_BANNER_CONFIG, ZonaId, ZONAS_DISPONIVEIS } from '@/lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Legend } from 'recharts';
 import { HeroBanner } from '@/components/HeroBanner';
 
 /**
- * Página Admin - Gerenciamento Completo de Estoque + Promoções + Imagens + Pedidos + Relógio de Metas
+ * Página Admin - Gerenciamento Completo de Estoque + Promoções + Imagens + Pedidos + Trocas & Garantia + Relógio de Metas
  * Design: Cyberpunk Dark Mode com Neon Verde
  * Acesso: Protegido por autenticação Supabase
  */
@@ -25,6 +25,56 @@ interface FormProduto {
   preco_promo: string;
 }
 
+export interface FormTroca {
+  cliente_nome: string;
+  cliente_telefone: string;
+  data_troca: string;
+  vape_defeito_selecionado: string;
+  vape_defeito_custom: string;
+  sabor_defeito: string;
+  motivo: string;
+  motivo_custom: string;
+  motivo_detalhes: string;
+  vape_trocado_selecionado: string;
+  vape_trocado_custom: string;
+  sabor_trocado: string;
+  zona: string;
+  abater_estoque: boolean;
+  status: 'concluida' | 'pendente' | 'cancelada';
+  observacoes: string;
+}
+
+export const MOTIVOS_TROCA_PADRAO = [
+  'Gosto de queimado / Queimando na garganta',
+  'Não liga / Bateria morta',
+  'Vazamento de líquido',
+  'Disparo contínuo / Sensor travado',
+  'Não carrega / Entrada Tipo-C com defeito',
+  'Sem puxada / Sem fluxo de vapor',
+  'Sabor alterado / Gosto químico',
+  'Veio sem lacre / Caixa danificada',
+  'Outro motivo'
+];
+
+export const FORM_TROCA_PADRAO: FormTroca = {
+  cliente_nome: '',
+  cliente_telefone: '',
+  data_troca: '',
+  vape_defeito_selecionado: '',
+  vape_defeito_custom: '',
+  sabor_defeito: '',
+  motivo: 'Gosto de queimado / Queimando na garganta',
+  motivo_custom: '',
+  motivo_detalhes: '',
+  vape_trocado_selecionado: '',
+  vape_trocado_custom: '',
+  sabor_trocado: '',
+  zona: 'norte',
+  abater_estoque: true,
+  status: 'concluida',
+  observacoes: ''
+};
+
 export default function Admin() {
   const [autenticado, setAutenticado] = useState(false);
   const [carregando, setCarregando] = useState(true);
@@ -41,13 +91,25 @@ export default function Admin() {
   const [dataFimMetricas, setDataFimMetricas] = useState<string>('');
   const [agrupamentoMetricas, setAgrupamentoMetricas] = useState<'dia' | 'semana' | 'mes'>('dia');
   const [statusPedidoFiltro, setStatusPedidoFiltro] = useState<'todos' | 'concluidos'>('todos');
-  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'relogio_mensal' | 'pedidos' | 'metricas' | 'saude' | 'configuracoes' | 'herobanner'>('produtos');
+  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'relogio_mensal' | 'pedidos' | 'trocas' | 'metricas' | 'saude' | 'configuracoes' | 'herobanner'>('produtos');
   const [subAbaEstoque, setSubAbaEstoque] = useState<'expressos' | 'promocional' | 'todos'>('expressos');
   const [filtroZonaEstoqueExpresso, setFiltroZonaEstoqueExpresso] = useState<'todas' | 'norte' | 'sul_oeste'>('todas');
   const [direcaoPuffs, setDirecaoPuffs] = useState<'asc' | 'desc'>('desc');
   const [pesquisa, setPesquisa] = useState('');
   const [filtroZonaProduto, setFiltroZonaProduto] = useState<string>('todas');
   const [filtroZonaPedido, setFiltroZonaPedido] = useState<string>('todas');
+
+  // Estados para Trocas & Garantia
+  const [trocas, setTrocas] = useState<Troca[]>([]);
+  const [usandoFallbackTrocas, setUsandoFallbackTrocas] = useState(false);
+  const [modalTrocaAberto, setModalTrocaAberto] = useState(false);
+  const [editandoTrocaId, setEditandoTrocaId] = useState<string | null>(null);
+  const [formTroca, setFormTroca] = useState<FormTroca>(FORM_TROCA_PADRAO);
+  const [salvandoTroca, setSalvandoTroca] = useState(false);
+  const [pesquisaTroca, setPesquisaTroca] = useState('');
+  const [filtroMotivoTroca, setFiltroMotivoTroca] = useState('todos');
+  const [filtroStatusTroca, setFiltroStatusTroca] = useState('todos');
+  const [filtroPeriodoTroca, setFiltroPeriodoTroca] = useState<'todos' | 'hoje' | '7d' | '30d' | 'mes_atual'>('todos');
 
   // Estados para o Relógio Mensal / Metas
   const [mesRelogio, setMesRelogio] = useState(() => {
@@ -636,7 +698,7 @@ export default function Admin() {
   const carregarTudo = async () => {
     try {
       setErro(null);
-      const [produtosData, pedidosData, pedidosExcluidosData, marcasData, metricasData, configData, heroData] = await Promise.all([
+      const [produtosData, pedidosData, pedidosExcluidosData, marcasData, metricasData, configData, heroData, trocasData] = await Promise.all([
         produtosService.obterTodos(),
         pedidosService.obterTodos(),
         pedidosService.obterExcluidos(),
@@ -654,6 +716,10 @@ export default function Admin() {
         configService.obterHeroBannerConfig().catch(err => {
           console.warn('Erro ao obter hero banner config:', err);
           return DEFAULT_HERO_BANNER_CONFIG;
+        }),
+        trocasService.obterTodas().catch(err => {
+          console.warn('Erro ao obter trocas no carregarTudo:', err);
+          return { trocas: [], usandoFallback: true };
         })
       ]);
       setProdutos(produtosData);
@@ -663,6 +729,8 @@ export default function Admin() {
       setMetricasVisitas(metricasData);
       setPromoConfig(configData);
       setHeroConfig(heroData);
+      setTrocas(trocasData.trocas);
+      setUsandoFallbackTrocas(trocasData.usandoFallback);
       setEstoqueEditado({});
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
@@ -1442,6 +1510,377 @@ export default function Admin() {
     document.body.removeChild(link);
   };
 
+  // Lista de trocas filtradas por pesquisa, motivo, status e período
+  const trocasFiltradas = useMemo(() => {
+    return trocas.filter(t => {
+      // 1. Pesquisa por texto
+      if (pesquisaTroca.trim()) {
+        const termo = utils.normalizarTexto(pesquisaTroca);
+        const clienteMatch = utils.normalizarTexto(t.cliente_nome).includes(termo);
+        const telMatch = (t.cliente_telefone || '').includes(termo);
+        const defeitoMatch = utils.normalizarTexto(t.vape_defeito).includes(termo);
+        const trocadoMatch = utils.normalizarTexto(t.vape_trocado).includes(termo);
+        const saborDefeitoMatch = utils.normalizarTexto(t.sabor_defeito || '').includes(termo);
+        const saborTrocadoMatch = utils.normalizarTexto(t.sabor_trocado || '').includes(termo);
+        const motivoMatch = utils.normalizarTexto(t.motivo).includes(termo);
+        const obsMatch = utils.normalizarTexto(t.observacoes || '').includes(termo);
+        if (!clienteMatch && !telMatch && !defeitoMatch && !trocadoMatch && !saborDefeitoMatch && !saborTrocadoMatch && !motivoMatch && !obsMatch) {
+          return false;
+        }
+      }
+
+      // 2. Filtro por motivo
+      if (filtroMotivoTroca !== 'todos') {
+        if (filtroMotivoTroca === 'outros') {
+          const ePadrao = MOTIVOS_TROCA_PADRAO.slice(0, -1).some(m => t.motivo.toLowerCase().includes(m.toLowerCase()));
+          if (ePadrao) return false;
+        } else {
+          if (!t.motivo.toLowerCase().includes(filtroMotivoTroca.toLowerCase())) {
+            return false;
+          }
+        }
+      }
+
+      // 3. Filtro por status
+      if (filtroStatusTroca !== 'todos') {
+        if ((t.status || 'concluida') !== filtroStatusTroca) {
+          return false;
+        }
+      }
+
+      // 4. Filtro por período
+      if (filtroPeriodoTroca !== 'todos') {
+        const dTroca = new Date(t.data_troca);
+        const agora = new Date();
+        if (filtroPeriodoTroca === 'hoje') {
+          if (dTroca.toDateString() !== agora.toDateString()) return false;
+        } else if (filtroPeriodoTroca === '7d') {
+          const seteDiasAtras = new Date(agora.getTime() - 7 * 24 * 60 * 60 * 1000);
+          if (dTroca < seteDiasAtras) return false;
+        } else if (filtroPeriodoTroca === '30d') {
+          const trintaDiasAtras = new Date(agora.getTime() - 30 * 24 * 60 * 60 * 1000);
+          if (dTroca < trintaDiasAtras) return false;
+        } else if (filtroPeriodoTroca === 'mes_atual') {
+          if (dTroca.getMonth() !== agora.getMonth() || dTroca.getFullYear() !== agora.getFullYear()) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [trocas, pesquisaTroca, filtroMotivoTroca, filtroStatusTroca, filtroPeriodoTroca]);
+
+  // Estatísticas e métricas do módulo de trocas
+  const estatisticasTrocas = useMemo(() => {
+    const agora = new Date();
+    const mesAtual = agora.getMonth();
+    const anoAtual = agora.getFullYear();
+
+    let trocasNoMes = 0;
+    const contagemVapesDefeito: { [vape: string]: number } = {};
+    const contagemMotivos: { [motivo: string]: number } = {};
+
+    trocas.forEach(t => {
+      const d = new Date(t.data_troca);
+      if (d.getMonth() === mesAtual && d.getFullYear() === anoAtual) {
+        trocasNoMes++;
+      }
+
+      const vapeLimpo = (t.vape_defeito || '').trim();
+      if (vapeLimpo) {
+        contagemVapesDefeito[vapeLimpo] = (contagemVapesDefeito[vapeLimpo] || 0) + 1;
+      }
+
+      const mot = (t.motivo || '').trim();
+      if (mot) {
+        contagemMotivos[mot] = (contagemMotivos[mot] || 0) + 1;
+      }
+    });
+
+    let topVape = 'Nenhum';
+    let topVapeQtd = 0;
+    Object.entries(contagemVapesDefeito).forEach(([vape, qtd]) => {
+      if (qtd > topVapeQtd) {
+        topVape = vape;
+        topVapeQtd = qtd;
+      }
+    });
+
+    let topMotivo = 'Nenhum';
+    let topMotivoQtd = 0;
+    Object.entries(contagemMotivos).forEach(([motivo, qtd]) => {
+      if (qtd > topMotivoQtd) {
+        topMotivo = motivo;
+        topMotivoQtd = qtd;
+      }
+    });
+
+    return {
+      total: trocas.length,
+      noMes: trocasNoMes,
+      topVape,
+      topVapeQtd,
+      topMotivo,
+      topMotivoQtd
+    };
+  }, [trocas]);
+
+  // Abrir modal para nova troca
+  const abrirModalNovaTroca = () => {
+    setEditandoTrocaId(null);
+    setFormTroca({
+      ...FORM_TROCA_PADRAO,
+      data_troca: new Date().toISOString().slice(0, 16)
+    });
+    setModalTrocaAberto(true);
+  };
+
+  // Abrir modal para editar troca existente
+  const abrirModalEditarTroca = (troca: Troca) => {
+    setEditandoTrocaId(troca.id);
+    
+    // Identificar correspondência no catálogo
+    const matchDefeito = produtos.find(p => 
+      `${p.marca} ${p.nome}`.toLowerCase() === troca.vape_defeito.toLowerCase() || 
+      p.nome.toLowerCase() === troca.vape_defeito.toLowerCase()
+    );
+    const matchTrocado = produtos.find(p => 
+      p.id === troca.produto_trocado_id || 
+      `${p.marca} ${p.nome}`.toLowerCase() === troca.vape_trocado.toLowerCase() || 
+      p.nome.toLowerCase() === troca.vape_trocado.toLowerCase()
+    );
+
+    let dataFormatada = troca.data_troca;
+    try {
+      dataFormatada = new Date(troca.data_troca).toISOString().slice(0, 16);
+    } catch {}
+
+    const ehMotivoPadrao = MOTIVOS_TROCA_PADRAO.includes(troca.motivo);
+
+    setFormTroca({
+      cliente_nome: troca.cliente_nome,
+      cliente_telefone: troca.cliente_telefone || '',
+      data_troca: dataFormatada,
+      vape_defeito_selecionado: matchDefeito ? matchDefeito.id : (troca.vape_defeito ? 'custom' : ''),
+      vape_defeito_custom: matchDefeito ? '' : troca.vape_defeito,
+      sabor_defeito: troca.sabor_defeito || '',
+      motivo: ehMotivoPadrao ? troca.motivo : 'Outro motivo',
+      motivo_custom: ehMotivoPadrao ? '' : troca.motivo,
+      motivo_detalhes: troca.motivo_detalhes || '',
+      vape_trocado_selecionado: matchTrocado ? matchTrocado.id : (troca.vape_trocado ? 'custom' : ''),
+      vape_trocado_custom: matchTrocado ? '' : troca.vape_trocado,
+      sabor_trocado: troca.sabor_trocado || '',
+      zona: troca.zona || 'norte',
+      abater_estoque: false, // Ao editar, default false
+      status: troca.status || 'concluida',
+      observacoes: troca.observacoes || ''
+    });
+    setModalTrocaAberto(true);
+  };
+
+  // Fechar modal de troca
+  const fecharModalTroca = () => {
+    setModalTrocaAberto(false);
+    setEditandoTrocaId(null);
+  };
+
+  // Salvar registro de troca (criar ou editar)
+  const handleSalvarTroca = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formTroca.cliente_nome.trim()) {
+      setErro('Informe o nome do cliente');
+      return;
+    }
+
+    // Vape com defeito
+    let nomeVapeDefeito = '';
+    if (formTroca.vape_defeito_selecionado === 'custom') {
+      nomeVapeDefeito = formTroca.vape_defeito_custom.trim();
+    } else if (formTroca.vape_defeito_selecionado) {
+      const p = produtos.find(prod => prod.id === formTroca.vape_defeito_selecionado);
+      nomeVapeDefeito = p ? `${p.marca} ${p.nome}` : formTroca.vape_defeito_custom.trim();
+    }
+    if (!nomeVapeDefeito) {
+      setErro('Informe qual era o vape com defeito');
+      return;
+    }
+
+    // Vape trocado / substituição
+    let nomeVapeTrocado = '';
+    let produtoTrocadoId: string | undefined = undefined;
+    let produtoTrocadoObj: Produto | undefined = undefined;
+
+    if (formTroca.vape_trocado_selecionado === 'custom') {
+      nomeVapeTrocado = formTroca.vape_trocado_custom.trim();
+    } else if (formTroca.vape_trocado_selecionado) {
+      produtoTrocadoObj = produtos.find(prod => prod.id === formTroca.vape_trocado_selecionado);
+      if (produtoTrocadoObj) {
+        nomeVapeTrocado = `${produtoTrocadoObj.marca} ${produtoTrocadoObj.nome}`;
+        produtoTrocadoId = produtoTrocadoObj.id;
+      } else {
+        nomeVapeTrocado = formTroca.vape_trocado_custom.trim();
+      }
+    }
+    if (!nomeVapeTrocado) {
+      setErro('Informe por qual vape foi trocado');
+      return;
+    }
+
+    // Motivo da troca
+    let motivoFinal = formTroca.motivo;
+    if (formTroca.motivo === 'Outro motivo' && formTroca.motivo_custom.trim()) {
+      motivoFinal = formTroca.motivo_custom.trim();
+    }
+
+    try {
+      setSalvandoTroca(true);
+      setErro(null);
+
+      // Se marcou para abater estoque do novo vape
+      if (formTroca.abater_estoque && produtoTrocadoObj && produtoTrocadoId) {
+        try {
+          const estoqueAtual = produtoTrocadoObj.estoque || 0;
+          const novoEstoqueGeral = Math.max(0, estoqueAtual - 1);
+
+          let novosSaboresEstoque = produtoTrocadoObj.sabores_estoque ? { ...produtoTrocadoObj.sabores_estoque } : undefined;
+          if (novosSaboresEstoque && formTroca.sabor_trocado && novosSaboresEstoque[formTroca.sabor_trocado] !== undefined) {
+            novosSaboresEstoque[formTroca.sabor_trocado] = Math.max(0, (novosSaboresEstoque[formTroca.sabor_trocado] || 0) - 1);
+          }
+
+          let novoEstoqueZonas = produtoTrocadoObj.estoque_zonas ? { ...produtoTrocadoObj.estoque_zonas } : undefined;
+          if (novoEstoqueZonas && formTroca.zona && novoEstoqueZonas[formTroca.zona]) {
+            const zonaAtual = novoEstoqueZonas[formTroca.zona]!;
+            const novoQtdZona = Math.max(0, (zonaAtual.estoque || 0) - 1);
+            let saboresZona = zonaAtual.sabores_estoque ? { ...zonaAtual.sabores_estoque } : undefined;
+            if (saboresZona && formTroca.sabor_trocado && saboresZona[formTroca.sabor_trocado] !== undefined) {
+              saboresZona[formTroca.sabor_trocado] = Math.max(0, (saboresZona[formTroca.sabor_trocado] || 0) - 1);
+            }
+            novoEstoqueZonas[formTroca.zona] = {
+              ...zonaAtual,
+              estoque: novoQtdZona,
+              sabores_estoque: saboresZona
+            };
+          }
+
+          const updates: any = {
+            estoque: novoEstoqueGeral
+          };
+          if (novosSaboresEstoque) updates.sabores_estoque = novosSaboresEstoque;
+          if (novoEstoqueZonas) updates.estoque_zonas = novoEstoqueZonas;
+
+          await produtosService.editar(produtoTrocadoId, updates);
+          setProdutos(prev => prev.map(p => p.id === produtoTrocadoId ? { ...p, ...updates } : p));
+        } catch (errEstoque) {
+          console.warn('Erro ao atualizar estoque do produto trocado:', errEstoque);
+        }
+      }
+
+      const dadosTroca = {
+        cliente_nome: formTroca.cliente_nome.trim(),
+        cliente_telefone: formTroca.cliente_telefone.trim() || undefined,
+        data_troca: formTroca.data_troca ? new Date(formTroca.data_troca).toISOString() : new Date().toISOString(),
+        vape_defeito: nomeVapeDefeito,
+        sabor_defeito: formTroca.sabor_defeito.trim() || undefined,
+        motivo: motivoFinal,
+        motivo_detalhes: formTroca.motivo_detalhes.trim() || undefined,
+        vape_trocado: nomeVapeTrocado,
+        sabor_trocado: formTroca.sabor_trocado.trim() || undefined,
+        produto_trocado_id: produtoTrocadoId,
+        zona: formTroca.zona || undefined,
+        abateu_estoque: formTroca.abater_estoque,
+        status: formTroca.status,
+        observacoes: formTroca.observacoes.trim() || undefined
+      };
+
+      if (editandoTrocaId) {
+        const atualizada = await trocasService.atualizar(editandoTrocaId, dadosTroca);
+        setTrocas(prev => prev.map(t => t.id === editandoTrocaId ? atualizada : t));
+        setSucesso('Registro de troca atualizado com sucesso!');
+      } else {
+        const nova = await trocasService.criar(dadosTroca);
+        setTrocas(prev => [nova, ...prev]);
+        setSucesso('Troca registrada com sucesso!');
+      }
+
+      fecharModalTroca();
+      setTimeout(() => setSucesso(null), 3000);
+    } catch (err: any) {
+      console.error('Erro ao salvar troca:', err);
+      setErro('Erro ao salvar registro de troca');
+    } finally {
+      setSalvandoTroca(false);
+    }
+  };
+
+  // Excluir registro de troca
+  const handleDeletarTroca = async (id: string, cliente: string) => {
+    if (!window.confirm(`Deseja realmente remover o registro de troca de ${cliente}?`)) {
+      return;
+    }
+    try {
+      await trocasService.deletar(id);
+      setTrocas(prev => prev.filter(t => t.id !== id));
+      setSucesso('Registro de troca excluído!');
+      setTimeout(() => setSucesso(null), 3000);
+    } catch (err) {
+      console.error('Erro ao deletar troca:', err);
+      setErro('Erro ao excluir registro de troca');
+    }
+  };
+
+  // Exportar trocas para CSV
+  const handleExportarTrocas = () => {
+    if (trocas.length === 0) {
+      alert('Nenhuma troca para exportar');
+      return;
+    }
+
+    const headers = [
+      'DATA DA TROCA',
+      'CLIENTE',
+      'TELEFONE',
+      'VAPE COM DEFEITO',
+      'SABOR DEFEITO',
+      'MOTIVO DO DEFEITO',
+      'DETALHES DO DEFEITO',
+      'VAPE SUBSTITUTO (ENTREGUE)',
+      'SABOR ENTREGUE',
+      'ZONA / REGIAO',
+      'ABATEU ESTOQUE',
+      'STATUS',
+      'OBSERVACOES'
+    ];
+
+    const rows = trocas.map(t => [
+      new Date(t.data_troca).toLocaleString('pt-BR'),
+      t.cliente_nome,
+      t.cliente_telefone || '',
+      t.vape_defeito,
+      t.sabor_defeito || '',
+      t.motivo,
+      (t.motivo_detalhes || '').replace(/"/g, '""'),
+      t.vape_trocado,
+      t.sabor_trocado || '',
+      t.zona || '',
+      t.abateu_estoque ? 'SIM' : 'NAO',
+      t.status || 'concluida',
+      (t.observacoes || '').replace(/"/g, '""')
+    ]);
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(r => r.map(c => `"${String(c)}"`).join(';'))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `hcvape_trocas_garantia_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   if (carregando) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-4">
@@ -1571,6 +2010,14 @@ export default function Admin() {
               </span>
             )}
           </button>
+          <button onClick={() => setAbaAtiva('trocas')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'trocas' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
+            <RefreshCw className="w-4 h-4 text-[#76FF03]" /> Trocas / Garantia
+            {trocas.length > 0 && (
+              <span className="bg-[#76FF03]/20 border border-[#76FF03]/40 text-[#76FF03] text-[10px] px-1.5 py-0.2 rounded-full ml-1 font-bold">
+                {trocas.length}
+              </span>
+            )}
+          </button>
           <button onClick={() => setAbaAtiva('metricas')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'metricas' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <BarChart3 className="w-4 h-4" /> Métricas
           </button>
@@ -1592,7 +2039,7 @@ export default function Admin() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-bold neon-glow font-['Outfit']">Gerenciamento de Estoque</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Vapes organizados por Marca e Puffs crescentes</p>
+                  <p className="text-xs text-slate-400 mt-0.5">Vapes agrupados por Marca e Puffs do maior para o menor</p>
                 </div>
                 <div className="flex flex-wrap gap-2.5">
                   <button onClick={handleExportarProdutos} className="flex items-center gap-2 px-3.5 py-2 bg-[#76FF03]/15 border border-[#76FF03]/50 text-[#76FF03] rounded-lg font-bold text-xs hover:bg-[#76FF03]/25 transition-all">
@@ -2943,6 +3390,395 @@ export default function Admin() {
               )}
             </div>
           </section>
+        ) : abaAtiva === 'trocas' ? (
+          /* SEÇÃO DE TROCAS & GARANTIA */
+          <section className="space-y-6 animate-in fade-in duration-300">
+            {/* Header da Seção */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-2xl font-bold neon-glow font-['Outfit'] flex items-center gap-2">
+                    <RefreshCw className="w-6 h-6 text-[#76FF03]" /> Registro de Trocas & Garantia
+                  </h2>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#76FF03]/20 text-[#76FF03] border border-[#76FF03]/40 font-bold">
+                    {trocas.length} {trocas.length === 1 ? 'registro' : 'registros'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Controle de vapes com defeito de fábrica, clientes atendidos, motivos e histórico de substituições
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2.5">
+                <button
+                  onClick={handleExportarTrocas}
+                  disabled={trocas.length === 0}
+                  className="flex items-center gap-2 px-3.5 py-2 bg-[#76FF03]/15 border border-[#76FF03]/50 text-[#76FF03] rounded-lg font-bold text-xs hover:bg-[#76FF03]/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Download className="w-4 h-4" /> Exportar CSV
+                </button>
+                <button
+                  onClick={abrirModalNovaTroca}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#76FF03] text-black rounded-lg font-bold text-xs hover:shadow-[0_0_15px_rgba(118,255,3,0.5)] transition-all"
+                >
+                  <Plus className="w-4 h-4" /> Registrar Troca
+                </button>
+              </div>
+            </div>
+
+            {/* Aviso se estiver usando armazenamento de fallback */}
+            {usandoFallbackTrocas && (
+              <div className="p-3.5 bg-blue-500/10 border border-blue-500/40 rounded-xl flex items-start sm:items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2 text-blue-400">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>
+                    <strong>Armazenamento Sincronizado:</strong> Os registros estão ativos e salvos no sistema. Caso queira a tabela dedicada no banco Supabase, execute o script SQL de <code>trocas</code> disponível no <code>SETUP_SUPABASE.md</code>.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* 4 Cards de Métricas / Resumo */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+              <div className="glass-morphism p-4 sm:p-5 rounded-xl border border-[#76FF03]/20 relative overflow-hidden group hover:border-[#76FF03]/40 transition-all">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Total de Trocas</p>
+                    <h3 className="text-xl sm:text-2xl font-black text-white font-['Outfit'] mt-1">{estatisticasTrocas.total}</h3>
+                  </div>
+                  <div className="p-2 sm:p-2.5 rounded-lg bg-[#76FF03]/10 text-[#76FF03] border border-[#76FF03]/30">
+                    <Repeat className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2">Histórico completo registrado</p>
+              </div>
+
+              <div className="glass-morphism p-4 sm:p-5 rounded-xl border border-[#76FF03]/20 relative overflow-hidden group hover:border-[#76FF03]/40 transition-all">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">Trocas no Mês</p>
+                    <h3 className="text-xl sm:text-2xl font-black text-[#76FF03] font-['Outfit'] mt-1">{estatisticasTrocas.noMes}</h3>
+                  </div>
+                  <div className="p-2 sm:p-2.5 rounded-lg bg-[#76FF03]/10 text-[#76FF03] border border-[#76FF03]/30">
+                    <Calendar className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2">Neste mês corrente</p>
+              </div>
+
+              <div className="glass-morphism p-4 sm:p-5 rounded-xl border border-amber-500/30 relative overflow-hidden group hover:border-amber-500/50 transition-all">
+                <div className="flex justify-between items-start">
+                  <div className="min-w-0 pr-2">
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider truncate">Top Vape c/ Defeito</p>
+                    <h3 className="text-sm sm:text-base font-black text-amber-400 font-['Outfit'] mt-1 truncate" title={estatisticasTrocas.topVape}>
+                      {estatisticasTrocas.topVape}
+                    </h3>
+                  </div>
+                  <div className="p-2 sm:p-2.5 rounded-lg bg-amber-500/10 text-amber-400 border border-amber-500/30 flex-shrink-0">
+                    <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2">
+                  {estatisticasTrocas.topVapeQtd > 0 ? `${estatisticasTrocas.topVapeQtd} ocorrência(s)` : 'Sem registros'}
+                </p>
+              </div>
+
+              <div className="glass-morphism p-4 sm:p-5 rounded-xl border border-red-500/30 relative overflow-hidden group hover:border-red-500/50 transition-all">
+                <div className="flex justify-between items-start">
+                  <div className="min-w-0 pr-2">
+                    <p className="text-[10px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider truncate">Principal Motivo</p>
+                    <h3 className="text-sm sm:text-base font-black text-red-400 font-['Outfit'] mt-1 truncate" title={estatisticasTrocas.topMotivo}>
+                      {estatisticasTrocas.topMotivo}
+                    </h3>
+                  </div>
+                  <div className="p-2 sm:p-2.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/30 flex-shrink-0">
+                    <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                </div>
+                <p className="text-[10px] text-slate-400 mt-2">
+                  {estatisticasTrocas.topMotivoQtd > 0 ? `${estatisticasTrocas.topMotivoQtd} ocorrência(s)` : 'Sem registros'}
+                </p>
+              </div>
+            </div>
+
+            {/* Barra de Busca e Filtros */}
+            <div className="glass-morphism p-4 rounded-xl border border-[#76FF03]/20 space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                {/* Input de Pesquisa */}
+                <div className="relative sm:col-span-2 lg:col-span-1">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={pesquisaTroca}
+                    onChange={(e) => setPesquisaTroca(e.target.value)}
+                    placeholder="Buscar por cliente, vape, sabor ou motivo..."
+                    className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 pl-9 pr-4 py-2 rounded-lg text-xs outline-none focus:border-[#76FF03]"
+                  />
+                  {pesquisaTroca && (
+                    <button onClick={() => setPesquisaTroca('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtro por Motivo */}
+                <div>
+                  <select
+                    value={filtroMotivoTroca}
+                    onChange={(e) => setFiltroMotivoTroca(e.target.value)}
+                    className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3 py-2 rounded-lg text-xs outline-none focus:border-[#76FF03]"
+                  >
+                    <option value="todos">Todos os Motivos</option>
+                    <option value="queimado">Gosto de Queimado</option>
+                    <option value="bateria">Bateria / Não Liga</option>
+                    <option value="vazamento">Vazamento de Líquido</option>
+                    <option value="disparo">Disparo Contínuo / Sensor</option>
+                    <option value="carrega">Não Carrega / Tipo-C</option>
+                    <option value="puxada">Sem Puxada / Sem Fluxo</option>
+                    <option value="outros">Outros Motivos</option>
+                  </select>
+                </div>
+
+                {/* Filtro por Período */}
+                <div>
+                  <select
+                    value={filtroPeriodoTroca}
+                    onChange={(e) => setFiltroPeriodoTroca(e.target.value as any)}
+                    className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3 py-2 rounded-lg text-xs outline-none focus:border-[#76FF03]"
+                  >
+                    <option value="todos">Todo o Período</option>
+                    <option value="hoje">Hoje</option>
+                    <option value="7d">Últimos 7 dias</option>
+                    <option value="30d">Últimos 30 dias</option>
+                    <option value="mes_atual">Este Mês</option>
+                  </select>
+                </div>
+
+                {/* Filtro por Status */}
+                <div>
+                  <select
+                    value={filtroStatusTroca}
+                    onChange={(e) => setFiltroStatusTroca(e.target.value)}
+                    className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3 py-2 rounded-lg text-xs outline-none focus:border-[#76FF03]"
+                  >
+                    <option value="todos">Todos os Status</option>
+                    <option value="concluida">Concluída</option>
+                    <option value="pendente">Pendente</option>
+                    <option value="cancelada">Cancelada</option>
+                  </select>
+                </div>
+              </div>
+
+              {(pesquisaTroca || filtroMotivoTroca !== 'todos' || filtroPeriodoTroca !== 'todos' || filtroStatusTroca !== 'todos') && (
+                <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[11px] text-slate-400">
+                  <span>Exibindo {trocasFiltradas.length} de {trocas.length} trocas</span>
+                  <button
+                    onClick={() => {
+                      setPesquisaTroca('');
+                      setFiltroMotivoTroca('todos');
+                      setFiltroPeriodoTroca('todos');
+                      setFiltroStatusTroca('todos');
+                    }}
+                    className="text-[#76FF03] hover:underline"
+                  >
+                    Limpar filtros
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Listagem de Trocas */}
+            {trocasFiltradas.length === 0 ? (
+              <div className="glass-morphism p-12 rounded-xl text-center border border-white/10 space-y-4">
+                <div className="w-16 h-16 rounded-full bg-[#76FF03]/10 border border-[#76FF03]/30 flex items-center justify-center mx-auto text-[#76FF03]">
+                  <RefreshCw className="w-8 h-8 opacity-70" />
+                </div>
+                <div className="space-y-1">
+                  <h3 className="text-lg font-bold text-white font-['Outfit']">Nenhuma troca encontrada</h3>
+                  <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                    {trocas.length === 0
+                      ? 'Nenhum registro de troca foi cadastrado até o momento. Clique no botão abaixo para registrar a primeira troca de vape.'
+                      : 'Nenhum registro corresponde aos filtros selecionados acima.'}
+                  </p>
+                </div>
+                {trocas.length === 0 && (
+                  <button
+                    onClick={abrirModalNovaTroca}
+                    className="cyber-button inline-flex items-center gap-2 text-xs"
+                  >
+                    <Plus className="w-4 h-4" /> Registrar Primeira Troca
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {trocasFiltradas.map((troca) => {
+                  const dataObj = new Date(troca.data_troca);
+                  const dataStr = dataObj.toLocaleDateString('pt-BR');
+                  const horaStr = dataObj.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+                  const telLimpo = (troca.cliente_telefone || '').replace(/\D/g, '');
+
+                  return (
+                    <div
+                      key={troca.id}
+                      className="glass-morphism p-4 sm:p-5 rounded-xl border border-white/10 hover:border-[#76FF03]/40 transition-all duration-300 space-y-4"
+                    >
+                      {/* Linha Superior: Data, Status e Badges */}
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/5 pb-3">
+                        <div className="flex items-center gap-2 text-xs text-slate-300">
+                          <Calendar className="w-3.5 h-3.5 text-[#76FF03]" />
+                          <span className="font-bold text-white">{dataStr}</span>
+                          <span className="text-slate-500">•</span>
+                          <span className="text-slate-400">{horaStr}</span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {troca.zona && (
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30 font-bold flex items-center gap-1">
+                              <MapPin className="w-3 h-3" />
+                              {troca.zona === 'norte' ? 'Zona Norte' : troca.zona === 'sul_oeste' ? 'Zona Oeste/Sul' : troca.zona}
+                            </span>
+                          )}
+
+                          {troca.abateu_estoque && (
+                            <span className="text-[10px] px-2 py-0.5 rounded bg-[#76FF03]/15 text-[#76FF03] border border-[#76FF03]/30 font-bold" title="Estoque do novo vape foi baixado automaticamente">
+                              -1 Estoque
+                            </span>
+                          )}
+
+                          <span className={`text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${
+                            troca.status === 'pendente'
+                              ? 'bg-amber-500/20 text-amber-300 border-amber-500/40'
+                              : troca.status === 'cancelada'
+                              ? 'bg-red-500/20 text-red-400 border-red-500/40'
+                              : 'bg-[#76FF03]/20 text-[#76FF03] border-[#76FF03]/40'
+                          }`}>
+                            {troca.status === 'pendente' ? 'Pendente' : troca.status === 'cancelada' ? 'Cancelada' : 'Concluída'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Informações do Cliente */}
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-[10px] text-slate-400 uppercase font-bold">Cliente</p>
+                          <h4 className="text-base font-bold text-white font-['Outfit']">{troca.cliente_nome}</h4>
+                        </div>
+
+                        {troca.cliente_telefone && (
+                          <div className="text-right">
+                            <p className="text-[10px] text-slate-400 uppercase font-bold">Contato</p>
+                            {telLimpo ? (
+                              <a
+                                href={`https://wa.me/55${telLimpo}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 text-xs text-[#76FF03] hover:underline font-bold"
+                              >
+                                <Phone className="w-3.5 h-3.5" /> {troca.cliente_telefone}
+                              </a>
+                            ) : (
+                              <span className="text-xs text-slate-300">{troca.cliente_telefone}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Comparativo Visual da Troca: Defeito ➔ Trocado */}
+                      <div className="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr] gap-3 items-center bg-black/40 p-3.5 sm:p-4 rounded-xl border border-white/5">
+                        {/* Vape com Defeito */}
+                        <div className="p-3 bg-red-950/20 border border-red-500/30 rounded-lg space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" /> Vape com Defeito
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-slate-100">{troca.vape_defeito}</p>
+                            {troca.sabor_defeito && (
+                              <p className="text-xs text-slate-400 mt-0.5">
+                                Sabor: <span className="text-red-300 font-semibold">{troca.sabor_defeito}</span>
+                              </p>
+                            )}
+                          </div>
+                          <div className="pt-1.5 border-t border-red-500/20">
+                            <p className="text-[10px] text-slate-400 uppercase font-semibold">Motivo do Defeito:</p>
+                            <span className="inline-block mt-0.5 text-xs px-2 py-0.5 rounded bg-red-500/20 text-red-300 border border-red-500/40 font-bold">
+                              {troca.motivo}
+                            </span>
+                            {troca.motivo_detalhes && (
+                              <p className="text-[11px] text-slate-300 italic mt-1 bg-black/30 p-1.5 rounded">
+                                "{troca.motivo_detalhes}"
+                              </p>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Seta Central Indicativa */}
+                        <div className="flex md:flex-col items-center justify-center p-1 text-[#76FF03]">
+                          <div className="hidden md:flex flex-col items-center">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 mb-1">Substituído</span>
+                            <ArrowRight className="w-6 h-6 text-[#76FF03] animate-pulse" />
+                          </div>
+                          <div className="flex md:hidden items-center gap-2 text-xs font-bold text-[#76FF03]">
+                            <span>Trocado por</span>
+                            <ArrowRight className="w-4 h-4" />
+                          </div>
+                        </div>
+
+                        {/* Novo Vape Entregue */}
+                        <div className="p-3 bg-[#76FF03]/5 border border-[#76FF03]/30 rounded-lg space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-[#76FF03] uppercase tracking-wider flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3" /> Novo Vape Entregue
+                            </span>
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-[#76FF03]">{troca.vape_trocado}</p>
+                            {troca.sabor_trocado && (
+                              <p className="text-xs text-slate-300 mt-0.5">
+                                Sabor: <span className="text-[#76FF03] font-semibold">{troca.sabor_trocado}</span>
+                              </p>
+                            )}
+                          </div>
+                          <div className="pt-1.5 border-t border-[#76FF03]/20">
+                            <p className="text-[10px] text-slate-400 uppercase font-semibold">Garantia Atendida</p>
+                            <p className="text-[11px] text-slate-300 mt-0.5">
+                              Produto substituído e entregue ao cliente.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Observações Gerais (se houver) */}
+                      {troca.observacoes && (
+                        <div className="text-xs text-slate-300 bg-black/30 p-2.5 rounded-lg border border-white/5">
+                          <strong className="text-slate-400 text-[10px] uppercase block mb-0.5">Observações:</strong>
+                          {troca.observacoes}
+                        </div>
+                      )}
+
+                      {/* Ações do Card */}
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-white/5">
+                        <button
+                          onClick={() => abrirModalEditarTroca(troca)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-[#76FF03]/10 border border-[#76FF03]/40 text-[#76FF03] rounded-lg text-xs font-bold hover:bg-[#76FF03]/20 transition-all"
+                        >
+                          <Edit2 className="w-3.5 h-3.5" /> Editar
+                        </button>
+                        <button
+                          onClick={() => handleDeletarTroca(troca.id, troca.cliente_nome)}
+                          className="flex items-center gap-1.5 px-3 py-1.5 bg-red-500/10 border border-red-500/40 text-red-400 rounded-lg text-xs font-bold hover:bg-red-500/20 transition-all"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" /> Excluir
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
         ) : abaAtiva === 'metricas' ? (
           /* SEÇÃO DE MÉTRICAS RICAS E INTERATIVAS */
           <section className="space-y-8 animate-in fade-in duration-500">
@@ -4129,6 +4965,375 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
               <button type="submit" disabled={salvando || uploadandoImagem} className="cyber-button w-full flex items-center justify-center gap-2">
                 {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : editandoId ? 'Atualizar' : 'Criar'}
               </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Registrar / Editar Troca */}
+      {modalTrocaAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl glass-morphism p-5 sm:p-6 rounded-2xl max-h-[90vh] overflow-y-auto border border-[#76FF03]/30 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+            <div className="flex items-center justify-between mb-5 border-b border-[#76FF03]/20 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-lg bg-[#76FF03]/20 border border-[#76FF03]/40 text-[#76FF03]">
+                  <RefreshCw className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold neon-glow font-['Outfit']">
+                    {editandoTrocaId ? 'Editar Troca / Garantia' : 'Registrar Nova Troca'}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Preencha os dados do cliente e os detalhes da substituição do vape
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={fecharModalTroca}
+                className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSalvarTroca} className="space-y-5">
+              {/* 1. Dados do Cliente e Data */}
+              <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-3">
+                <h4 className="text-xs font-bold text-[#76FF03] uppercase tracking-wider flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5" /> 1. Cliente & Atendimento
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                      Nome do Cliente <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={formTroca.cliente_nome}
+                      onChange={(e) => setFormTroca({ ...formTroca, cliente_nome: e.target.value })}
+                      placeholder="ex: Carlos Alberto"
+                      className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                      WhatsApp / Telefone
+                    </label>
+                    <input
+                      type="text"
+                      value={formTroca.cliente_telefone}
+                      onChange={(e) => setFormTroca({ ...formTroca, cliente_telefone: e.target.value })}
+                      placeholder="ex: (11) 98765-4321"
+                      className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                      Data e Hora da Troca <span className="text-red-400">*</span>
+                    </label>
+                    <input
+                      type="datetime-local"
+                      required
+                      value={formTroca.data_troca}
+                      onChange={(e) => setFormTroca({ ...formTroca, data_troca: e.target.value })}
+                      className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Região / Zona</label>
+                      <select
+                        value={formTroca.zona}
+                        onChange={(e) => setFormTroca({ ...formTroca, zona: e.target.value })}
+                        className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-2 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                      >
+                        <option value="norte">Zona Norte</option>
+                        <option value="sul_oeste">Zona Oeste/Sul</option>
+                        <option value="geral">Geral / Balcão</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Status</label>
+                      <select
+                        value={formTroca.status}
+                        onChange={(e) => setFormTroca({ ...formTroca, status: e.target.value as any })}
+                        className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-2 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                      >
+                        <option value="concluida">Concluída</option>
+                        <option value="pendente">Pendente</option>
+                        <option value="cancelada">Cancelada</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. Vape com Defeito */}
+              <div className="p-4 rounded-xl bg-red-950/20 border border-red-500/30 space-y-3">
+                <h4 className="text-xs font-bold text-red-400 uppercase tracking-wider flex items-center gap-1.5">
+                  <AlertTriangle className="w-3.5 h-3.5" /> 2. Vape com Defeito (Devolvido)
+                </h4>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                      Qual era o vape com defeito? <span className="text-red-400">*</span>
+                    </label>
+                    <select
+                      value={formTroca.vape_defeito_selecionado}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const prod = produtos.find(p => p.id === val);
+                        setFormTroca({
+                          ...formTroca,
+                          vape_defeito_selecionado: val,
+                          sabor_defeito: prod && prod.sabores.length === 1 ? prod.sabores[0] : formTroca.sabor_defeito
+                        });
+                      }}
+                      className="w-full bg-black/60 border border-red-500/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-red-400 mb-1.5"
+                    >
+                      <option value="">Selecione um vape do catálogo...</option>
+                      {produtos.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.marca} — {p.nome}
+                        </option>
+                      ))}
+                      <option value="custom">─ Outro modelo (digitar manualmente) ─</option>
+                    </select>
+
+                    {(formTroca.vape_defeito_selecionado === 'custom' || !formTroca.vape_defeito_selecionado) && (
+                      <input
+                        type="text"
+                        value={formTroca.vape_defeito_custom}
+                        onChange={(e) => setFormTroca({ ...formTroca, vape_defeito_custom: e.target.value })}
+                        placeholder="Digite a marca e modelo do vape defeituoso..."
+                        className="w-full bg-black/60 border border-red-500/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-red-400"
+                      />
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                        Sabor do vape com defeito
+                      </label>
+                      {formTroca.vape_defeito_selecionado && formTroca.vape_defeito_selecionado !== 'custom' && (
+                        produtos.find(p => p.id === formTroca.vape_defeito_selecionado)?.sabores?.length || 0) > 0 ? (
+                        <select
+                          value={formTroca.sabor_defeito}
+                          onChange={(e) => setFormTroca({ ...formTroca, sabor_defeito: e.target.value })}
+                          className="w-full bg-black/60 border border-red-500/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-red-400"
+                        >
+                          <option value="">Selecione o sabor...</option>
+                          {produtos.find(p => p.id === formTroca.vape_defeito_selecionado)?.sabores.map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          value={formTroca.sabor_defeito}
+                          onChange={(e) => setFormTroca({ ...formTroca, sabor_defeito: e.target.value })}
+                          placeholder="ex: Menta Ice"
+                          className="w-full bg-black/60 border border-red-500/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-red-400"
+                        />
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                        Motivo Principal do Defeito <span className="text-red-400">*</span>
+                      </label>
+                      <select
+                        value={formTroca.motivo}
+                        onChange={(e) => setFormTroca({ ...formTroca, motivo: e.target.value })}
+                        className="w-full bg-black/60 border border-red-500/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-red-400"
+                      >
+                        {MOTIVOS_TROCA_PADRAO.map(m => (
+                          <option key={m} value={m}>{m}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {formTroca.motivo === 'Outro motivo' && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                        Especifique o Motivo <span className="text-red-400">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={formTroca.motivo_custom}
+                        onChange={(e) => setFormTroca({ ...formTroca, motivo_custom: e.target.value })}
+                        placeholder="Descreva o motivo do defeito..."
+                        className="w-full bg-black/60 border border-red-500/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-red-400"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                      Detalhes adicionais do problema (opcional)
+                    </label>
+                    <textarea
+                      rows={2}
+                      value={formTroca.motivo_detalhes}
+                      onChange={(e) => setFormTroca({ ...formTroca, motivo_detalhes: e.target.value })}
+                      placeholder="ex: Cliente informou que deu gosto de queimado no 2º dia de uso mesmo sem ter acabado o líquido..."
+                      className="w-full bg-black/60 border border-red-500/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-red-400 resize-none"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 3. Novo Vape Entregue (Substituição) */}
+              <div className="p-4 rounded-xl bg-[#76FF03]/5 border border-[#76FF03]/30 space-y-3">
+                <h4 className="text-xs font-bold text-[#76FF03] uppercase tracking-wider flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> 3. Novo Vape Entregue (Substituição)
+                </h4>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                      Por qual vape foi trocado? <span className="text-[#76FF03]">*</span>
+                    </label>
+                    <select
+                      value={formTroca.vape_trocado_selecionado}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const prod = produtos.find(p => p.id === val);
+                        setFormTroca({
+                          ...formTroca,
+                          vape_trocado_selecionado: val,
+                          sabor_trocado: prod && prod.sabores.length === 1 ? prod.sabores[0] : formTroca.sabor_trocado
+                        });
+                      }}
+                      className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03] mb-1.5"
+                    >
+                      <option value="">Selecione um vape do catálogo...</option>
+                      {produtos.map(p => (
+                        <option key={p.id} value={p.id}>
+                          {p.marca} — {p.nome} (Estoque: {p.estoque})
+                        </option>
+                      ))}
+                      <option value="custom">─ Outro modelo (digitar manualmente) ─</option>
+                    </select>
+
+                    {(formTroca.vape_trocado_selecionado === 'custom' || !formTroca.vape_trocado_selecionado) && (
+                      <input
+                        type="text"
+                        value={formTroca.vape_trocado_custom}
+                        onChange={(e) => setFormTroca({ ...formTroca, vape_trocado_custom: e.target.value })}
+                        placeholder="Digite a marca e modelo do novo vape entregue..."
+                        className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                      />
+                    )}
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                      Sabor do novo vape entregue
+                    </label>
+                    {formTroca.vape_trocado_selecionado && formTroca.vape_trocado_selecionado !== 'custom' && (
+                      produtos.find(p => p.id === formTroca.vape_trocado_selecionado)?.sabores?.length || 0) > 0 ? (
+                      <select
+                        value={formTroca.sabor_trocado}
+                        onChange={(e) => setFormTroca({ ...formTroca, sabor_trocado: e.target.value })}
+                        className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                      >
+                        <option value="">Selecione o sabor...</option>
+                        {produtos.find(p => p.id === formTroca.vape_trocado_selecionado)?.sabores.map(s => {
+                          const prodObj = produtos.find(p => p.id === formTroca.vape_trocado_selecionado);
+                          const qtdSabor = prodObj?.sabores_estoque?.[s];
+                          return (
+                            <option key={s} value={s}>
+                              {s} {qtdSabor !== undefined ? `(${qtdSabor} unid)` : ''}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    ) : (
+                      <input
+                        type="text"
+                        value={formTroca.sabor_trocado}
+                        onChange={(e) => setFormTroca({ ...formTroca, sabor_trocado: e.target.value })}
+                        placeholder="ex: Uva Ice"
+                        className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                      />
+                    )}
+                  </div>
+
+                  {/* Checkbox Inteligente de Baixa no Estoque */}
+                  {!editandoTrocaId && formTroca.vape_trocado_selecionado && formTroca.vape_trocado_selecionado !== 'custom' && (
+                    <div className="p-3 bg-black/60 border border-[#76FF03]/30 rounded-lg flex items-start gap-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        id="abater_estoque_checkbox"
+                        checked={formTroca.abater_estoque}
+                        onChange={(e) => setFormTroca({ ...formTroca, abater_estoque: e.target.checked })}
+                        className="accent-[#76FF03] w-4 h-4 mt-0.5"
+                      />
+                      <label htmlFor="abater_estoque_checkbox" className="text-xs text-slate-200 cursor-pointer">
+                        <strong className="text-[#76FF03] block">Dar baixa automática de 1 unidade no estoque</strong>
+                        <span className="text-[11px] text-slate-400">
+                          Reduz 1 unidade do estoque do vape e do sabor selecionado no catálogo automaticamente.
+                        </span>
+                      </label>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 4. Observações */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                  Observações Gerais (opcional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={formTroca.observacoes}
+                  onChange={(e) => setFormTroca({ ...formTroca, observacoes: e.target.value })}
+                  placeholder="Anotações internas sobre a troca ou garantia..."
+                  className="w-full bg-black/60 border border-white/20 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03] resize-none"
+                />
+              </div>
+
+              {/* Botões de Ação */}
+              <div className="flex gap-3 pt-3 border-t border-[#76FF03]/20">
+                <button
+                  type="button"
+                  onClick={fecharModalTroca}
+                  className="w-1/3 py-2.5 px-4 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs font-bold transition-all border border-white/10"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={salvandoTroca}
+                  className="cyber-button flex-1 flex items-center justify-center gap-2 text-xs"
+                >
+                  {salvandoTroca ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" /> Salvando...
+                    </>
+                  ) : editandoTrocaId ? (
+                    <>
+                      <Save className="w-4 h-4" /> Atualizar Registro de Troca
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4" /> Confirmar & Registrar Troca
+                    </>
+                  )}
+                </button>
+              </div>
             </form>
           </div>
         </div>
