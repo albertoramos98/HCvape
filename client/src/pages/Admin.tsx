@@ -1273,41 +1273,41 @@ export default function Admin() {
   return (
     <div className="min-h-screen bg-black">
       <header className="sticky top-0 z-30 bg-black/85 backdrop-blur-md border-b border-[#76FF03]/30">
-        <div className="container flex items-center justify-between py-3">
-          <div className="flex items-center gap-3">
+        <div className="container flex items-center justify-between py-2.5 sm:py-3 gap-2">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <img
               src="/logo.png"
               alt="HC Vape Logo"
-              className="w-10 h-10 rounded-full object-cover shadow-[0_0_12px_rgba(118,255,3,0.3)] border border-white/20"
+              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full object-cover shadow-[0_0_12px_rgba(118,255,3,0.3)] border border-white/20 flex-shrink-0"
             />
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold neon-glow font-['Outfit'] font-bold leading-none">HC ADMIN</h1>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#76FF03]/20 text-[#76FF03] border border-[#76FF03]/40">2020</span>
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="text-base sm:text-xl font-bold font-['Outfit'] leading-none truncate">HC ADMIN</h1>
+                <span className="text-[9px] sm:text-[10px] px-1.5 py-0.2 rounded bg-[#76FF03]/20 text-[#76FF03] border border-[#76FF03]/40 flex-shrink-0">2020</span>
               </div>
-              <p className="text-[11px] text-slate-300 mt-0.5">{usuarioEmail}</p>
+              <p className="text-[10px] sm:text-[11px] text-slate-400 mt-0.5 truncate">{usuarioEmail}</p>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <a href="/" className="px-4 py-2 bg-[#76FF03]/10 border border-[#76FF03]/50 text-[#76FF03] rounded-lg font-bold text-xs hover:bg-[#76FF03]/20 transition-all duration-300">Ver Catálogo</a>
-            <button onClick={handleLogout} className="flex items-center gap-1.5 px-3.5 py-2 bg-red-500/20 border border-red-500/60 text-red-400 rounded-lg font-bold text-xs hover:bg-red-500/30 transition-all duration-300">
-              <LogOut className="w-3.5 h-3.5" /> Sair
+          <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+            <a href="/" className="px-3 sm:px-4 py-1.5 sm:py-2 bg-[#76FF03]/10 border border-[#76FF03]/50 text-[#76FF03] rounded-lg font-bold text-xs hover:bg-[#76FF03]/20 transition-all duration-300">Catálogo</a>
+            <button onClick={handleLogout} className="flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 sm:py-2 bg-red-500/20 border border-red-500/60 text-red-400 rounded-lg font-bold text-xs hover:bg-red-500/30 transition-all duration-300">
+              <LogOut className="w-3.5 h-3.5" /> <span className="hidden sm:inline">Sair</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="container py-8 space-y-8">
+      <main className="container py-5 sm:py-8 space-y-6 sm:space-y-8">
         {erro && (
-          <div className="p-4 bg-red-500/20 border border-red-500 rounded-lg flex items-center gap-3">
+          <div className="p-3.5 sm:p-4 bg-red-500/20 border border-red-500 rounded-xl flex items-center gap-3 text-xs sm:text-sm">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <p className="text-red-400">{erro}</p>
-            <button onClick={() => setErro(null)} className="ml-auto"><X className="w-4 h-4 text-red-400" /></button>
+            <p className="text-red-400 flex-1">{erro}</p>
+            <button onClick={() => setErro(null)} className="ml-auto p-1"><X className="w-4 h-4 text-red-400" /></button>
           </div>
         )}
 
         {sucesso && (
-          <div className="p-4 bg-[#76FF03]/20 border border-[#76FF03] rounded-lg flex items-center gap-3">
+          <div className="p-3.5 sm:p-4 bg-[#76FF03]/20 border border-[#76FF03] rounded-xl flex items-center gap-3 text-xs sm:text-sm">
             <div className="w-5 h-5 rounded-full bg-[#76FF03] flex items-center justify-center flex-shrink-0">
               <span className="text-black text-xs font-bold">✓</span>
             </div>
@@ -1315,12 +1315,12 @@ export default function Admin() {
           </div>
         )}
 
-        {/* Abas */}
-        <div className="flex gap-4 border-b border-[#76FF03]/20 pb-1">
-          <button onClick={() => setAbaAtiva('produtos')} className={`flex items-center gap-2 px-6 py-3 font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'produtos' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
+        {/* Abas com scroll horizontal no mobile */}
+        <div className="flex gap-2 sm:gap-4 border-b border-[#76FF03]/20 pb-1 overflow-x-auto scrollbar-none">
+          <button onClick={() => setAbaAtiva('produtos')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'produtos' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <Box className="w-4 h-4" /> Produtos
           </button>
-          <button onClick={() => setAbaAtiva('pedidos')} className={`flex items-center gap-2 px-6 py-3 font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'pedidos' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
+          <button onClick={() => setAbaAtiva('pedidos')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'pedidos' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <ShoppingBag className="w-4 h-4" /> Pedidos
             {pedidos.filter(p => !p.status_checklist).length > 0 && (
               <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1">
@@ -1328,16 +1328,16 @@ export default function Admin() {
               </span>
             )}
           </button>
-          <button onClick={() => setAbaAtiva('metricas')} className={`flex items-center gap-2 px-6 py-3 font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'metricas' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
+          <button onClick={() => setAbaAtiva('metricas')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'metricas' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <BarChart3 className="w-4 h-4" /> Métricas
           </button>
-          <button onClick={() => setAbaAtiva('saude')} className={`flex items-center gap-2 px-6 py-3 font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'saude' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
+          <button onClick={() => setAbaAtiva('saude')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'saude' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <CheckCircle2 className="w-4 h-4" /> Saúde
           </button>
-          <button onClick={() => setAbaAtiva('configuracoes')} className={`flex items-center gap-2 px-6 py-3 font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'configuracoes' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
+          <button onClick={() => setAbaAtiva('configuracoes')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'configuracoes' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <Settings className="w-4 h-4" /> Promoção
           </button>
-          <button onClick={() => setAbaAtiva('herobanner')} className={`flex items-center gap-2 px-6 py-3 font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'herobanner' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
+          <button onClick={() => setAbaAtiva('herobanner')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'herobanner' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <LayoutTemplate className="w-4 h-4" /> Hero Banner
           </button>
         </div>

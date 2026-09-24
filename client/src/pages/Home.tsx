@@ -433,35 +433,35 @@ export default function Home() {
     <div className="min-h-screen dark-atmosphere selection:bg-[#76FF03] selection:text-[#041202]">
       {/* 1. Pop-up de Aviso Informativo Inicial */}
       {popupAviso && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-lg bg-[#080808] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-            <div className="flex items-start justify-between">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-lg bg-[#080808] border border-white/15 rounded-3xl p-5 sm:p-8 shadow-2xl space-y-5 sm:space-y-6 max-h-[90dvh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-2">
               <div className="flex items-center gap-3">
                 <img
                   src="/logo.png"
                   alt="HC Vape Logo"
-                  className="w-14 h-14 rounded-full object-cover shadow-[0_0_20px_rgba(118,255,3,0.35)] border border-white/20"
+                  className="w-12 h-12 sm:w-14 sm:h-14 rounded-full object-cover shadow-[0_0_20px_rgba(118,255,3,0.35)] border border-white/20 flex-shrink-0"
                 />
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-xl font-black text-slate-100 font-['Outfit']">HC VAPE</h3>
+                    <h3 className="text-lg sm:text-xl font-black text-slate-100 font-['Outfit']">HC VAPE</h3>
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#76FF03]/15 text-[#76FF03] border border-[#76FF03]/30">Desde 2020</span>
                   </div>
-                  <p className="text-xs text-slate-300 font-medium">Não fume, vaporize! • Informações de Atendimento</p>
+                  <p className="text-xs text-slate-300 font-medium">Não fume, vaporize! • Informações</p>
                 </div>
               </div>
               <button
                 onClick={fecharPopupAviso}
-                className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+                className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition-colors flex-shrink-0"
                 aria-label="Fechar aviso"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3.5 text-sm text-slate-300 leading-relaxed">
-              <div className="p-4 bg-gradient-to-r from-[#FF3366]/10 to-transparent border-l-4 border-[#FF3366] rounded-r-xl">
-                <span className="font-bold text-[#FF5E85] block text-xs uppercase tracking-wider mb-1">
+            <div className="space-y-3 text-xs sm:text-sm text-slate-300 leading-relaxed">
+              <div className="p-3.5 sm:p-4 bg-gradient-to-r from-[#FF3366]/10 to-transparent border-l-4 border-[#FF3366] rounded-r-xl">
+                <span className="font-bold text-[#FF5E85] block text-[11px] sm:text-xs uppercase tracking-wider mb-1">
                   🔥 OFERTAS PROMOCIONAIS
                 </span>
                 <p>
@@ -469,8 +469,8 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="p-4 bg-gradient-to-r from-[#76FF03]/10 to-transparent border-l-4 border-[#76FF03] rounded-r-xl">
-                <span className="font-bold text-[#76FF03] block text-xs uppercase tracking-wider mb-1">
+              <div className="p-3.5 sm:p-4 bg-gradient-to-r from-[#76FF03]/10 to-transparent border-l-4 border-[#76FF03] rounded-r-xl">
+                <span className="font-bold text-[#76FF03] block text-[11px] sm:text-xs uppercase tracking-wider mb-1">
                   ⚡ PEDIDOS EXPRESSOS
                 </span>
                 <p>
@@ -481,7 +481,7 @@ export default function Home() {
 
             <button
               onClick={fecharPopupAviso}
-              className="w-full py-3.5 btn-emerald rounded-2xl text-base shadow-xl flex items-center justify-center gap-2"
+              className="w-full py-3.5 btn-emerald rounded-2xl text-sm sm:text-base font-bold shadow-xl flex items-center justify-center gap-2"
             >
               <span>Entendido, Escolher Minha Região</span>
               <ArrowRight className="w-4 h-4" />
@@ -492,24 +492,24 @@ export default function Home() {
 
       {/* 2. Pop-up / Modal de Seleção de Zona / Região */}
       {modalZonaAberto && (
-        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-xl bg-[#080808] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-            <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3.5">
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4 animate-in fade-in duration-300">
+          <div className="w-full max-w-xl bg-[#080808] border border-white/15 rounded-3xl p-5 sm:p-8 shadow-2xl space-y-5 sm:space-y-6 max-h-[90dvh] overflow-y-auto">
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex items-center gap-3">
                 <img
                   src="/logo.png"
                   alt="HC Vape"
-                  className="w-12 h-12 rounded-full object-cover shadow-[0_0_16px_rgba(118,255,3,0.3)] border border-white/20"
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-full object-cover shadow-[0_0_16px_rgba(118,255,3,0.3)] border border-white/20 flex-shrink-0"
                 />
                 <div>
-                  <h3 className="text-xl font-bold text-slate-100 font-['Outfit']">Escolha sua Região</h3>
-                  <p className="text-xs text-slate-400">Filtre os pods com pronta entrega para o seu bairro</p>
+                  <h3 className="text-lg sm:text-xl font-bold text-slate-100 font-['Outfit']">Escolha sua Região</h3>
+                  <p className="text-xs text-slate-400">Filtre os pods com pronta entrega para você</p>
                 </div>
               </div>
               {zonaSelecionada && (
                 <button
                   onClick={() => setModalZonaAberto(false)}
-                  className="text-slate-400 hover:text-white p-1 rounded-lg hover:bg-white/5 transition-colors"
+                  className="text-slate-400 hover:text-white p-1.5 rounded-xl hover:bg-white/5 transition-colors flex-shrink-0"
                   aria-label="Fechar seleção de zona"
                 >
                   <X className="w-5 h-5" />
@@ -517,36 +517,36 @@ export default function Home() {
               )}
             </div>
 
-            <p className="text-sm text-slate-300">
+            <p className="text-xs sm:text-sm text-slate-300">
               Selecione a sua zona para visualizarmos o estoque em tempo real e garantirmos agilidade na sua entrega:
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {ZONAS_DISPONIVEIS.map((zona) => {
                 const isSelected = zonaSelecionada === zona.id;
                 return (
                   <button
                     key={zona.id}
                     onClick={() => handleSelecionarZona(zona.id)}
-                    className={`relative p-5 rounded-2xl border text-left transition-all duration-300 flex flex-col justify-between gap-3 group ${
+                    className={`relative p-4 sm:p-5 rounded-2xl border text-left transition-all duration-300 flex flex-col justify-between gap-3 group active:scale-[0.98] ${
                       isSelected
                         ? 'bg-[#76FF03]/15 border-[#76FF03] shadow-[0_0_20px_rgba(118,255,3,0.25)]'
                         : 'bg-white/[0.03] border-white/10 hover:border-white/25 hover:bg-white/[0.06]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className={`p-2.5 rounded-xl ${isSelected ? 'bg-[#76FF03] text-[#041202]' : 'bg-white/5 text-slate-300 group-hover:text-white'}`}>
-                        <Compass className="w-5 h-5" />
+                      <div className={`p-2 rounded-xl ${isSelected ? 'bg-[#76FF03] text-[#041202]' : 'bg-white/5 text-slate-300 group-hover:text-white'}`}>
+                        <Compass className="w-4 h-4 sm:w-5 sm:h-5" />
                       </div>
                       {isSelected && (
                         <span className="w-2 h-2 rounded-full bg-[#76FF03] shadow-[0_0_8px_#76FF03] animate-pulse" />
                       )}
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-100 font-['Outfit'] text-base group-hover:text-[#76FF03] transition-colors">
+                      <h4 className="font-bold text-slate-100 font-['Outfit'] text-sm sm:text-base group-hover:text-[#76FF03] transition-colors">
                         {zona.nome}
                       </h4>
-                      <p className="text-[11px] text-slate-400 mt-0.5">
+                      <p className="text-[11px] text-slate-400 mt-0.5 line-clamp-2">
                         {zona.descricao}
                       </p>
                     </div>
@@ -1091,22 +1091,22 @@ export default function Home() {
 
       {/* Checkout Modal */}
       {checkoutAberto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-300">
-          <div className="w-full max-w-md bg-[#080808] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in duration-300">
+          <div className="w-full max-w-md bg-[#080808] border border-white/15 rounded-3xl p-5 sm:p-8 shadow-2xl space-y-5 sm:space-y-6 max-h-[90dvh] overflow-y-auto">
+            <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5">
-                <div className="p-2.5 bg-[#76FF03]/15 text-[#76FF03] rounded-2xl border border-[#76FF03]/30">
-                  <Phone className="w-5 h-5" />
+                <div className="p-2 sm:p-2.5 bg-[#76FF03]/15 text-[#76FF03] rounded-2xl border border-[#76FF03]/30">
+                  <Phone className="w-4 h-4 sm:w-5 sm:h-5" />
                 </div>
                 <div>
-                  <h3 className="text-lg font-bold text-white font-['Outfit']">Finalizar Pedido</h3>
-                  <p className="text-xs text-slate-400">Enviaremos seu pedido direto no WhatsApp</p>
+                  <h3 className="text-base sm:text-lg font-bold text-white font-['Outfit']">Finalizar Pedido</h3>
+                  <p className="text-[11px] sm:text-xs text-slate-400">Enviaremos seu pedido direto no WhatsApp</p>
                 </div>
               </div>
               <button
                 onClick={() => setCheckoutAberto(false)}
                 disabled={enviandoPedido}
-                className="p-2 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors"
+                className="p-1.5 text-slate-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors"
                 aria-label="Fechar checkout"
               >
                 <X className="w-5 h-5" />
@@ -1116,7 +1116,7 @@ export default function Home() {
             <form onSubmit={confirmarPedido} className="space-y-4">
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1">
                     Seu Nome Completo *
                   </label>
                   <div className="relative">
@@ -1124,6 +1124,7 @@ export default function Home() {
                     <input
                       type="text"
                       required
+                      autoComplete="name"
                       placeholder="Ex: João da Silva"
                       value={nomeCliente}
                       onChange={(e) => setNomeCliente(e.target.value)}
@@ -1133,7 +1134,7 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1">
                     WhatsApp com DDD *
                   </label>
                   <div className="relative">
@@ -1141,6 +1142,8 @@ export default function Home() {
                     <input
                       type="tel"
                       required
+                      inputMode="tel"
+                      autoComplete="tel"
                       placeholder="Ex: (81) 99999-9999"
                       value={telefoneCliente}
                       onChange={(e) => setTelefoneCliente(e.target.value)}
@@ -1150,14 +1153,14 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1.5">
+                  <label className="text-xs font-bold text-slate-300 uppercase tracking-wider block mb-1">
                     Como nos conheceu? (Opcional)
                   </label>
                   <div className="relative">
                     <Zap className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      placeholder="Ex: Instagram, Indicação do Amigo, etc."
+                      placeholder="Ex: Instagram, Indicação de Amigo..."
                       value={indicacao}
                       onChange={(e) => setIndicacao(e.target.value)}
                       className="w-full bg-[#111111] border border-white/10 text-white text-sm pl-10 pr-4 py-3 rounded-xl focus:border-[#76FF03] focus:outline-none"
@@ -1166,7 +1169,7 @@ export default function Home() {
                 </div>
 
                 {/* Zona de Entrega Indicator */}
-                <div className="p-3.5 bg-[#76FF03]/10 border border-[#76FF03]/30 rounded-2xl flex items-center justify-between">
+                <div className="p-3 bg-[#76FF03]/10 border border-[#76FF03]/30 rounded-2xl flex items-center justify-between">
                   <div className="flex items-center gap-2 text-xs">
                     <MapPin className="w-4 h-4 text-[#76FF03] flex-shrink-0" />
                     <span className="text-slate-300">Região:</span>
@@ -1188,7 +1191,7 @@ export default function Home() {
               </div>
 
               {/* Summary box */}
-              <div className="p-4 bg-white/[0.03] rounded-2xl border border-white/10 flex items-center justify-between">
+              <div className="p-3.5 bg-white/[0.03] rounded-2xl border border-white/10 flex items-center justify-between">
                 <span className="text-xs text-slate-400">Total a pagar:</span>
                 <span className="text-xl font-extrabold text-[#76FF03] font-['Outfit']">
                   R$ {total.toFixed(2)}
@@ -1198,7 +1201,7 @@ export default function Home() {
               <button
                 type="submit"
                 disabled={enviandoPedido}
-                className="w-full py-4 btn-emerald rounded-2xl text-base shadow-xl flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3.5 sm:py-4 btn-emerald rounded-2xl text-sm sm:text-base font-bold shadow-xl flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {enviandoPedido ? (
                   <>
@@ -1219,13 +1222,13 @@ export default function Home() {
 
       {/* Pedido Concluído Fallback Modal */}
       {pedidoConcluido && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
-          <div className="w-full max-w-md bg-[#080808] border border-[#76FF03]/40 rounded-3xl p-6 sm:p-8 text-center space-y-5 shadow-2xl">
-            <div className="w-16 h-16 rounded-full bg-[#76FF03]/15 text-[#76FF03] flex items-center justify-center mx-auto border border-[#76FF03]/40 shadow-[0_0_20px_rgba(118,255,3,0.25)]">
-              <CheckCircle2 className="w-8 h-8" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md">
+          <div className="w-full max-w-md bg-[#080808] border border-[#76FF03]/40 rounded-3xl p-5 sm:p-8 text-center space-y-4 sm:space-y-5 shadow-2xl max-h-[90dvh] overflow-y-auto">
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[#76FF03]/15 text-[#76FF03] flex items-center justify-center mx-auto border border-[#76FF03]/40 shadow-[0_0_20px_rgba(118,255,3,0.25)]">
+              <CheckCircle2 className="w-7 h-7 sm:w-8 sm:h-8" />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-white font-['Outfit']">Pedido #{pedidoConcluido.numero} Gerado!</h3>
+              <h3 className="text-lg sm:text-xl font-bold text-white font-['Outfit']">Pedido #{pedidoConcluido.numero} Gerado!</h3>
               <p className="text-xs text-slate-400 mt-1">Total: R$ {pedidoConcluido.total.toFixed(2)}</p>
             </div>
             <p className="text-xs text-slate-300">
@@ -1242,11 +1245,32 @@ export default function Home() {
             </a>
             <button
               onClick={() => setPedidoConcluido(null)}
-              className="text-xs text-slate-400 hover:text-slate-200 underline block mx-auto"
+              className="text-xs text-slate-400 hover:text-slate-200 underline block mx-auto pt-1"
             >
               Fechar
             </button>
           </div>
+        </div>
+      )}
+
+      {/* Floating Bottom Cart Bar for Mobile */}
+      {!carrinhoAberto && !checkoutAberto && totalItensCarrinho > 0 && (
+        <div className="fixed bottom-4 left-3 right-3 sm:hidden z-40 animate-in slide-in-from-bottom-5 duration-300">
+          <button
+            onClick={() => setCarrinhoAberto(true)}
+            className="w-full bg-[#76FF03] text-[#000000] font-['Outfit'] font-extrabold py-3.5 px-4 rounded-2xl flex items-center justify-between shadow-[0_10px_30px_rgba(118,255,3,0.45)] border border-[#76FF03] active:scale-[0.98] transition-transform"
+          >
+            <div className="flex items-center gap-2.5">
+              <div className="w-7 h-7 bg-black text-[#76FF03] rounded-full flex items-center justify-center text-xs font-black">
+                {totalItensCarrinho}
+              </div>
+              <span className="text-sm">Ver Carrinho</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-sm font-black">
+              <span>R$ {total.toFixed(2)}</span>
+              <ArrowRight className="w-4 h-4" />
+            </div>
+          </button>
         </div>
       )}
 

@@ -262,27 +262,27 @@ export function HeroBanner({
       <div className="absolute inset-0 bg-grid-pattern opacity-10 pointer-events-none" />
 
       {/* Slide Content */}
-      <div className="relative min-h-[340px] md:min-h-[390px] flex items-center p-6 md:p-10">
-        <div key={slide.id} className="w-full grid grid-cols-1 md:grid-cols-12 gap-8 items-center animate-in fade-in duration-500">
-          <div className="md:col-span-7 space-y-4">
+      <div className="relative min-h-[280px] sm:min-h-[340px] md:min-h-[390px] flex items-center p-4 sm:p-6 md:p-10">
+        <div key={slide.id} className="w-full grid grid-cols-1 md:grid-cols-12 gap-5 sm:gap-8 items-center animate-in fade-in duration-500">
+          <div className="md:col-span-7 space-y-3 sm:space-y-4">
             {renderBadge(slide)}
 
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-tight font-['Outfit']">
+            <h2 className="text-xl sm:text-3xl md:text-4xl font-black text-white tracking-tight leading-tight font-['Outfit']">
               {slide.titulo}{' '}
               <span className="bg-gradient-to-r from-[#76FF03] via-emerald-300 to-white bg-clip-text text-transparent block mt-1">
                 {slide.tituloDestaque}
               </span>
             </h2>
 
-            <p className="text-sm md:text-base text-slate-300 max-w-lg leading-relaxed font-normal">
+            <p className="text-xs sm:text-sm md:text-base text-slate-300 max-w-lg leading-relaxed font-normal">
               {slide.descricao}
             </p>
 
-            <div className="pt-2 flex flex-wrap items-center gap-4">
+            <div className="pt-1 sm:pt-2 flex flex-wrap items-center gap-3 sm:gap-4">
               {slide.botaoAcao === 'url' && slide.botaoUrl ? (
                 <a
                   href={slide.botaoUrl}
-                  className="px-6 py-3 border border-white/15 text-slate-200 font-semibold text-sm md:text-base rounded-xl hover:bg-white/10 hover:border-white/30 transition-all duration-300 inline-flex items-center gap-2 backdrop-blur-md shadow-sm"
+                  className="px-5 sm:px-6 py-2.5 sm:py-3 border border-white/15 text-slate-200 font-semibold text-xs sm:text-sm md:text-base rounded-xl hover:bg-white/10 hover:border-white/30 transition-all duration-300 inline-flex items-center gap-2 backdrop-blur-md shadow-sm"
                 >
                   {slide.botaoTexto}
                   <ArrowRight className="w-4 h-4 text-[#76FF03]" />
@@ -290,7 +290,7 @@ export function HeroBanner({
               ) : (
                 <button
                   onClick={() => handleBotaoClique(slide)}
-                  className={`px-6 py-3 rounded-xl font-bold text-sm md:text-base flex items-center gap-2 shadow-lg transition-all duration-300 ${
+                  className={`px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl font-bold text-xs sm:text-sm md:text-base flex items-center gap-2 shadow-lg transition-all duration-300 active:scale-[0.98] ${
                     slide.botaoAcao === 'promocionais' ? 'btn-coral' : 'btn-emerald'
                   }`}
                 >
@@ -304,15 +304,15 @@ export function HeroBanner({
               )}
 
               {slide.tipoDestaque === 'produto_promo' && (
-                <span className="text-xs text-slate-400 flex items-center gap-1.5 font-medium bg-white/5 px-3 py-1.5 rounded-lg border border-white/5">
-                  <Tag className="w-3.5 h-3.5 text-[#FF3366]" /> {produtosPromo.length} itens disponíveis
+                <span className="text-[11px] sm:text-xs text-slate-400 flex items-center gap-1.5 font-medium bg-white/5 px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg border border-white/5">
+                  <Tag className="w-3.5 h-3.5 text-[#FF3366]" /> {produtosPromo.length} disponíveis
                 </span>
               )}
             </div>
           </div>
 
           {/* Destaque Visual Lateral */}
-          <div className="md:col-span-5 flex justify-center">
+          <div className="md:col-span-5 flex justify-center mt-2 md:mt-0">
             {renderDestaqueLateral(slide)}
           </div>
         </div>
@@ -324,7 +324,7 @@ export function HeroBanner({
           <button
             onClick={slideAnterior}
             aria-label="Slide anterior"
-            className="absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 border border-white/15 text-slate-300 hover:bg-[#76FF03] hover:text-[#000000] hover:border-[#76FF03] transition-all backdrop-blur-md"
+            className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 border border-white/15 text-slate-300 hover:bg-[#76FF03] hover:text-[#000000] hover:border-[#76FF03] transition-all backdrop-blur-md"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
@@ -332,7 +332,7 @@ export function HeroBanner({
           <button
             onClick={proximoSlide}
             aria-label="Próximo slide"
-            className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 border border-white/15 text-slate-300 hover:bg-[#76FF03] hover:text-[#000000] hover:border-[#76FF03] transition-all backdrop-blur-md"
+            className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-full bg-black/60 border border-white/15 text-slate-300 hover:bg-[#76FF03] hover:text-[#000000] hover:border-[#76FF03] transition-all backdrop-blur-md"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
