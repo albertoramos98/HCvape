@@ -388,15 +388,39 @@ export default function Home() {
 
   if (carregando) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4 text-center">
-          <div className="relative w-16 h-16">
-            <div className="w-16 h-16 rounded-full border-2 border-white/10 border-t-[#76FF03] animate-spin" />
-            <Sparkles className="w-6 h-6 text-[#76FF03] absolute inset-0 m-auto animate-pulse" />
+      <div className="min-h-screen bg-black flex items-center justify-center p-4 selection:bg-[#76FF03] selection:text-black">
+        <div className="flex flex-col items-center gap-6 text-center max-w-xs animate-in fade-in duration-300">
+          {/* 3D Spinning Logo with Glowing Aura */}
+          <div className="relative flex items-center justify-center">
+            {/* Background pulsating neon green glow */}
+            <div className="absolute w-28 h-28 bg-[#76FF03]/25 rounded-full blur-2xl animate-pulse-glow pointer-events-none" />
+            
+            {/* Rotating 3D Badge Logo */}
+            <div className="relative w-24 h-24 sm:w-28 sm:h-28 animate-spin-3d">
+              <img
+                src="/logo.png"
+                alt="HC Vape"
+                className="w-full h-full object-cover rounded-full border-2 border-[#76FF03]/40 shadow-[0_0_30px_rgba(118,255,3,0.5)]"
+              />
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-black text-white font-['Outfit']">HC VAPE</h2>
-            <p className="text-sm text-slate-400 mt-1">Carregando catálogo premium...</p>
+
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-center gap-2">
+              <h2 className="text-2xl font-black text-white font-['Outfit'] tracking-tight">
+                HC <span className="text-[#76FF03]">VAPE</span>
+              </h2>
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#76FF03]/15 text-[#76FF03] border border-[#76FF03]/30">
+                2020
+              </span>
+            </div>
+            <p className="text-xs text-slate-300 font-medium">
+              Não fume, vaporize!
+            </p>
+            <div className="flex items-center justify-center gap-1.5 pt-2 text-[11px] text-[#76FF03]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#76FF03] animate-ping" />
+              <span className="font-semibold tracking-wide">Carregando catálogo...</span>
+            </div>
           </div>
         </div>
       </div>

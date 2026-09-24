@@ -220,6 +220,43 @@
   }
 }
 
+/* 3D Spinning Logo Animation */
+@keyframes spin3d {
+  0% {
+    transform: perspective(900px) rotateY(0deg) scale(1);
+    filter: drop-shadow(0 0 16px rgba(118, 255, 3, 0.35));
+  }
+  50% {
+    transform: perspective(900px) rotateY(180deg) scale(1.08);
+    filter: drop-shadow(0 0 35px rgba(118, 255, 3, 0.75));
+  }
+  100% {
+    transform: perspective(900px) rotateY(360deg) scale(1);
+    filter: drop-shadow(0 0 16px rgba(118, 255, 3, 0.35));
+  }
+}
+
+@keyframes pulseGlow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.95);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.15);
+  }
+}
+
+.animate-spin-3d {
+  animation: spin3d 2.4s cubic-bezier(0.45, 0.05, 0.55, 0.95) infinite;
+  transform-style: preserve-3d;
+  will-change: transform, filter;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 2.4s ease-in-out infinite;
+}
+
 /* Custom modern scrollbars */
 ::-webkit-scrollbar {
   width: 7px;
@@ -227,11 +264,11 @@
 }
 
 ::-webkit-scrollbar-track {
-  background: #070908;
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #17221a;
+  background: #1a1a1a;
   border-radius: 4px;
 }
 

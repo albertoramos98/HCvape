@@ -1205,10 +1205,27 @@ export default function Admin() {
 
   if (carregando) {
     return (
-      <div className="min-h-screen bg-black asphalt-texture flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="w-12 h-12 text-[#39FF14] animate-spin mx-auto mb-4" />
-          <p className="text-[#39FF14] font-['Orbitron'] font-bold">Carregando...</p>
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
+        <div className="flex flex-col items-center gap-6 text-center max-w-xs animate-in fade-in duration-300">
+          <div className="relative flex items-center justify-center">
+            <div className="absolute w-28 h-28 bg-[#76FF03]/25 rounded-full blur-2xl animate-pulse-glow pointer-events-none" />
+            <div className="relative w-24 h-24 sm:w-28 sm:h-28 animate-spin-3d">
+              <img
+                src="/logo.png"
+                alt="HC Vape"
+                className="w-full h-full object-cover rounded-full border-2 border-[#76FF03]/40 shadow-[0_0_30px_rgba(118,255,3,0.5)]"
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5">
+            <h2 className="text-xl font-black text-white font-['Outfit'] tracking-tight">
+              PAINEL <span className="text-[#76FF03]">ADMIN</span>
+            </h2>
+            <div className="flex items-center justify-center gap-1.5 pt-1 text-[11px] text-[#76FF03]">
+              <span className="w-1.5 h-1.5 rounded-full bg-[#76FF03] animate-ping" />
+              <span className="font-semibold tracking-wide">Carregando painel...</span>
+            </div>
+          </div>
         </div>
       </div>
     );
