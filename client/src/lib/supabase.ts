@@ -189,6 +189,39 @@ export const DEFAULT_HERO_BANNER_CONFIG: HeroBannerConfig = {
 
 // Funções auxiliares
 export const produtosService = {
+  // Obter lista de IDs de produtos desativados (fallback caso a coluna "ativo" não exista no banco)
+  async obterIdsInativos(): Promise<string[]> {
+    try {
+      const { data, error } = await supabase
+        .from('configuracoes')
+        .select('valor')
+        .eq('chave', 'produtos_inativos')
+        .single();
+      if (!error && data?.valor && Array.isArray(data.valor)) {
+        localStorage.setItem('hcvape_produtos_inativos', JSON.stringify(data.valor));
+        return data.valor as string[];
+      }
+    } catch {
+      // Falha silenciosa se a tabela configuracoes não existir
+    }
+    const local = localStorage.getItem('hcvape_produtos_inativos');
+    return local ? JSON.parse(local) : [];
+  },
+
+  // Salvar lista de IDs desativados
+  async salvarIdsInativos(ids: string[]): Promise<void> {
+    localStorage.setItem('hcvape_produtos_inativos', JSON.stringify(ids));
+    try {
+      await supabase.from('configuracoes').upsert({
+        chave: 'produtos_inativos',
+        valor: ids,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {
+      console.warn('Não foi possível sincronizar produtos_inativos na tabela configuracoes:', e);
+    }
+  },
+
   // Buscar todos os produtos
   async obterTodos(): Promise<Produto[]> {
     const { data, error } = await supabase
@@ -197,7 +230,19 @@ export const produtosService = {
       .order('marca', { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    const produtos = (data || []) as Produto[];
+
+    try {
+      const inativos = await this.obterIdsInativos();
+      const setInativos = new Set(inativos);
+
+      return produtos.map(p => ({
+        ...p,
+        ativo: p.ativo !== undefined && p.ativo !== null ? p.ativo : !setInativos.has(p.id)
+      }));
+    } catch {
+      return produtos;
+    }
   },
 
   // Buscar produtos por marca
@@ -209,7 +254,19 @@ export const produtosService = {
       .order('nome', { ascending: true });
 
     if (error) throw error;
-    return data || [];
+    const produtos = (data || []) as Produto[];
+
+    try {
+      const inativos = await this.obterIdsInativos();
+      const setInativos = new Set(inativos);
+
+      return produtos.map(p => ({
+        ...p,
+        ativo: p.ativo !== undefined && p.ativo !== null ? p.ativo : !setInativos.has(p.id)
+      }));
+    } catch {
+      return produtos;
+    }
   },
 
   // Atualizar estoque total
@@ -238,14 +295,31 @@ export const produtosService = {
 
   // Criar novo produto
   async criar(produto: Omit<Produto, 'id' | 'created_at' | 'updated_at'>): Promise<Produto> {
-    const { data, error } = await supabase
-      .from('produtos')
-      .insert([produto])
-      .select()
-      .single();
+    // Tentar criar com todos os campos
+    try {
+      const { data, error } = await supabase
+        .from('produtos')
+        .insert([produto])
+        .select()
+        .single();
 
-    if (error) throw error;
-    return data;
+      if (error) throw error;
+      return data;
+    } catch (err: any) {
+      // Se coluna "ativo" não existir no banco (código 42703), tenta sem ela
+      if (err.code === '42703' || err.message?.includes('ativo')) {
+        const { ativo, ...produtoSemAtivo } = produto;
+        const { data, error: errSemAtivo } = await supabase
+          .from('produtos')
+          .insert([produtoSemAtivo])
+          .select()
+          .single();
+
+        if (errSemAtivo) throw errSemAtivo;
+        return { ...data, ativo: ativo !== false };
+      }
+      throw err;
+    }
   },
 
   // Deletar produto
@@ -277,17 +351,55 @@ export const produtosService = {
     if (error) throw error;
   },
 
-  // Editar produto
+  // Editar produto com tolerância à coluna ativo
   async editar(id: string, updates: Partial<Omit<Produto, 'id' | 'created_at'>>): Promise<Produto> {
-    const { data, error } = await supabase
-      .from('produtos')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
+    // Se estiver atualizando o status de ativação, salvar no fallback de IDs inativos também
+    if (updates.ativo !== undefined) {
+      try {
+        const inativos = await this.obterIdsInativos();
+        const setInativos = new Set(inativos);
+        if (updates.ativo === false) {
+          setInativos.add(id);
+        } else {
+          setInativos.delete(id);
+        }
+        await this.salvarIdsInativos(Array.from(setInativos));
+      } catch (errFallback) {
+        console.warn('Erro ao atualizar fallback de produtos_inativos:', errFallback);
+      }
+    }
 
-    if (error) throw error;
-    return data;
+    // Tentar atualizar normalmente na tabela produtos
+    try {
+      const { data, error } = await supabase
+        .from('produtos')
+        .update({ ...updates, updated_at: new Date().toISOString() })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    } catch (err: any) {
+      // Se a coluna "ativo" não existir na tabela produtos (PostgreSQL erro 42703)
+      if (err.code === '42703' || err.message?.includes('ativo') || err.message?.includes('column "ativo" of relation "produtos" does not exist')) {
+        const { ativo, ...outrosUpdates } = updates;
+        if (Object.keys(outrosUpdates).length > 0) {
+          const { data, error: errSemAtivo } = await supabase
+            .from('produtos')
+            .update({ ...outrosUpdates, updated_at: new Date().toISOString() })
+            .eq('id', id)
+            .select()
+            .single();
+
+          if (errSemAtivo) throw errSemAtivo;
+          return { ...data, ativo: updates.ativo };
+        }
+        // Se a alteração era exclusivamente o campo "ativo", retorna com sucesso
+        return { id, ativo: updates.ativo } as any;
+      }
+      throw err;
+    }
   },
 };
 
