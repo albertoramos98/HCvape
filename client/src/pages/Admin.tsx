@@ -1728,10 +1728,10 @@ export default function Admin() {
                       <div className="p-3 bg-black/40 rounded-xl border border-white/5">
                         <span className="text-[10px] uppercase font-bold text-slate-400 block">Valor em Estoque</span>
                         <span className="text-xl font-black text-emerald-400">
-                          R$ {produtosExpressosFiltrados.reduce((sum, p) => {
+                          {utils.formatarMoeda(produtosExpressosFiltrados.reduce((sum, p) => {
                             const info = utils.obterEstoqueProdutoPorZona(p, filtroZonaEstoqueExpresso === 'todas' ? null : filtroZonaEstoqueExpresso);
                             return sum + (info.estoque * p.preco);
-                          }, 0).toFixed(2)}
+                          }, 0))}
                         </span>
                       </div>
                     </div>
@@ -1817,7 +1817,7 @@ export default function Admin() {
                                     )}
                                   </div>
                                 </td>
-                                <td className="py-3 px-4 text-[#76FF03] font-bold">R$ {produto.preco.toFixed(2)}</td>
+                                <td className="py-3 px-4 text-[#76FF03] font-bold">{utils.formatarMoeda(produto.preco)}</td>
                                 <td className="py-3 px-4">
                                   <div className="flex flex-wrap gap-1">
                                     {(produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul_oeste']).map(z => {
@@ -2026,11 +2026,11 @@ export default function Admin() {
                                   </div>
                                 </td>
                                 <td className="py-3 px-4 text-slate-400 line-through text-xs">
-                                  R$ {produto.preco.toFixed(2)}
+                                  {utils.formatarMoeda(produto.preco)}
                                 </td>
                                 <td className="py-3 px-4 text-[#FF3366] font-bold">
                                   <div className="flex items-center gap-1.5">
-                                    <span>R$ {(produto.preco_promo || produto.preco).toFixed(2)}</span>
+                                    <span>{utils.formatarMoeda(produto.preco_promo || produto.preco)}</span>
                                     {descontoPct > 0 && (
                                       <span className="text-[10px] px-1 py-0.2 rounded bg-red-500/20 text-red-400 font-bold">
                                         -{descontoPct}%
@@ -2124,7 +2124,7 @@ export default function Admin() {
                               Object.entries(p.sabores_estoque).forEach(([sabor, qtd]) => {
                                 const s = sabor.trim();
                                 if (s) {
-                                  resumoSabor[s] = (resumoSabor[s] || 0) + (qtd as number);
+                                  resumoSabor[sabor] = (resumoSabor[sabor] || 0) + (qtd as number);
                                 }
                               });
                             } else {
@@ -2252,11 +2252,11 @@ export default function Admin() {
                                 <td className="py-3 px-4 text-[#76FF03] font-bold">
                                   {produto.is_promo && produto.preco_promo ? (
                                     <div>
-                                      <span>R$ {produto.preco_promo.toFixed(2)}</span>
-                                      <span className="block text-[10px] text-slate-400 line-through">R$ {produto.preco.toFixed(2)}</span>
+                                      <span>{utils.formatarMoeda(produto.preco_promo)}</span>
+                                      <span className="block text-[10px] text-slate-400 line-through">{utils.formatarMoeda(produto.preco)}</span>
                                     </div>
                                   ) : (
-                                    <span>R$ {produto.preco.toFixed(2)}</span>
+                                    <span>{utils.formatarMoeda(produto.preco)}</span>
                                   )}
                                 </td>
                                 <td className="py-3 px-4">
@@ -2460,7 +2460,7 @@ export default function Admin() {
                         : '⚡ Em Andamento'}
                     </span>
                     <span className="text-[10px] text-slate-400 mt-1">
-                      R$ {relogioMensalData.faturamentoTotal.toFixed(2)} de R$ {metaMensalValor.toFixed(2)}
+                      {utils.formatarMoeda(relogioMensalData.faturamentoTotal)} de {utils.formatarMoeda(metaMensalValor)}
                     </span>
                   </div>
                 </div>
@@ -2470,14 +2470,14 @@ export default function Admin() {
                   <div className="flex justify-between text-slate-300">
                     <span>Falta para a Meta:</span>
                     <span className="font-bold text-red-400">
-                      R$ {relogioMensalData.valorFaltante.toFixed(2)}
+                      {utils.formatarMoeda(relogioMensalData.valorFaltante)}
                     </span>
                   </div>
                   {relogioMensalData.isMesAtual && relogioMensalData.diasRestantes > 0 && (
                     <div className="flex justify-between text-slate-300">
                       <span>Meta Diária Necessária:</span>
                       <span className="font-bold text-amber-400">
-                        R$ {relogioMensalData.metaDiariaNecessaria.toFixed(2)}/dia
+                        {utils.formatarMoeda(relogioMensalData.metaDiariaNecessaria)}/dia
                       </span>
                     </div>
                   )}
@@ -2485,7 +2485,7 @@ export default function Admin() {
                     <div className="flex justify-between text-slate-300">
                       <span>Projeção Final do Mês:</span>
                       <span className="font-bold text-[#76FF03]">
-                        R$ {relogioMensalData.projecaoFimMes.toFixed(2)}
+                        {utils.formatarMoeda(relogioMensalData.projecaoFimMes)}
                       </span>
                     </div>
                   )}
@@ -2502,7 +2502,7 @@ export default function Admin() {
                       <DollarSign className="w-5 h-5 text-[#76FF03]" />
                     </div>
                     <h3 className="text-3xl font-black text-white font-['Outfit']">
-                      R$ {relogioMensalData.faturamentoTotal.toFixed(2)}
+                      {utils.formatarMoeda(relogioMensalData.faturamentoTotal)}
                     </h3>
                     <p className="text-xs text-slate-400 mt-1">
                       {relogioMensalData.totalPedidos} pedidos finalizados no mês
@@ -2510,7 +2510,7 @@ export default function Admin() {
                   </div>
                   <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs text-slate-300">
                     <span>Ticket Médio:</span>
-                    <span className="font-bold text-[#76FF03]">R$ {relogioMensalData.ticketMedio.toFixed(2)}</span>
+                    <span className="font-bold text-[#76FF03]">{utils.formatarMoeda(relogioMensalData.ticketMedio)}</span>
                   </div>
                 </div>
 
@@ -2543,7 +2543,7 @@ export default function Admin() {
                       </span>
                     </div>
                     <h3 className="text-2xl font-black text-white font-['Outfit']">
-                      R$ {relogioMensalData.faturamentoExpresso.toFixed(2)}
+                      {utils.formatarMoeda(relogioMensalData.faturamentoExpresso)}
                     </h3>
                     <p className="text-xs text-slate-400 mt-1">
                       <strong>{relogioMensalData.quantidadeExpresso}</strong> vapes expressos vendidos
@@ -2568,7 +2568,7 @@ export default function Admin() {
                       </span>
                     </div>
                     <h3 className="text-2xl font-black text-white font-['Outfit']">
-                      R$ {relogioMensalData.faturamentoPromo.toFixed(2)}
+                      {utils.formatarMoeda(relogioMensalData.faturamentoPromo)}
                     </h3>
                     <p className="text-xs text-slate-400 mt-1">
                       <strong>{relogioMensalData.quantidadePromo}</strong> vapes promocionais vendidos
@@ -2611,7 +2611,7 @@ export default function Admin() {
                       <YAxis stroke="#666" fontSize={10} tickLine={false} tickFormatter={(v) => `R$${v}`} />
                       <RechartsTooltip
                         contentStyle={{ backgroundColor: '#090d0a', borderColor: '#76FF03', borderRadius: '8px', fontSize: '12px' }}
-                        formatter={(val: any) => [`R$ ${Number(val).toFixed(2)}`, 'Acumulado']}
+                        formatter={(val: any) => [utils.formatarMoeda(Number(val)), 'Acumulado']}
                       />
                       <Area type="monotone" dataKey="acumulado" stroke="#76FF03" strokeWidth={3} fillOpacity={1} fill="url(#gradAcumulado)" />
                     </AreaChart>
@@ -2647,7 +2647,7 @@ export default function Admin() {
                         </Pie>
                         <RechartsTooltip
                           contentStyle={{ backgroundColor: '#090d0a', borderColor: '#444', borderRadius: '8px', fontSize: '12px' }}
-                          formatter={(val: any) => [`R$ ${Number(val).toFixed(2)}`, '']}
+                          formatter={(val: any) => [utils.formatarMoeda(Number(val)), '']}
                         />
                       </PieChart>
                     </ResponsiveContainer>
@@ -2662,7 +2662,7 @@ export default function Admin() {
                       <span className="w-2.5 h-2.5 rounded-full bg-[#76FF03]" /> Expresso:
                     </span>
                     <span className="font-bold text-[#76FF03]">
-                      R$ {relogioMensalData.faturamentoExpresso.toFixed(2)} ({relogioMensalData.quantidadeExpresso} un)
+                      {utils.formatarMoeda(relogioMensalData.faturamentoExpresso)} ({relogioMensalData.quantidadeExpresso} un)
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
@@ -2670,7 +2670,7 @@ export default function Admin() {
                       <span className="w-2.5 h-2.5 rounded-full bg-[#FF3366]" /> Promocional:
                     </span>
                     <span className="font-bold text-[#FF3366]">
-                      R$ {relogioMensalData.faturamentoPromo.toFixed(2)} ({relogioMensalData.quantidadePromo} un)
+                      {utils.formatarMoeda(relogioMensalData.faturamentoPromo)} ({relogioMensalData.quantidadePromo} un)
                     </span>
                   </div>
                 </div>
@@ -2714,7 +2714,7 @@ export default function Admin() {
                             )}
                           </td>
                           <td className="py-2.5 px-3 text-slate-100 font-extrabold">{item.quantidade} un</td>
-                          <td className="py-2.5 px-3 text-[#76FF03] font-bold">R$ {item.receita.toFixed(2)}</td>
+                          <td className="py-2.5 px-3 text-[#76FF03] font-bold">{utils.formatarMoeda(item.receita)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -2731,7 +2731,7 @@ export default function Admin() {
               <div className="glass-morphism p-5 rounded-xl border border-[#76FF03]/20 bg-[#76FF03]/5">
                 <p className="text-[10px] font-bold text-[#76FF03] uppercase font-semibold mb-1">Faturamento {filtroData ? 'do Dia' : 'Total'}</p>
                 <h3 className="text-2xl font-bold text-slate-100">
-                  R$ {pedidosFiltrados.reduce((acc, p) => acc + p.total_final, 0).toFixed(2)}
+                  {utils.formatarMoeda(pedidosFiltrados.reduce((acc, p) => acc + p.total_final, 0))}
                 </h3>
                 <p className="text-[10px] text-slate-400 mt-1">Líquido (após descontos)</p>
               </div>
@@ -2898,7 +2898,7 @@ export default function Admin() {
                             return (
                               <div key={idx} className={`flex justify-between border-b py-1 ${subAbaPedidos === 'excluidos' ? 'border-red-500/5' : 'border-[#76FF03]/5'}`}>
                                 <span>{item.quantidade}x {marca ? marca.toUpperCase() + ' ' : ''}{item.nome} ({item.sabor})</span>
-                                <span className={subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#76FF03]'}>R$ {(item.preco_unitario * item.quantidade).toFixed(2)}</span>
+                                <span className={subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#76FF03]'}>{utils.formatarMoeda(item.preco_unitario * item.quantidade)}</span>
                               </div>
                             );
                           })}
@@ -2920,21 +2920,21 @@ export default function Admin() {
                       </div>
 
                       <div className={`bg-black/30 p-4 rounded-lg border flex flex-col justify-center space-y-2 ${subAbaPedidos === 'excluidos' ? 'border-red-500/20' : 'border-[#76FF03]/20'}`}>
-                        <div className="flex justify-between text-xs"><span>Subtotal</span><span>R$ {pedido.total.toFixed(2)}</span></div>
+                        <div className="flex justify-between text-xs"><span>Subtotal</span><span>{utils.formatarMoeda(pedido.total)}</span></div>
                         <div className="flex justify-between items-center text-xs">
                           <span>Desconto</span>
                           {editandoFinanceiro?.id === pedido.id && subAbaPedidos === 'ativos' ? (
                             <div className="flex gap-1"><input type="number" value={editandoFinanceiro.desconto} onChange={(e) => setEditandoFinanceiro({ ...editandoFinanceiro, desconto: e.target.value })} className="w-16 bg-black border border-[#76FF03]/50 px-1 py-0.5 text-right outline-none" /><button onClick={() => handleAtualizarFinanceiroPedido(pedido.id)} className="p-0.5 bg-[#76FF03] text-black rounded"><Save className="w-3 h-3" /></button></div>
                           ) : (
                             <div className="flex gap-1 text-red-400">
-                              <span>- R$ {pedido.desconto.toFixed(2)}</span>
+                              <span>- {utils.formatarMoeda(pedido.desconto)}</span>
                               {subAbaPedidos === 'ativos' && <button onClick={() => setEditandoFinanceiro({ id: pedido.id, desconto: pedido.desconto.toString() })}><Edit2 className="w-3 h-3" /></button>}
                             </div>
                           )}
                         </div>
                         <div className={`pt-2 border-t flex justify-between font-bold ${subAbaPedidos === 'excluidos' ? 'border-red-500/20 text-red-400' : 'border-[#76FF03]/20 text-[#76FF03]'}`}>
                           <span className="font-semibold">TOTAL</span>
-                          <span className="text-2xl">R$ {pedido.total_final.toFixed(2)}</span>
+                          <span className="text-2xl">{utils.formatarMoeda(pedido.total_final)}</span>
                         </div>
                       </div>
                     </div>
@@ -3855,7 +3855,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                               <option value="">Nenhum (Exibir 2 novidades aleatórias)</option>
                               {produtos.map(p => (
                                 <option key={p.id} value={p.id}>
-                                  {p.marca} — {p.nome} (R$ {p.preco.toFixed(2)}) {p.is_promo ? '[PROMO]' : ''}
+                                  {p.marca} — {p.nome} ({utils.formatarMoeda(p.preco)}) {p.is_promo ? '[PROMO]' : ''}
                                 </option>
                               ))}
                             </select>

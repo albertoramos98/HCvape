@@ -371,11 +371,11 @@ export default function Home() {
       const mensagemItens = carrinho
         .map(item => {
           const preco = item.is_promo && item.preco_promo ? item.preco_promo : item.preco;
-          return `• ${item.quantidade}x ${item.nome} (${item.sabor}) — R$ ${(preco * item.quantidade).toFixed(2)}`;
+          return `• ${item.quantidade}x ${item.nome} (${item.sabor}) — ${utils.formatarMoeda(preco * item.quantidade)}`;
         })
         .join('\n');
 
-      const textoFinal = `Olá! Acabei de fazer um pedido pelo catálogo HC Vape: 🛒✨\n\n🆔 *Pedido:* #${novoPedido.numero_pedido}\n👤 *Cliente:* ${nomeCliente}\n📞 *WhatsApp:* ${telefoneCliente}\n📍 *Região / Zona:* ${zonaNome}\n${indicacao ? `💡 *Indicação:* ${indicacao}\n` : ''}\n---\n📦 *ITENS:* \n${mensagemItens}\n\n---\n💰 *TOTAL:* R$ ${novoPedido.total_final.toFixed(2)}\n\nAguardando instruções de pagamento e entrega! 🚀`;
+      const textoFinal = `Olá! Acabei de fazer um pedido pelo catálogo HC Vape: 🛒✨\n\n🆔 *Pedido:* #${novoPedido.numero_pedido}\n👤 *Cliente:* ${nomeCliente}\n📞 *WhatsApp:* ${telefoneCliente}\n📍 *Região / Zona:* ${zonaNome}\n${indicacao ? `💡 *Indicação:* ${indicacao}\n` : ''}\n---\n📦 *ITENS:* \n${mensagemItens}\n\n---\n💰 *TOTAL:* ${utils.formatarMoeda(novoPedido.total_final)}\n\nAguardando instruções de pagamento e entrega! 🚀`;
       const whatsappUrl = `https://wa.me/5581997390944?text=${encodeURIComponent(textoFinal)}`;
       
       setPedidoConcluido({ 
@@ -917,10 +917,10 @@ export default function Home() {
                           {isPromo && produto.preco_promo ? (
                             <>
                               <span className="text-xl font-extrabold text-[#FF3366] font-['Outfit']">
-                                R$ {produto.preco_promo.toFixed(2)}
+                                {utils.formatarMoeda(produto.preco_promo)}
                               </span>
                               <span className="text-xs text-slate-400 line-through">
-                                R$ {produto.preco.toFixed(2)}
+                                {utils.formatarMoeda(produto.preco)}
                               </span>
                               <span className="text-[10px] font-bold text-[#FF5E85] bg-[#FF3366]/15 px-2 py-0.5 rounded-md border border-[#FF3366]/20">
                                 -{Math.round((1 - produto.preco_promo / produto.preco) * 100)}%
@@ -928,7 +928,7 @@ export default function Home() {
                             </>
                           ) : (
                             <span className="text-xl font-extrabold text-[#76FF03] font-['Outfit']">
-                              R$ {produto.preco.toFixed(2)}
+                              {utils.formatarMoeda(produto.preco)}
                             </span>
                           )}
                         </div>
@@ -1072,7 +1072,7 @@ export default function Home() {
                           Sabor: {item.sabor}
                         </p>
                         <p className="text-xs font-semibold text-slate-300 mt-1">
-                          R$ {(unitPrice * item.quantidade).toFixed(2)}
+                          {utils.formatarMoeda(unitPrice * item.quantidade)}
                         </p>
                       </div>
 
@@ -1115,7 +1115,7 @@ export default function Home() {
                 <div className="flex items-center justify-between text-slate-300 text-sm">
                   <span>Subtotal:</span>
                   <span className="text-2xl font-extrabold text-[#76FF03] font-['Outfit']">
-                    R$ {total.toFixed(2)}
+                    {utils.formatarMoeda(total)}
                   </span>
                 </div>
 
@@ -1237,7 +1237,7 @@ export default function Home() {
               <div className="p-3.5 bg-white/[0.03] rounded-2xl border border-white/10 flex items-center justify-between">
                 <span className="text-xs text-slate-400">Total a pagar:</span>
                 <span className="text-xl font-extrabold text-[#76FF03] font-['Outfit']">
-                  R$ {total.toFixed(2)}
+                  {utils.formatarMoeda(total)}
                 </span>
               </div>
 
@@ -1272,7 +1272,7 @@ export default function Home() {
             </div>
             <div>
               <h3 className="text-lg sm:text-xl font-bold text-white font-['Outfit']">Pedido #{pedidoConcluido.numero} Gerado!</h3>
-              <p className="text-xs text-slate-400 mt-1">Total: R$ {pedidoConcluido.total.toFixed(2)}</p>
+              <p className="text-xs text-slate-400 mt-1">Total: {utils.formatarMoeda(pedidoConcluido.total)}</p>
             </div>
             <p className="text-xs text-slate-300">
               Se o WhatsApp não abriu automaticamente, clique no botão abaixo para enviar os detalhes da sua compra:
@@ -1310,7 +1310,7 @@ export default function Home() {
               <span className="text-sm">Ver Carrinho</span>
             </div>
             <div className="flex items-center gap-1.5 text-sm font-black">
-              <span>R$ {total.toFixed(2)}</span>
+              <span>{utils.formatarMoeda(total)}</span>
               <ArrowRight className="w-4 h-4" />
             </div>
           </button>

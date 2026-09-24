@@ -137,15 +137,15 @@ export function HeroBanner({
               {prodEncontrado.is_promo && prodEncontrado.preco_promo ? (
                 <>
                   <span className="text-xs text-slate-400 line-through">
-                    R$ {prodEncontrado.preco.toFixed(2)}
+                    {utils.formatarMoeda(prodEncontrado.preco)}
                   </span>
                   <span className="text-lg font-extrabold text-[#76FF03]">
-                    R$ {prodEncontrado.preco_promo.toFixed(2)}
+                    {utils.formatarMoeda(prodEncontrado.preco_promo)}
                   </span>
                 </>
               ) : (
                 <span className="text-lg font-extrabold text-[#76FF03]">
-                  R$ {prodEncontrado.preco.toFixed(2)}
+                  {utils.formatarMoeda(prodEncontrado.preco)}
                 </span>
               )}
             </div>
@@ -186,10 +186,10 @@ export function HeroBanner({
             <h3 className="text-base font-bold text-white text-center truncate w-full mt-1 font-['Outfit']">{promoDestaque.nome}</h3>
             <div className="mt-2 flex items-center gap-2.5">
               <span className="text-xs text-slate-400 line-through">
-                R$ {promoDestaque.preco.toFixed(2)}
+                {utils.formatarMoeda(promoDestaque.preco)}
               </span>
               <span className="text-lg font-extrabold text-[#FF3366]">
-                R$ {(promoDestaque.preco_promo || promoDestaque.preco).toFixed(2)}
+                {utils.formatarMoeda(promoDestaque.preco_promo || promoDestaque.preco)}
               </span>
             </div>
           </div>
@@ -231,7 +231,7 @@ export function HeroBanner({
                       )}
                     </div>
                     <h4 className="text-sm font-semibold text-slate-100 truncate">{prod.nome}</h4>
-                    <span className="text-sm font-bold text-[#76FF03] block">R$ {prod.preco.toFixed(2)}</span>
+                    <span className="text-sm font-bold text-[#76FF03] block">{utils.formatarMoeda(prod.preco)}</span>
                   </div>
                 </div>
               );

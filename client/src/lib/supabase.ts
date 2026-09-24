@@ -705,7 +705,22 @@ export const authService = {
 };
 
 // Utilidades
+export const formatarMoeda = (valor: number | string | null | undefined, incluirSimbolo: boolean = true): string => {
+  const num = typeof valor === 'number' ? valor : parseFloat(String(valor || 0));
+  if (isNaN(num)) return incluirSimbolo ? 'R$ 0,00' : '0,00';
+  const formatado = num.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return incluirSimbolo ? `R$ ${formatado}` : formatado;
+};
+
+export const formatarPreco = (valor: number | string | null | undefined): string => {
+  return formatarMoeda(valor, true);
+};
+
 export const utils = {
+  // Formatar valores monetários em padrão pt-BR (ex: R$ 1.250,00)
+  formatarMoeda,
+  formatarPreco,
+
   // Normalizar texto para buscas resilientes (remover acentos e minúsculas)
   normalizarTexto(texto: string): string {
     return (texto || '')
