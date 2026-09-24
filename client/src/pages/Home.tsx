@@ -839,6 +839,7 @@ export default function Home() {
                 const selecionado = saborSelecionado[produto.id] || '';
                 const estoqueInfo = utils.obterEstoqueProdutoPorZona(produto, zonaSelecionada);
                 const feedbackOk = feedbackAdicionado === produto.id;
+                const puffs = utils.extrairPuffs(produto.nome);
 
                 return (
                   <div
@@ -850,7 +851,7 @@ export default function Home() {
                     {/* Top image section */}
                     <div className="relative h-56 bg-gradient-to-b from-white/[0.03] to-transparent p-4 flex items-center justify-center overflow-hidden">
                       {/* Badges */}
-                      <div className="absolute top-3 left-3 z-10 flex flex-col gap-1.5">
+                      <div className="absolute top-3 left-3 z-10 flex flex-wrap items-center gap-1.5 max-w-[90%]">
                         {isPromo ? (
                           <span className="flex items-center gap-1 bg-gradient-to-r from-[#FF3366] to-[#E60045] text-white text-[11px] font-extrabold px-3 py-1 rounded-full shadow-lg uppercase tracking-wider">
                             <Flame className="w-3 h-3" /> Oferta
@@ -858,6 +859,16 @@ export default function Home() {
                         ) : (
                           <span className="bg-white/10 backdrop-blur-md text-slate-300 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-white/10 uppercase tracking-wider">
                             {produto.marca}
+                          </span>
+                        )}
+                        {puffs > 0 && (
+                          <span className={`flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-extrabold shadow-md backdrop-blur-md border ${
+                            isPromo
+                              ? 'bg-[#FF3366]/20 text-[#FF5E85] border-[#FF3366]/40'
+                              : 'bg-black/70 text-[#76FF03] border-[#76FF03]/40'
+                          }`}>
+                            <Zap className="w-2.5 h-2.5" />
+                            {puffs.toLocaleString('pt-BR')} Puffs
                           </span>
                         )}
                       </div>
@@ -880,8 +891,15 @@ export default function Home() {
                     {/* Card Content */}
                     <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                       <div>
-                        <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                          {produto.marca}
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                            {produto.marca}
+                          </span>
+                          {puffs > 0 && (
+                            <span className="text-[11px] font-bold text-slate-300">
+                              {puffs.toLocaleString('pt-BR')} puffs
+                            </span>
+                          )}
                         </div>
                         <h3 className="text-base font-bold text-white font-['Outfit'] group-hover:text-[#76FF03] transition-colors line-clamp-1">
                           {produto.nome}
@@ -1014,13 +1032,14 @@ export default function Home() {
               ) : (
                 carrinho.map((item) => {
                   const unitPrice = item.is_promo && item.preco_promo ? item.preco_promo : item.preco;
+                  const itemPuffs = utils.extrairPuffs(item.nome);
                   return (
                     <div
                       key={`${item.id}-${item.sabor}`}
                       className="p-3.5 bg-white/[0.02] border border-white/10 rounded-2xl flex items-center justify-between gap-3 hover:border-white/20 transition-all"
                     >
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5">
+                        <div className="flex items-center gap-1.5 flex-wrap">
                           {item.is_promo && (
                             <span className="text-[10px] bg-[#FF3366]/20 text-[#FF5E85] font-bold px-1.5 py-0.2 rounded">
                               PROMO
@@ -1029,6 +1048,11 @@ export default function Home() {
                           <h4 className="text-sm font-bold text-slate-100 font-['Outfit'] truncate">
                             {item.nome}
                           </h4>
+                          {itemPuffs > 0 && (
+                            <span className="text-[10px] font-extrabold text-[#76FF03] bg-[#76FF03]/10 px-1.5 py-0.2 rounded border border-[#76FF03]/20">
+                              {itemPuffs.toLocaleString('pt-BR')} Puffs
+                            </span>
+                          )}
                         </div>
                         <p className="text-xs text-[#76FF03] truncate mt-0.5">
                           Sabor: {item.sabor}

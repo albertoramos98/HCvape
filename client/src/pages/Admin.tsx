@@ -2092,23 +2092,41 @@ export default function Admin() {
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <div className="glass-morphism p-5 rounded-xl border border-[#76FF03]/20 bg-black/40">
                       <h3 className="text-sm font-bold text-[#76FF03] uppercase font-['Outfit'] mb-4 flex items-center gap-2">
-                        <Box className="w-4 h-4" /> Estoque por Modelo (Marca + Nome)
+                        <Box className="w-4 h-4" /> Estoque por Modelo (100K ➔ 1K Puffs)
                       </h3>
                       <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
                         {(() => {
-                          const resumoModelo: { [key: string]: number } = {};
+                          const resumoModelo: { [chave: string]: { total: number; produto: Produto } } = {};
                           produtosFiltrados.forEach(p => {
                             const chave = `${p.marca} ${p.nome}`;
-                            resumoModelo[chave] = (resumoModelo[chave] || 0) + p.estoque;
+                            if (!resumoModelo[chave]) {
+                              resumoModelo[chave] = { total: 0, produto: p };
+                            }
+                            resumoModelo[chave].total += p.estoque;
                           });
-                          const modelosOrdenados = Object.entries(resumoModelo).sort((a, b) => b[1] - a[1]);
+                          const modelosOrdenados = Object.values(resumoModelo).sort((a, b) => {
+                            const puffsA = utils.extrairPuffs(a.produto.nome);
+                            const puffsB = utils.extrairPuffs(b.produto.nome);
+                            if (puffsA !== puffsB) return puffsB - puffsA;
+                            return `${a.produto.marca} ${a.produto.nome}`.localeCompare(`${b.produto.marca} ${b.produto.nome}`, 'pt-BR');
+                          });
                           if (modelosOrdenados.length === 0) return <p className="text-xs text-slate-400">Nenhum dado disponível</p>;
-                          return modelosOrdenados.map(([modelo, total]) => (
-                            <div key={modelo} className="flex justify-between items-center text-xs border-b border-[#76FF03]/5 pb-1">
-                              <span className="text-slate-300 truncate pr-4">{modelo}</span>
-                              <span className={`font-bold ${total > 0 ? 'text-[#76FF03]' : 'text-red-500'}`}>{total} un</span>
-                            </div>
-                          ));
+                          return modelosOrdenados.map(({ produto, total }) => {
+                            const puffs = utils.extrairPuffs(produto.nome);
+                            return (
+                              <div key={`${produto.marca} ${produto.nome}`} className="flex justify-between items-center text-xs border-b border-[#76FF03]/5 pb-1">
+                                <div className="flex items-center gap-1.5 truncate pr-2">
+                                  <span className="text-slate-300 font-medium truncate">{produto.marca} {produto.nome}</span>
+                                  {puffs > 0 && (
+                                    <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-[#76FF03]/10 text-[#76FF03] border border-[#76FF03]/20 flex-shrink-0">
+                                      {puffs.toLocaleString('pt-BR')} Puffs
+                                    </span>
+                                  )}
+                                </div>
+                                <span className={`font-bold flex-shrink-0 ${total > 0 ? 'text-[#76FF03]' : 'text-red-500'}`}>{total} un</span>
+                              </div>
+                            );
+                          });
                         })()}
                       </div>
                     </div>

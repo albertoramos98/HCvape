@@ -817,22 +817,22 @@ export const utils = {
     if (!nome) return 0;
     const texto = nome.toLowerCase();
 
-    // 1. Padrão pós-V explícito (ex: "IGNITE V55", "IGNITE_V55", "IGNITEV55", "V-50", "V 80", "V150", "V250", "V15", "V25", "V40", "V60")
-    const matchV = texto.match(/(?:^|[^a-z0-9]|ignite)\s*v\s*[-_]?\s*(\d+)/i) || texto.match(/v\s*[-_]?\s*(\d+)/i);
-    if (matchV) {
-      const vNum = parseInt(matchV[1], 10);
-      if (vNum < 1000) {
-        // Converte V55 => 5500, V50 => 5000, V80 => 8000, V150 => 15000, V250 => 25000, V15 => 1500, etc.
-        return vNum * 100;
-      }
-      return vNum;
-    }
-
-    // 2. Caso "15k", "10k", "20k", "8.5k"
+    // 1. Caso "100k", "70k", "55k", "50k", "46k", "40k", "35k", "30k", "28k", "25k", "20k", "15k", "10k", "1k"
     const matchK = texto.match(/(\d+(?:[.,]\d+)?)\s*k\b/i);
     if (matchK) {
       const num = parseFloat(matchK[1].replace(',', '.'));
       return Math.round(num * 1000);
+    }
+
+    // 2. Padrão pós-V explícito (ex: "IGNITE V500", "V400", "V300", "V250", "V200", "V155", "V80", "V55", "V50", "V40", "V25", "V15")
+    const matchV = texto.match(/(?:^|[^a-z0-9]|ignite)\s*v\s*[-_]?\s*(\d+)/i) || texto.match(/v\s*[-_]?\s*(\d+)/i);
+    if (matchV) {
+      const vNum = parseInt(matchV[1], 10);
+      if (vNum < 1000) {
+        // Converte V500 => 50000, V400 => 40000, V300 => 30000, V250 => 25000, V155 => 15500, V80 => 8000, V55 => 5500, etc.
+        return vNum * 100;
+      }
+      return vNum;
     }
 
     // 3. Caso "15000 puffs", "10.000 puffs", "8000 puff"
@@ -867,23 +867,23 @@ export const utils = {
     return 0;
   },
 
-  // Ordenar lista de vapes por Marca (A-Z) e Puffs/modelo (padrão: decrescente 'desc' - maior para o menor)
+  // Ordenar lista de vapes primariamente por Puffs/Capacidade (100K ➔ 70K ➔ 55K ➔ 50K ➔ ... ➔ 1K) e desempate por Marca e Nome
   ordenarProdutosPorMarcaEPuffs(produtos: Produto[], direcaoPuffs: 'asc' | 'desc' = 'desc'): Produto[] {
     return [...produtos].sort((a, b) => {
-      // 1. Marca alfabética
-      const marcaA = (a.marca || '').trim().toLowerCase();
-      const marcaB = (b.marca || '').trim().toLowerCase();
-      const compMarca = marcaA.localeCompare(marcaB, 'pt-BR');
-      if (compMarca !== 0) return compMarca;
-
-      // 2. Puffs / Numeração pós-V (maior para o menor quando desc)
+      // 1. Puffs / Numeração de Capacidade (ex: 100k -> 70k -> 55k -> 50k -> 40k -> 30k -> 8k -> 5.5k -> 1k)
       const puffsA = utils.extrairPuffs(a.nome);
       const puffsB = utils.extrairPuffs(b.nome);
       if (puffsA !== puffsB) {
         return direcaoPuffs === 'asc' ? puffsA - puffsB : puffsB - puffsA;
       }
 
-      // 3. Nome alfabético
+      // 2. Desempate por Marca (A-Z)
+      const marcaA = (a.marca || '').trim().toLowerCase();
+      const marcaB = (b.marca || '').trim().toLowerCase();
+      const compMarca = marcaA.localeCompare(marcaB, 'pt-BR');
+      if (compMarca !== 0) return compMarca;
+
+      // 3. Desempate por Nome do Produto (A-Z)
       return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
     });
   },

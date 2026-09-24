@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Flame, Sparkles, Zap, ChevronLeft, ChevronRight, ArrowRight, Tag, ShieldCheck } from 'lucide-react';
-import { Produto, HeroBannerConfig, DEFAULT_HERO_BANNER_CONFIG, HeroSlideConfig } from '@/lib/supabase';
+import { Produto, HeroBannerConfig, DEFAULT_HERO_BANNER_CONFIG, HeroSlideConfig, utils } from '@/lib/supabase';
 
 interface HeroBannerProps {
   produtos: Produto[];
@@ -107,6 +107,7 @@ export function HeroBanner({
     if (s.produtoDestaqueId) {
       const prodEncontrado = produtos.find(p => p.id === s.produtoDestaqueId);
       if (prodEncontrado) {
+        const puffs = utils.extrairPuffs(prodEncontrado.nome);
         return (
           <div className="relative group w-full max-w-[320px] bg-[#080808] border border-white/10 rounded-2xl p-5 flex flex-col items-center shadow-2xl hover:border-[#76FF03]/50 transition-all duration-300 backdrop-blur-xl">
             <span className="absolute -top-3 left-4 bg-gradient-to-r from-[#76FF03] to-[#52C41A] text-[#000000] font-extrabold text-[11px] px-3 py-1 rounded-full shadow-lg tracking-wider uppercase">
@@ -123,7 +124,14 @@ export function HeroBanner({
                 <Zap className="w-12 h-12 text-[#76FF03]/40" />
               </div>
             )}
-            <span className="text-xs text-[#76FF03] font-bold uppercase tracking-wider">{prodEncontrado.marca}</span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-[#76FF03] font-bold uppercase tracking-wider">{prodEncontrado.marca}</span>
+              {puffs > 0 && (
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#76FF03]/15 text-[#76FF03] border border-[#76FF03]/30">
+                  {puffs.toLocaleString('pt-BR')} Puffs
+                </span>
+              )}
+            </div>
             <h3 className="text-base font-bold text-white text-center truncate w-full mt-1 font-['Outfit']">{prodEncontrado.nome}</h3>
             <div className="mt-2 flex items-center gap-2.5">
               {prodEncontrado.is_promo && prodEncontrado.preco_promo ? (
@@ -150,6 +158,7 @@ export function HeroBanner({
     if (s.tipoDestaque === 'produto_promo') {
       const promoDestaque = produtosPromo[0];
       if (promoDestaque) {
+        const promoPuffs = utils.extrairPuffs(promoDestaque.nome);
         return (
           <div className="relative group w-full max-w-[320px] bg-[#080808] border border-[#FF3366]/30 rounded-2xl p-5 flex flex-col items-center shadow-2xl hover:border-[#FF3366] transition-all duration-300 backdrop-blur-xl">
             <span className="absolute -top-3 left-4 bg-gradient-to-r from-[#FF3366] to-[#E60045] text-white font-bold text-[11px] px-3 py-1 rounded-full shadow-lg tracking-wider uppercase flex items-center gap-1">
@@ -166,7 +175,14 @@ export function HeroBanner({
                 <Zap className="w-12 h-12 text-[#FF3366]/40" />
               </div>
             )}
-            <span className="text-xs text-[#FF5E85] font-bold uppercase tracking-wider">{promoDestaque.marca}</span>
+            <div className="flex items-center gap-2 mt-1">
+              <span className="text-xs text-[#FF5E85] font-bold uppercase tracking-wider">{promoDestaque.marca}</span>
+              {promoPuffs > 0 && (
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-[#FF3366]/20 text-[#FF5E85] border border-[#FF3366]/30">
+                  {promoPuffs.toLocaleString('pt-BR')} Puffs
+                </span>
+              )}
+            </div>
             <h3 className="text-base font-bold text-white text-center truncate w-full mt-1 font-['Outfit']">{promoDestaque.nome}</h3>
             <div className="mt-2 flex items-center gap-2.5">
               <span className="text-xs text-slate-400 line-through">
@@ -187,29 +203,39 @@ export function HeroBanner({
       if (novidadesDestaque.length > 0) {
         return (
           <div className="flex flex-col sm:flex-row md:flex-col gap-3 justify-center w-full max-w-[340px]">
-            {novidadesDestaque.map((prod) => (
-              <div
-                key={prod.id}
-                onClick={() => {
-                  onSelectAba('expressos');
-                  onSelectMarca(prod.marca);
-                }}
-                className="cursor-pointer bg-[#080808] border border-white/10 rounded-2xl p-3.5 flex items-center gap-3.5 hover:border-[#76FF03]/50 hover:bg-[#111111] transition-all duration-300 hover:scale-[1.02] shadow-lg backdrop-blur-md"
-              >
-                {prod.imagem_url ? (
-                  <img src={prod.imagem_url} alt={prod.nome} className="w-16 h-16 object-contain rounded-xl flex-shrink-0 bg-white/5 p-1" />
-                ) : (
-                  <div className="w-16 h-16 bg-white/5 rounded-xl flex items-center justify-center border border-white/5 flex-shrink-0">
-                    <Sparkles className="w-6 h-6 text-[#76FF03]/40" />
+            {novidadesDestaque.map((prod) => {
+              const prodPuffs = utils.extrairPuffs(prod.nome);
+              return (
+                <div
+                  key={prod.id}
+                  onClick={() => {
+                    onSelectAba('expressos');
+                    onSelectMarca(prod.marca);
+                  }}
+                  className="cursor-pointer bg-[#080808] border border-white/10 rounded-2xl p-3.5 flex items-center gap-3.5 hover:border-[#76FF03]/50 hover:bg-[#111111] transition-all duration-300 hover:scale-[1.02] shadow-lg backdrop-blur-md"
+                >
+                  {prod.imagem_url ? (
+                    <img src={prod.imagem_url} alt={prod.nome} className="w-16 h-16 object-contain rounded-xl flex-shrink-0 bg-white/5 p-1" />
+                  ) : (
+                    <div className="w-16 h-16 bg-white/5 rounded-xl flex items-center justify-center border border-white/5 flex-shrink-0">
+                      <Sparkles className="w-6 h-6 text-[#76FF03]/40" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1 space-y-0.5">
+                    <div className="flex items-center justify-between gap-1">
+                      <span className="text-[11px] text-[#76FF03] font-bold block uppercase tracking-wider">{prod.marca}</span>
+                      {prodPuffs > 0 && (
+                        <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded-full bg-[#76FF03]/15 text-[#76FF03] border border-[#76FF03]/30">
+                          {prodPuffs.toLocaleString('pt-BR')} Puffs
+                        </span>
+                      )}
+                    </div>
+                    <h4 className="text-sm font-semibold text-slate-100 truncate">{prod.nome}</h4>
+                    <span className="text-sm font-bold text-[#76FF03] block">R$ {prod.preco.toFixed(2)}</span>
                   </div>
-                )}
-                <div className="min-w-0 flex-1 space-y-0.5">
-                  <span className="text-[11px] text-[#76FF03] font-bold block uppercase tracking-wider">{prod.marca}</span>
-                  <h4 className="text-sm font-semibold text-slate-100 truncate">{prod.nome}</h4>
-                  <span className="text-sm font-bold text-[#76FF03] block">R$ {prod.preco.toFixed(2)}</span>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         );
       }
