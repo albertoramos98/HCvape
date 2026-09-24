@@ -1233,7 +1233,7 @@ export default function Admin() {
 
   if (!autenticado) {
     return (
-      <div className="min-h-screen bg-black asphalt-texture flex items-center justify-center p-4">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4">
         <div className="w-full max-w-md glass-morphism p-8 rounded-2xl text-center">
           <div className="flex justify-center mb-4">
             <img
@@ -1242,24 +1242,24 @@ export default function Admin() {
               className="w-20 h-20 rounded-full object-cover shadow-[0_0_25px_rgba(118,255,3,0.4)] border border-white/20"
             />
           </div>
-          <h1 className="text-3xl font-bold neon-glow font-['Orbitron'] mb-1">ADMIN</h1>
-          <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-xs mb-6">HC Vape • Não fume, vaporize! (Desde 2020)</p>
+          <h1 className="text-3xl font-bold neon-glow font-['Outfit'] font-bold mb-1">ADMIN</h1>
+          <p className="text-slate-300 text-xs mb-6">HC Vape • Não fume, vaporize! (Desde 2020)</p>
 
           {erro && (
             <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg flex items-center gap-2 text-left">
               <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-              <p className="text-red-400 text-sm font-['Roboto_Mono']">{erro}</p>
+              <p className="text-red-400 text-sm">{erro}</p>
             </div>
           )}
 
           <form onSubmit={handleLogin} className="space-y-4 text-left">
             <div>
-              <label className="block text-xs font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']" placeholder="admin@exemplo.com" />
+              <label className="block text-xs font-bold text-slate-300 mb-2 font-semibold">Email</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-3 rounded-lg focus:border-[#76FF03] focus:outline-none transition-all duration-300" placeholder="admin@exemplo.com" />
             </div>
             <div>
-              <label className="block text-xs font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">Senha</label>
-              <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']" placeholder="••••••••" />
+              <label className="block text-xs font-bold text-slate-300 mb-2 font-semibold">Senha</label>
+              <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-3 rounded-lg focus:border-[#76FF03] focus:outline-none transition-all duration-300" placeholder="••••••••" />
             </div>
             <button type="submit" disabled={salvando} className="cyber-button w-full disabled:opacity-50 disabled:cursor-not-allowed">
               {salvando ? 'Entrando...' : 'Entrar no Painel'}
@@ -1271,8 +1271,8 @@ export default function Admin() {
   }
 
   return (
-    <div className="min-h-screen bg-black asphalt-texture">
-      <header className="sticky top-0 z-30 bg-black/85 backdrop-blur-md border-b border-[#39FF14]/30">
+    <div className="min-h-screen bg-black">
+      <header className="sticky top-0 z-30 bg-black/85 backdrop-blur-md border-b border-[#76FF03]/30">
         <div className="container flex items-center justify-between py-3">
           <div className="flex items-center gap-3">
             <img
@@ -1282,15 +1282,15 @@ export default function Admin() {
             />
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-xl font-bold neon-glow font-['Orbitron'] leading-none">HC ADMIN</h1>
-                <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#39FF14]/20 text-[#39FF14] border border-[#39FF14]/40 font-['Roboto_Mono']">2020</span>
+                <h1 className="text-xl font-bold neon-glow font-['Outfit'] font-bold leading-none">HC ADMIN</h1>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#76FF03]/20 text-[#76FF03] border border-[#76FF03]/40">2020</span>
               </div>
-              <p className="text-[11px] text-[#C0C0C0] font-['Roboto_Mono'] mt-0.5">{usuarioEmail}</p>
+              <p className="text-[11px] text-slate-300 mt-0.5">{usuarioEmail}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/" className="px-4 py-2 bg-[#39FF14]/10 border border-[#39FF14]/50 text-[#39FF14] rounded-lg font-['Orbitron'] font-bold text-xs hover:bg-[#39FF14]/20 transition-all duration-300">Ver Catálogo</a>
-            <button onClick={handleLogout} className="flex items-center gap-1.5 px-3.5 py-2 bg-red-500/20 border border-red-500/60 text-red-400 rounded-lg font-['Orbitron'] font-bold text-xs hover:bg-red-500/30 transition-all duration-300">
+            <a href="/" className="px-4 py-2 bg-[#76FF03]/10 border border-[#76FF03]/50 text-[#76FF03] rounded-lg font-bold text-xs hover:bg-[#76FF03]/20 transition-all duration-300">Ver Catálogo</a>
+            <button onClick={handleLogout} className="flex items-center gap-1.5 px-3.5 py-2 bg-red-500/20 border border-red-500/60 text-red-400 rounded-lg font-bold text-xs hover:bg-red-500/30 transition-all duration-300">
               <LogOut className="w-3.5 h-3.5" /> Sair
             </button>
           </div>
@@ -1301,26 +1301,26 @@ export default function Admin() {
         {erro && (
           <div className="p-4 bg-red-500/20 border border-red-500 rounded-lg flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-            <p className="text-red-400 font-['Roboto_Mono']">{erro}</p>
+            <p className="text-red-400">{erro}</p>
             <button onClick={() => setErro(null)} className="ml-auto"><X className="w-4 h-4 text-red-400" /></button>
           </div>
         )}
 
         {sucesso && (
-          <div className="p-4 bg-[#39FF14]/20 border border-[#39FF14] rounded-lg flex items-center gap-3">
-            <div className="w-5 h-5 rounded-full bg-[#39FF14] flex items-center justify-center flex-shrink-0">
+          <div className="p-4 bg-[#76FF03]/20 border border-[#76FF03] rounded-lg flex items-center gap-3">
+            <div className="w-5 h-5 rounded-full bg-[#76FF03] flex items-center justify-center flex-shrink-0">
               <span className="text-black text-xs font-bold">✓</span>
             </div>
-            <p className="text-[#39FF14] font-['Roboto_Mono']">{sucesso}</p>
+            <p className="text-[#76FF03]">{sucesso}</p>
           </div>
         )}
 
         {/* Abas */}
-        <div className="flex gap-4 border-b border-[#39FF14]/20 pb-1">
-          <button onClick={() => setAbaAtiva('produtos')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'produtos' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
+        <div className="flex gap-4 border-b border-[#76FF03]/20 pb-1">
+          <button onClick={() => setAbaAtiva('produtos')} className={`flex items-center gap-2 px-6 py-3 font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'produtos' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <Box className="w-4 h-4" /> Produtos
           </button>
-          <button onClick={() => setAbaAtiva('pedidos')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'pedidos' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
+          <button onClick={() => setAbaAtiva('pedidos')} className={`flex items-center gap-2 px-6 py-3 font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'pedidos' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <ShoppingBag className="w-4 h-4" /> Pedidos
             {pedidos.filter(p => !p.status_checklist).length > 0 && (
               <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1">
@@ -1328,16 +1328,16 @@ export default function Admin() {
               </span>
             )}
           </button>
-          <button onClick={() => setAbaAtiva('metricas')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'metricas' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
+          <button onClick={() => setAbaAtiva('metricas')} className={`flex items-center gap-2 px-6 py-3 font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'metricas' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <BarChart3 className="w-4 h-4" /> Métricas
           </button>
-          <button onClick={() => setAbaAtiva('saude')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'saude' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
+          <button onClick={() => setAbaAtiva('saude')} className={`flex items-center gap-2 px-6 py-3 font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'saude' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <CheckCircle2 className="w-4 h-4" /> Saúde
           </button>
-          <button onClick={() => setAbaAtiva('configuracoes')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'configuracoes' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
+          <button onClick={() => setAbaAtiva('configuracoes')} className={`flex items-center gap-2 px-6 py-3 font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'configuracoes' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <Settings className="w-4 h-4" /> Promoção
           </button>
-          <button onClick={() => setAbaAtiva('herobanner')} className={`flex items-center gap-2 px-6 py-3 font-['Orbitron'] font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'herobanner' ? 'text-[#39FF14] border-[#39FF14]' : 'text-[#808080] border-transparent hover:text-[#C0C0C0]'}`}>
+          <button onClick={() => setAbaAtiva('herobanner')} className={`flex items-center gap-2 px-6 py-3 font-bold transition-all duration-300 border-b-2 ${abaAtiva === 'herobanner' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <LayoutTemplate className="w-4 h-4" /> Hero Banner
           </button>
         </div>
@@ -1346,12 +1346,12 @@ export default function Admin() {
           <>
             <section className="space-y-6">
               <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Produtos {pesquisa.trim() ? `(${produtosFiltrados.length}/${produtos.length})` : `(${produtos.length})`}</h2>
+                <h2 className="text-2xl font-bold neon-glow font-['Outfit'] font-bold">Produtos {pesquisa.trim() ? `(${produtosFiltrados.length}/${produtos.length})` : `(${produtos.length})`}</h2>
                 <div className="flex gap-3">
-                  <button onClick={handleExportarProdutos} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold hover:bg-[#39FF14]/30 transition-all duration-300">
+                  <button onClick={handleExportarProdutos} className="flex items-center gap-2 px-4 py-2 bg-[#76FF03]/20 border border-[#76FF03] text-[#76FF03] rounded-lg font-bold hover:bg-[#76FF03]/30 transition-all duration-300">
                     <Download className="w-4 h-4" /> Exportar Estoque
                   </button>
-                  <button onClick={abrirModalNovo} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14] text-black rounded-lg font-['Orbitron'] font-bold hover:shadow-[0_0_15px_rgba(57,255,20,0.5)] transition-all duration-300">
+                  <button onClick={abrirModalNovo} className="flex items-center gap-2 px-4 py-2 bg-[#76FF03] text-black rounded-lg font-bold hover:shadow-[0_0_15px_rgba(118,255,3,0.5)] transition-all duration-300">
                     <Plus className="w-4 h-4" /> Novo Produto
                   </button>
                 </div>
@@ -1360,8 +1360,8 @@ export default function Admin() {
               {/* RESUMO DE ESTOQUE POR PRODUTO E SABOR */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 {/* Resumo por Produto/Modelo */}
-                <div className="glass-morphism p-5 rounded-xl border border-[#39FF14]/20 bg-black/40">
-                  <h3 className="text-sm font-bold text-[#39FF14] uppercase font-['Orbitron'] mb-4 flex items-center gap-2">
+                <div className="glass-morphism p-5 rounded-xl border border-[#76FF03]/20 bg-black/40">
+                  <h3 className="text-sm font-bold text-[#76FF03] uppercase font-['Outfit'] font-bold mb-4 flex items-center gap-2">
                     <Box className="w-4 h-4" /> Estoque por Modelo
                   </h3>
                   <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
@@ -1374,12 +1374,12 @@ export default function Admin() {
                       
                       const modelosOrdenados = Object.entries(resumoModelo).sort((a, b) => b[1] - a[1]);
                       
-                      if (modelosOrdenados.length === 0) return <p className="text-xs text-[#808080]">Nenhum dado disponível</p>;
+                      if (modelosOrdenados.length === 0) return <p className="text-xs text-slate-400">Nenhum dado disponível</p>;
                       
                       return modelosOrdenados.map(([modelo, total]) => (
-                        <div key={modelo} className="flex justify-between items-center text-xs font-['Roboto_Mono'] border-b border-[#39FF14]/5 pb-1">
-                          <span className="text-[#C0C0C0] truncate pr-4">{modelo}</span>
-                          <span className={`font-bold ${total > 0 ? 'text-[#39FF14]' : 'text-red-500'}`}>{total} un</span>
+                        <div key={modelo} className="flex justify-between items-center text-xs border-b border-[#76FF03]/5 pb-1">
+                          <span className="text-slate-300 truncate pr-4">{modelo}</span>
+                          <span className={`font-bold ${total > 0 ? 'text-[#76FF03]' : 'text-red-500'}`}>{total} un</span>
                         </div>
                       ));
                     })()}
@@ -1388,7 +1388,7 @@ export default function Admin() {
 
                 {/* Resumo por Sabor */}
                 <div className="glass-morphism p-5 rounded-xl border border-blue-500/20 bg-black/40">
-                  <h3 className="text-sm font-bold text-blue-400 uppercase font-['Orbitron'] mb-4 flex items-center gap-2">
+                  <h3 className="text-sm font-bold text-blue-400 uppercase font-['Outfit'] font-bold mb-4 flex items-center gap-2">
                     <Zap className="w-4 h-4" /> Estoque por Sabor
                   </h3>
                   <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
@@ -1407,11 +1407,11 @@ export default function Admin() {
                       
                       const saboresOrdenados = Object.entries(resumoSabor).sort((a, b) => b[1] - a[1]);
                       
-                      if (saboresOrdenados.length === 0) return <p className="text-xs text-[#808080]">Nenhum dado disponível</p>;
+                      if (saboresOrdenados.length === 0) return <p className="text-xs text-slate-400">Nenhum dado disponível</p>;
                       
                       return saboresOrdenados.map(([sabor, total]) => (
-                        <div key={sabor} className="flex justify-between items-center text-xs font-['Roboto_Mono'] border-b border-blue-500/5 pb-1">
-                          <span className="text-[#C0C0C0] truncate pr-4">{sabor}</span>
+                        <div key={sabor} className="flex justify-between items-center text-xs border-b border-blue-500/5 pb-1">
+                          <span className="text-slate-300 truncate pr-4">{sabor}</span>
                           <span className={`font-bold ${total > 0 ? 'text-blue-400' : 'text-red-500'}`}>{total} un</span>
                         </div>
                       ));
@@ -1422,7 +1422,7 @@ export default function Admin() {
 
               {produtos.length === 0 ? (
                 <div className="glass-morphism p-12 rounded-xl text-center">
-                  <p className="text-[#808080] font-['Roboto_Mono']">Nenhum produto cadastrado</p>
+                  <p className="text-slate-400">Nenhum produto cadastrado</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -1434,25 +1434,25 @@ export default function Admin() {
                         placeholder="Pesquisar produto, marca ou sabor..."
                         value={pesquisa}
                         onChange={(e) => setPesquisa(e.target.value)}
-                        className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] pl-10 pr-10 py-2.5 rounded-lg focus:border-[#39FF14] focus:shadow-[0_0_15px_rgba(57,255,20,0.3)] focus:outline-none transition-all duration-300 font-['Roboto_Mono'] text-sm"
+                        className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 pl-10 pr-10 py-2.5 rounded-lg focus:border-[#76FF03] focus:shadow-[0_0_15px_rgba(118,255,3,0.3)] focus:outline-none transition-all duration-300 text-sm"
                       />
-                      <Search className="w-4 h-4 text-[#808080] absolute left-3 top-[13px]" />
+                      <Search className="w-4 h-4 text-slate-400 absolute left-3 top-[13px]" />
                       {pesquisa && (
                         <button
                           onClick={() => setPesquisa('')}
-                          className="absolute right-3 top-[11px] text-[#808080] hover:text-[#39FF14] transition-colors"
+                          className="absolute right-3 top-[11px] text-slate-400 hover:text-[#76FF03] transition-colors"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-lg border border-[#39FF14]/30">
-                      <MapPin className="w-4 h-4 text-[#39FF14] ml-1" />
+                    <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-lg border border-[#76FF03]/30">
+                      <MapPin className="w-4 h-4 text-[#76FF03] ml-1" />
                       <select
                         value={filtroZonaProduto}
                         onChange={(e) => setFiltroZonaProduto(e.target.value)}
-                        className="bg-black/80 text-[#E0E0E0] text-xs font-['Orbitron'] font-bold rounded px-2.5 py-1.5 outline-none border border-transparent focus:border-[#39FF14]"
+                        className="bg-black/80 text-slate-100 text-xs font-bold rounded px-2.5 py-1.5 outline-none border border-transparent focus:border-[#76FF03]"
                       >
                         <option value="todas">Todas as Regiões</option>
                         <option value="norte">Zona Norte</option>
@@ -1463,14 +1463,14 @@ export default function Admin() {
                   </div>
 
                   {produtosFiltrados.length === 0 ? (
-                    <div className="glass-morphism p-12 rounded-xl text-center border border-[#39FF14]/20 bg-black/40">
-                      <p className="text-[#808080] font-['Roboto_Mono']">Nenhum produto encontrado com os filtros aplicados</p>
+                    <div className="glass-morphism p-12 rounded-xl text-center border border-[#76FF03]/20 bg-black/40">
+                      <p className="text-slate-400">Nenhum produto encontrado com os filtros aplicados</p>
                     </div>
                   ) : (
                     <div className="glass-morphism rounded-xl overflow-hidden overflow-x-auto">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-[#39FF14]/30 text-left text-xs font-bold text-[#39FF14] font-['Orbitron'] uppercase">
+                          <tr className="border-b border-[#76FF03]/30 text-left text-xs font-bold text-[#76FF03] font-semibold uppercase">
                             <th className="py-3 px-4">Img</th>
                             <th className="py-3 px-4">Marca</th>
                             <th className="py-3 px-4">Nome / Zonas</th>
@@ -1482,12 +1482,12 @@ export default function Admin() {
                         </thead>
                         <tbody>
                           {produtosFiltrados.map((produto) => (
-                            <tr key={produto.id} className="border-b border-[#39FF14]/10 hover:bg-[#39FF14]/5 transition-colors duration-200 text-sm">
+                            <tr key={produto.id} className="border-b border-[#76FF03]/10 hover:bg-[#76FF03]/5 transition-colors duration-200 text-sm">
                               <td className="py-3 px-4">
-                                {produto.imagem_url ? <img src={produto.imagem_url} alt={produto.nome} className="w-10 h-10 object-cover rounded border border-[#39FF14]/30" /> : <ImageOff className="w-6 h-6 text-[#606060]" />}
+                                {produto.imagem_url ? <img src={produto.imagem_url} alt={produto.nome} className="w-10 h-10 object-cover rounded border border-[#76FF03]/30" /> : <ImageOff className="w-6 h-6 text-[#606060]" />}
                               </td>
-                              <td className="py-3 px-4 text-[#C0C0C0] font-['Roboto_Mono']">{produto.marca}</td>
-                              <td className="py-3 px-4 text-[#E0E0E0] font-['Roboto_Mono']">
+                              <td className="py-3 px-4 text-slate-300">{produto.marca}</td>
+                              <td className="py-3 px-4 text-slate-100">
                                 <div className="font-bold flex items-center gap-1.5">
                                   <span>{produto.nome}</span>
                                   {produto.is_promo && <Zap className="inline w-3 h-3 text-red-400" />}
@@ -1506,35 +1506,35 @@ export default function Admin() {
                                   })}
                                 </div>
                               </td>
-                              <td className="py-3 px-4 text-[#39FF14] font-bold">R$ {produto.preco.toFixed(2)}</td>
+                              <td className="py-3 px-4 text-[#76FF03] font-bold">R$ {produto.preco.toFixed(2)}</td>
                               <td className="py-3 px-4">
                                 {produto.sabores_estoque && Object.keys(produto.sabores_estoque).length > 0 ? (
                                   <div className="flex flex-col gap-1 text-xs">
                                     {Object.entries(produto.sabores_estoque).map(([sabor, est]) => (
-                                      <div key={sabor} className="flex justify-between gap-3 font-['Roboto_Mono']">
-                                        <span className="text-[#808080]">{sabor}:</span>
-                                        <span className={est > 0 ? 'text-[#39FF14] font-bold' : 'text-red-400 font-bold'}>{est}</span>
+                                      <div key={sabor} className="flex justify-between gap-3">
+                                        <span className="text-slate-400">{sabor}:</span>
+                                        <span className={est > 0 ? 'text-[#76FF03] font-bold' : 'text-red-400 font-bold'}>{est}</span>
                                       </div>
                                     ))}
-                                    <div className="border-t border-[#39FF14]/20 mt-1 pt-1 flex justify-between font-bold text-[10px]">
-                                      <span className="text-[#C0C0C0]">TOTAL:</span>
-                                      <span className={produto.estoque > 0 ? 'text-[#39FF14]' : 'text-red-400'}>{produto.estoque}</span>
+                                    <div className="border-t border-[#76FF03]/20 mt-1 pt-1 flex justify-between font-bold text-[10px]">
+                                      <span className="text-slate-300">TOTAL:</span>
+                                      <span className={produto.estoque > 0 ? 'text-[#76FF03]' : 'text-red-400'}>{produto.estoque}</span>
                                     </div>
                                   </div>
                                 ) : (
-                                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${produto.estoque > 0 ? 'bg-[#39FF14]/20 text-[#39FF14]' : 'bg-red-500/20 text-red-400'}`}>{produto.estoque}</span>
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${produto.estoque > 0 ? 'bg-[#76FF03]/20 text-[#76FF03]' : 'bg-red-500/20 text-red-400'}`}>{produto.estoque}</span>
                                 )}
                               </td>
                               <td className="py-3 px-4">
                                 {produto.sabores.length <= 1 ? (
-                                  <input type="number" min="0" value={estoqueEditado[produto.id] ?? produto.estoque} onChange={(e) => setEstoqueEditado({ ...estoqueEditado, [produto.id]: parseInt(e.target.value) || 0 })} className="w-16 bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-1 py-0.5 rounded focus:border-[#39FF14] outline-none" />
+                                  <input type="number" min="0" value={estoqueEditado[produto.id] ?? produto.estoque} onChange={(e) => setEstoqueEditado({ ...estoqueEditado, [produto.id]: parseInt(e.target.value) || 0 })} className="w-16 bg-black/60 border border-[#76FF03]/50 text-slate-100 px-1 py-0.5 rounded focus:border-[#76FF03] outline-none" />
                                 ) : (
-                                  <span className="text-[10px] text-[#808080] italic">Editar sabores</span>
+                                  <span className="text-[10px] text-slate-400 italic">Editar sabores</span>
                                 )}
                               </td>
                               <td className="py-3 px-4">
                                 <div className="flex gap-1">
-                                  <button onClick={() => handleAtualizarEstoque(produto.id)} disabled={salvando || estoqueEditado[produto.id] === undefined || produto.sabores.length > 1} className="p-1.5 bg-[#39FF14] text-black rounded disabled:opacity-50"><Save className="w-3 h-3" /></button>
+                                  <button onClick={() => handleAtualizarEstoque(produto.id)} disabled={salvando || estoqueEditado[produto.id] === undefined || produto.sabores.length > 1} className="p-1.5 bg-[#76FF03] text-black rounded disabled:opacity-50"><Save className="w-3 h-3" /></button>
                                   <button onClick={() => abrirModalEditar(produto)} className="p-1.5 bg-blue-500/20 border border-blue-500 text-blue-400 rounded"><Edit2 className="w-3 h-3" /></button>
                                   <button onClick={() => handleDeletarProduto(produto.id, produto.nome)} className="p-1.5 bg-red-500/20 border border-red-500 text-red-400 rounded"><Trash2 className="w-3 h-3" /></button>
                                 </div>
@@ -1554,36 +1554,36 @@ export default function Admin() {
           <section className="space-y-8">
             {/* Dashboard de Estatísticas */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="glass-morphism p-5 rounded-xl border border-[#39FF14]/20 bg-[#39FF14]/5">
-                <p className="text-[10px] font-bold text-[#39FF14] uppercase font-['Orbitron'] mb-1">Faturamento {filtroData ? 'do Dia' : 'Total'}</p>
-                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+              <div className="glass-morphism p-5 rounded-xl border border-[#76FF03]/20 bg-[#76FF03]/5">
+                <p className="text-[10px] font-bold text-[#76FF03] uppercase font-semibold mb-1">Faturamento {filtroData ? 'do Dia' : 'Total'}</p>
+                <h3 className="text-2xl font-bold text-slate-100">
                   R$ {pedidosFiltrados.reduce((acc, p) => acc + p.total_final, 0).toFixed(2)}
                 </h3>
-                <p className="text-[10px] text-[#808080] mt-1">Líquido (após descontos)</p>
+                <p className="text-[10px] text-slate-400 mt-1">Líquido (após descontos)</p>
               </div>
 
               <div className="glass-morphism p-5 rounded-xl border border-blue-500/20 bg-blue-500/5">
-                <p className="text-[10px] font-bold text-blue-400 uppercase font-['Orbitron'] mb-1">Itens Vendidos</p>
-                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                <p className="text-[10px] font-bold text-blue-400 uppercase font-semibold mb-1">Itens Vendidos</p>
+                <h3 className="text-2xl font-bold text-slate-100">
                   {pedidosFiltrados.reduce((acc, p) => acc + p.itens.reduce((sum, i) => sum + i.quantidade, 0), 0)} un
                 </h3>
-                <p className="text-[10px] text-[#808080] mt-1">Total de pods em pedidos</p>
+                <p className="text-[10px] text-slate-400 mt-1">Total de pods em pedidos</p>
               </div>
 
               <div className="glass-morphism p-5 rounded-xl border border-yellow-500/20 bg-yellow-500/5">
-                <p className="text-[10px] font-bold text-yellow-500 uppercase font-['Orbitron'] mb-1">Status Pedidos</p>
+                <p className="text-[10px] font-bold text-yellow-500 uppercase font-semibold mb-1">Status Pedidos</p>
                 <div className="flex gap-3 items-baseline">
-                  <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                  <h3 className="text-2xl font-bold text-slate-100">
                     {pedidosFiltrados.filter(p => !p.status_checklist).length}
                   </h3>
                   <span className="text-xs text-yellow-500 font-bold">Pendentes</span>
                 </div>
-                <p className="text-[10px] text-[#808080] mt-1">{pedidosFiltrados.filter(p => p.status_checklist).length} Concluídos</p>
+                <p className="text-[10px] text-slate-400 mt-1">{pedidosFiltrados.filter(p => p.status_checklist).length} Concluídos</p>
               </div>
 
               <div className="glass-morphism p-5 rounded-xl border border-red-500/20 bg-red-500/5">
-                <p className="text-[10px] font-bold text-red-400 uppercase font-['Orbitron'] mb-1">Top Indicação</p>
-                <h3 className="text-xl font-bold text-[#E0E0E0] font-['Roboto_Mono'] truncate">
+                <p className="text-[10px] font-bold text-red-400 uppercase font-semibold mb-1">Top Indicação</p>
+                <h3 className="text-xl font-bold text-slate-100 truncate">
                   {(() => {
                     const counts: { [key: string]: number } = {};
                     pedidosFiltrados.forEach(p => { if(p.indicacao) counts[p.indicacao] = (counts[p.indicacao] || 0) + 1 });
@@ -1591,23 +1591,23 @@ export default function Admin() {
                     return top ? `${top[0]} (${top[1]})` : 'Nenhuma';
                   })()}
                 </h3>
-                <p className="text-[10px] text-[#808080] mt-1">Origem com mais vendas</p>
+                <p className="text-[10px] text-slate-400 mt-1">Origem com mais vendas</p>
               </div>
             </div>
 
             <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6">
               <div className="flex flex-col md:flex-row md:items-center gap-6">
-                <h2 className="text-2xl font-bold neon-glow font-['Orbitron']">Lista de Pedidos</h2>
-                <div className="flex bg-black/40 p-1 rounded-lg border border-[#39FF14]/20 self-start">
+                <h2 className="text-2xl font-bold neon-glow font-['Outfit'] font-bold">Lista de Pedidos</h2>
+                <div className="flex bg-black/40 p-1 rounded-lg border border-[#76FF03]/20 self-start">
                   <button 
                     onClick={() => setSubAbaPedidos('ativos')}
-                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${subAbaPedidos === 'ativos' ? 'bg-[#39FF14] text-black shadow-[0_0_10px_rgba(57,255,20,0.3)]' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
+                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all ${subAbaPedidos === 'ativos' ? 'bg-[#76FF03] text-black shadow-[0_0_10px_rgba(118,255,3,0.3)]' : 'text-slate-400 hover:text-slate-300'}`}
                   >
                     Ativos ({pedidos.length})
                   </button>
                   <button 
                     onClick={() => setSubAbaPedidos('excluidos')}
-                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${subAbaPedidos === 'excluidos' ? 'bg-red-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
+                    className={`px-4 py-1.5 rounded-md text-xs font-bold transition-all flex items-center gap-2 ${subAbaPedidos === 'excluidos' ? 'bg-red-500 text-white shadow-[0_0_10px_rgba(239,68,68,0.3)]' : 'text-slate-400 hover:text-slate-300'}`}
                   >
                     <Trash2 className="w-3 h-3" /> Lixeira ({pedidosExcluidos.length})
                   </button>
@@ -1615,12 +1615,12 @@ export default function Admin() {
               </div>
 
               <div className="flex flex-wrap items-center gap-3">
-                <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-lg border border-[#39FF14]/30">
-                  <MapPin className="w-4 h-4 text-[#39FF14] ml-1" />
+                <div className="flex items-center gap-2 bg-black/40 p-1.5 rounded-lg border border-[#76FF03]/30">
+                  <MapPin className="w-4 h-4 text-[#76FF03] ml-1" />
                   <select
                     value={filtroZonaPedido}
                     onChange={(e) => setFiltroZonaPedido(e.target.value)}
-                    className="bg-black/80 text-[#E0E0E0] text-xs font-['Orbitron'] font-bold rounded px-2.5 py-1.5 outline-none border border-transparent focus:border-[#39FF14]"
+                    className="bg-black/80 text-slate-100 text-xs font-bold rounded px-2.5 py-1.5 outline-none border border-transparent focus:border-[#76FF03]"
                   >
                     <option value="todas">Todas as Regiões</option>
                     <option value="norte">Zona Norte</option>
@@ -1630,14 +1630,14 @@ export default function Admin() {
                 </div>
 
                 <div className="relative flex items-center">
-                  <div className="absolute left-3 text-[#39FF14]/60">
+                  <div className="absolute left-3 text-[#76FF03]/60">
                     <Calendar className="w-4 h-4" />
                   </div>
                   <input 
                     type="date" 
                     value={filtroData}
                     onChange={(e) => setFiltroData(e.target.value)}
-                    className="bg-black/40 border border-[#39FF14]/30 text-[#39FF14] pl-10 pr-4 py-2 rounded-lg font-['Roboto_Mono'] text-sm focus:border-[#39FF14] outline-none transition-all"
+                    className="bg-black/40 border border-[#76FF03]/30 text-[#76FF03] pl-10 pr-4 py-2 rounded-lg text-sm focus:border-[#76FF03] outline-none transition-all"
                   />
                   {filtroData && (
                     <button 
@@ -1650,7 +1650,7 @@ export default function Admin() {
                   )}
                 </div>
 
-                <button onClick={handleExportarPedidos} className="flex items-center gap-2 px-4 py-2 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold hover:bg-[#39FF14]/30 transition-all duration-300">
+                <button onClick={handleExportarPedidos} className="flex items-center gap-2 px-4 py-2 bg-[#76FF03]/20 border border-[#76FF03] text-[#76FF03] rounded-lg font-bold hover:bg-[#76FF03]/30 transition-all duration-300">
                   <Download className="w-4 h-4" /> Exportar {subAbaPedidos === 'ativos' ? 'Vendas' : 'Lixeira'}
                 </button>
               </div>
@@ -1658,8 +1658,8 @@ export default function Admin() {
 
             <div className="grid gap-6">
               {pedidosFiltrados.length === 0 ? (
-                <div className="glass-morphism p-12 rounded-xl text-center border border-dashed border-[#39FF14]/20">
-                  <p className="text-[#808080] font-['Roboto_Mono']">
+                <div className="glass-morphism p-12 rounded-xl text-center border border-dashed border-[#76FF03]/20">
+                  <p className="text-slate-400">
                     {filtroData 
                       ? `Nenhum pedido encontrado para o dia ${new Date(filtroData + 'T12:00:00').toLocaleDateString('pt-BR')}`
                       : subAbaPedidos === 'ativos' ? 'Nenhum pedido ativo encontrado' : 'A lixeira está vazia'}
@@ -1667,17 +1667,17 @@ export default function Admin() {
                 </div>
               ) : (
                 pedidosFiltrados.map((pedido) => (
-                  <div key={pedido.id} className={`glass-morphism p-6 rounded-xl border transition-all duration-300 ${pedido.status_checklist ? 'border-[#39FF14]/20 opacity-80' : 'border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.1)]'} ${subAbaPedidos === 'excluidos' ? 'border-red-500/30 grayscale-[0.5]' : ''}`}>
+                  <div key={pedido.id} className={`glass-morphism p-6 rounded-xl border transition-all duration-300 ${pedido.status_checklist ? 'border-[#76FF03]/20 opacity-80' : 'border-yellow-500/30 shadow-[0_0_15px_rgba(234,179,8,0.1)]'} ${subAbaPedidos === 'excluidos' ? 'border-red-500/30 grayscale-[0.5]' : ''}`}>
                     <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
                       <div className="flex items-center gap-4">
-                        <div className={`p-3 rounded-lg ${pedido.status_checklist ? 'bg-[#39FF14]/20' : 'bg-yellow-500/20'} ${subAbaPedidos === 'excluidos' ? 'bg-red-500/20' : ''}`}>
-                          <ShoppingBag className={`w-6 h-6 ${pedido.status_checklist ? 'text-[#39FF14]' : 'text-yellow-500'} ${subAbaPedidos === 'excluidos' ? 'text-red-400' : ''}`} />
+                        <div className={`p-3 rounded-lg ${pedido.status_checklist ? 'bg-[#76FF03]/20' : 'bg-yellow-500/20'} ${subAbaPedidos === 'excluidos' ? 'bg-red-500/20' : ''}`}>
+                          <ShoppingBag className={`w-6 h-6 ${pedido.status_checklist ? 'text-[#76FF03]' : 'text-yellow-500'} ${subAbaPedidos === 'excluidos' ? 'text-red-400' : ''}`} />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">
-                            <h3 className="text-xl font-bold text-[#E0E0E0] font-['Orbitron']">Pedido #{pedido.numero_pedido}</h3>
+                            <h3 className="text-xl font-bold text-slate-100 font-['Outfit'] font-bold">Pedido #{pedido.numero_pedido}</h3>
                             {pedido.status_checklist ? (
-                              <span className="px-2 py-0.5 bg-[#39FF14]/20 text-[#39FF14] rounded text-[10px] font-bold">CONCLUÍDO</span>
+                              <span className="px-2 py-0.5 bg-[#76FF03]/20 text-[#76FF03] rounded text-[10px] font-bold">CONCLUÍDO</span>
                             ) : (
                               <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded text-[10px] font-bold">PENDENTE</span>
                             )}
@@ -1692,13 +1692,13 @@ export default function Admin() {
                               </span>
                             )}
                           </div>
-                          <p className="text-xs text-[#808080] font-['Roboto_Mono']">{pedido.created_at ? new Date(pedido.created_at).toLocaleString('pt-BR') : '-'}</p>
+                          <p className="text-xs text-slate-400">{pedido.created_at ? new Date(pedido.created_at).toLocaleString('pt-BR') : '-'}</p>
                         </div>
                       </div>
                       <div className="flex gap-2">
                         {subAbaPedidos === 'ativos' ? (
                           <>
-                            <button onClick={() => handleAtualizarStatusPedido(pedido.id, !pedido.status_checklist)} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-['Orbitron'] font-bold text-xs transition-all duration-300 ${pedido.status_checklist ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' : 'bg-[#39FF14] text-black'}`}>
+                            <button onClick={() => handleAtualizarStatusPedido(pedido.id, !pedido.status_checklist)} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all duration-300 ${pedido.status_checklist ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' : 'bg-[#76FF03] text-black'}`}>
                               {pedido.status_checklist ? 'Reabrir' : 'Checklist'}
                             </button>
                             <button onClick={() => handleDeletarPedido(pedido.id, pedido.numero_pedido)} className="p-2 bg-red-500/20 border border-red-500 text-red-400 rounded-lg hover:bg-red-500/40 transition-all"><Trash2 className="w-4 h-4" /></button>
@@ -1706,7 +1706,7 @@ export default function Admin() {
                         ) : (
                           <button 
                             onClick={() => handleRestaurarPedido(pedido.id, pedido.numero_pedido)} 
-                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg font-['Orbitron'] font-bold text-xs hover:bg-blue-600 transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]"
+                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-lg font-bold text-xs hover:bg-blue-600 transition-all shadow-[0_0_10px_rgba(59,130,246,0.3)]"
                           >
                             Restaurar Pedido
                           </button>
@@ -1715,42 +1715,42 @@ export default function Admin() {
                     </div>
 
                     <div className="grid md:grid-cols-2 gap-8">
-                      <div className="space-y-4 text-sm font-['Roboto_Mono']">
-                        <div className={`bg-black/30 p-4 rounded-lg border ${subAbaPedidos === 'excluidos' ? 'border-red-500/10' : 'border-[#39FF14]/10'}`}>
-                          <h4 className={`text-[10px] font-bold uppercase mb-2 ${subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#39FF14]'}`}>Itens</h4>
+                      <div className="space-y-4 text-sm">
+                        <div className={`bg-black/30 p-4 rounded-lg border ${subAbaPedidos === 'excluidos' ? 'border-red-500/10' : 'border-[#76FF03]/10'}`}>
+                          <h4 className={`text-[10px] font-bold uppercase mb-2 ${subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#76FF03]'}`}>Itens</h4>
                           {pedido.itens.map((item, idx) => {
                             const produtoOriginal = produtos.find(prod => prod.id === item.id);
                             const marca = item.marca || (produtoOriginal ? produtoOriginal.marca : '');
                             return (
-                              <div key={idx} className={`flex justify-between border-b py-1 ${subAbaPedidos === 'excluidos' ? 'border-red-500/5' : 'border-[#39FF14]/5'}`}>
+                              <div key={idx} className={`flex justify-between border-b py-1 ${subAbaPedidos === 'excluidos' ? 'border-red-500/5' : 'border-[#76FF03]/5'}`}>
                                 <span>{item.quantidade}x {marca ? marca.toUpperCase() + ' ' : ''}{item.nome} ({item.sabor})</span>
-                                <span className={subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#39FF14]'}>R$ {(item.preco_unitario * item.quantidade).toFixed(2)}</span>
+                                <span className={subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#76FF03]'}>R$ {(item.preco_unitario * item.quantidade).toFixed(2)}</span>
                               </div>
                             );
                           })}
                         </div>
                         <div className="flex justify-between px-2">
-                          <div><h4 className="text-[10px] text-[#808080] uppercase">Cliente</h4><p className="text-[#E0E0E0]">{pedido.nome_cliente}</p></div>
-                          <div className="text-right"><h4 className="text-[10px] text-[#808080] uppercase">WhatsApp</h4><p className={subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#39FF14]'}>{pedido.telefone_cliente}</p></div>
+                          <div><h4 className="text-[10px] text-slate-400 uppercase">Cliente</h4><p className="text-slate-100">{pedido.nome_cliente}</p></div>
+                          <div className="text-right"><h4 className="text-[10px] text-slate-400 uppercase">WhatsApp</h4><p className={subAbaPedidos === 'excluidos' ? 'text-red-400' : 'text-[#76FF03]'}>{pedido.telefone_cliente}</p></div>
                         </div>
                         <div className="flex justify-between px-2">
                           <div>
-                            <h4 className="text-[10px] text-[#808080] uppercase">Região</h4>
-                            <p className="text-[#39FF14] font-bold">{pedido.zona || 'Não informada'}</p>
+                            <h4 className="text-[10px] text-slate-400 uppercase">Região</h4>
+                            <p className="text-[#76FF03] font-bold">{pedido.zona || 'Não informada'}</p>
                           </div>
                           <div className="text-right">
-                            <h4 className="text-[10px] text-[#808080] uppercase">Indicação</h4>
+                            <h4 className="text-[10px] text-slate-400 uppercase">Indicação</h4>
                             <p className="text-blue-400 font-bold">{pedido.indicacao || 'Nenhuma'}</p>
                           </div>
                         </div>
                       </div>
 
-                      <div className={`bg-black/30 p-4 rounded-lg border flex flex-col justify-center space-y-2 ${subAbaPedidos === 'excluidos' ? 'border-red-500/20' : 'border-[#39FF14]/20'}`}>
+                      <div className={`bg-black/30 p-4 rounded-lg border flex flex-col justify-center space-y-2 ${subAbaPedidos === 'excluidos' ? 'border-red-500/20' : 'border-[#76FF03]/20'}`}>
                         <div className="flex justify-between text-xs"><span>Subtotal</span><span>R$ {pedido.total.toFixed(2)}</span></div>
                         <div className="flex justify-between items-center text-xs">
                           <span>Desconto</span>
                           {editandoFinanceiro?.id === pedido.id && subAbaPedidos === 'ativos' ? (
-                            <div className="flex gap-1"><input type="number" value={editandoFinanceiro.desconto} onChange={(e) => setEditandoFinanceiro({ ...editandoFinanceiro, desconto: e.target.value })} className="w-16 bg-black border border-[#39FF14]/50 px-1 py-0.5 text-right outline-none" /><button onClick={() => handleAtualizarFinanceiroPedido(pedido.id)} className="p-0.5 bg-[#39FF14] text-black rounded"><Save className="w-3 h-3" /></button></div>
+                            <div className="flex gap-1"><input type="number" value={editandoFinanceiro.desconto} onChange={(e) => setEditandoFinanceiro({ ...editandoFinanceiro, desconto: e.target.value })} className="w-16 bg-black border border-[#76FF03]/50 px-1 py-0.5 text-right outline-none" /><button onClick={() => handleAtualizarFinanceiroPedido(pedido.id)} className="p-0.5 bg-[#76FF03] text-black rounded"><Save className="w-3 h-3" /></button></div>
                           ) : (
                             <div className="flex gap-1 text-red-400">
                               <span>- R$ {pedido.desconto.toFixed(2)}</span>
@@ -1758,9 +1758,9 @@ export default function Admin() {
                             </div>
                           )}
                         </div>
-                        <div className={`pt-2 border-t flex justify-between font-bold ${subAbaPedidos === 'excluidos' ? 'border-red-500/20 text-red-400' : 'border-[#39FF14]/20 text-[#39FF14]'}`}>
-                          <span className="font-['Orbitron']">TOTAL</span>
-                          <span className="text-2xl font-['Roboto_Mono']">R$ {pedido.total_final.toFixed(2)}</span>
+                        <div className={`pt-2 border-t flex justify-between font-bold ${subAbaPedidos === 'excluidos' ? 'border-red-500/20 text-red-400' : 'border-[#76FF03]/20 text-[#76FF03]'}`}>
+                          <span className="font-semibold">TOTAL</span>
+                          <span className="text-2xl">R$ {pedido.total_final.toFixed(2)}</span>
                         </div>
                       </div>
                     </div>
@@ -1773,24 +1773,24 @@ export default function Admin() {
           /* SEÇÃO DE MÉTRICAS RICAS E INTERATIVAS */
           <section className="space-y-8 animate-in fade-in duration-500">
             {/* Controles de Dashboard */}
-            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-black/40 p-6 rounded-xl border border-[#39FF14]/20">
+            <div className="flex flex-col xl:flex-row xl:items-center justify-between gap-6 bg-black/40 p-6 rounded-xl border border-[#76FF03]/20">
               <div className="flex flex-col gap-2">
-                <h2 className="text-2xl font-bold neon-glow font-['Orbitron'] flex items-center gap-2">
-                  <BarChart3 className="w-6 h-6 text-[#39FF14]" /> MÉTRICAS ANALÍTICAS
+                <h2 className="text-2xl font-bold neon-glow font-['Outfit'] font-bold flex items-center gap-2">
+                  <BarChart3 className="w-6 h-6 text-[#76FF03]" /> MÉTRICAS ANALÍTICAS
                 </h2>
-                <p className="text-xs text-[#808080] font-['Roboto_Mono']">Análise completa de tráfego, conversão e faturamento</p>
+                <p className="text-xs text-slate-400">Análise completa de tráfego, conversão e faturamento</p>
               </div>
               
               <div className="flex flex-wrap items-center gap-4">
                 {/* Filtro de Período */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-[9px] font-bold text-[#808080] uppercase font-['Orbitron']">Período</label>
-                  <div className="flex bg-black/60 p-1 rounded-lg border border-[#39FF14]/20">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase font-semibold">Período</label>
+                  <div className="flex bg-black/60 p-1 rounded-lg border border-[#76FF03]/20">
                     {(['7d', '15d', '30d', '90d', '180d', 'tudo', 'custom'] as const).map((per) => (
                       <button
                         key={per}
                         onClick={() => setFiltroPeriodo(per)}
-                        className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${filtroPeriodo === per ? 'bg-[#39FF14] text-black shadow-[0_0_8px_rgba(57,255,20,0.3)]' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
+                        className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${filtroPeriodo === per ? 'bg-[#76FF03] text-black shadow-[0_0_8px_rgba(118,255,3,0.3)]' : 'text-slate-400 hover:text-slate-300'}`}
                       >
                         {per === 'custom' ? 'Custom' : per === 'tudo' ? 'Tudo' : per.toUpperCase()}
                       </button>
@@ -1800,14 +1800,14 @@ export default function Admin() {
 
                 {/* Filtro de Agrupamento */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-[9px] font-bold text-[#808080] uppercase font-['Orbitron']">Visualização</label>
-                  <div className="flex bg-black/60 p-1 rounded-lg border border-[#39FF14]/20">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase font-semibold">Visualização</label>
+                  <div className="flex bg-black/60 p-1 rounded-lg border border-[#76FF03]/20">
                     {(['dia', 'semana', 'mes'] as const).map((agrup) => (
                       <button
                         key={agrup}
                         disabled={filtroPeriodo === '7d' && (agrup === 'semana' || agrup === 'mes')}
                         onClick={() => setAgrupamentoMetricas(agrup)}
-                        className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${agrupamentoMetricas === agrup ? 'bg-blue-500 text-white shadow-[0_0_8px_rgba(59,130,246,0.3)]' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
+                        className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all disabled:opacity-30 disabled:cursor-not-allowed ${agrupamentoMetricas === agrup ? 'bg-blue-500 text-white shadow-[0_0_8px_rgba(59,130,246,0.3)]' : 'text-slate-400 hover:text-slate-300'}`}
                       >
                         {agrup === 'dia' ? 'Dia' : agrup === 'semana' ? 'Semana' : 'Mês'}
                       </button>
@@ -1817,13 +1817,13 @@ export default function Admin() {
 
                 {/* Filtro de Status do Pedido */}
                 <div className="flex flex-col gap-1">
-                  <label className="text-[9px] font-bold text-[#808080] uppercase font-['Orbitron']">Pedidos</label>
-                  <div className="flex bg-black/60 p-1 rounded-lg border border-[#39FF14]/20">
+                  <label className="text-[9px] font-bold text-slate-400 uppercase font-semibold">Pedidos</label>
+                  <div className="flex bg-black/60 p-1 rounded-lg border border-[#76FF03]/20">
                     {(['todos', 'concluidos'] as const).map((stat) => (
                       <button
                         key={stat}
                         onClick={() => setStatusPedidoFiltro(stat)}
-                        className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${statusPedidoFiltro === stat ? 'bg-purple-500 text-white shadow-[0_0_8px_rgba(168,85,247,0.3)]' : 'text-[#808080] hover:text-[#C0C0C0]'}`}
+                        className={`px-3 py-1 rounded-md text-[10px] font-bold transition-all ${statusPedidoFiltro === stat ? 'bg-purple-500 text-white shadow-[0_0_8px_rgba(168,85,247,0.3)]' : 'text-slate-400 hover:text-slate-300'}`}
                       >
                         {stat === 'todos' ? 'Todos' : 'Concluídos'}
                       </button>
@@ -1833,7 +1833,7 @@ export default function Admin() {
 
                 {/* Refresh Button */}
                 <div className="flex flex-col gap-1 self-end">
-                  <button onClick={carregarTudo} className="p-2 bg-[#39FF14]/10 border border-[#39FF14]/30 text-[#39FF14] rounded-lg hover:bg-[#39FF14]/20 transition-all" title="Recarregar dados">
+                  <button onClick={carregarTudo} className="p-2 bg-[#76FF03]/10 border border-[#76FF03]/30 text-[#76FF03] rounded-lg hover:bg-[#76FF03]/20 transition-all" title="Recarregar dados">
                     <RefreshCw className="w-4 h-4" />
                   </button>
                 </div>
@@ -1842,23 +1842,23 @@ export default function Admin() {
 
             {/* Inputs de Data Customizados */}
             {filtroPeriodo === 'custom' && (
-              <div className="flex flex-wrap items-center gap-4 bg-black/30 p-4 rounded-xl border border-dashed border-[#39FF14]/20 animate-in slide-in-from-top-2 duration-300">
+              <div className="flex flex-wrap items-center gap-4 bg-black/30 p-4 rounded-xl border border-dashed border-[#76FF03]/20 animate-in slide-in-from-top-2 duration-300">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-[#808080] font-['Orbitron']">De:</span>
+                  <span className="text-xs text-slate-400 font-semibold">De:</span>
                   <input
                     type="date"
                     value={dataInicioMetricas}
                     onChange={(e) => setDataInicioMetricas(e.target.value)}
-                    className="bg-black/60 border border-[#39FF14]/30 text-[#39FF14] px-3 py-1.5 rounded-lg text-xs font-['Roboto_Mono'] focus:border-[#39FF14] outline-none"
+                    className="bg-black/60 border border-[#76FF03]/30 text-[#76FF03] px-3 py-1.5 rounded-lg text-xs focus:border-[#76FF03] outline-none"
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-[#808080] font-['Orbitron']">Até:</span>
+                  <span className="text-xs text-slate-400 font-semibold">Até:</span>
                   <input
                     type="date"
                     value={dataFimMetricas}
                     onChange={(e) => setDataFimMetricas(e.target.value)}
-                    className="bg-black/60 border border-[#39FF14]/30 text-[#39FF14] px-3 py-1.5 rounded-lg text-xs font-['Roboto_Mono'] focus:border-[#39FF14] outline-none"
+                    className="bg-black/60 border border-[#76FF03]/30 text-[#76FF03] px-3 py-1.5 rounded-lg text-xs focus:border-[#76FF03] outline-none"
                   />
                 </div>
               </div>
@@ -1867,77 +1867,77 @@ export default function Admin() {
             {/* Cartões de KPI */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               {/* Card 1: Visitas */}
-              <div className="glass-morphism p-5 rounded-xl border border-[#39FF14]/20 bg-[#39FF14]/5 hover:border-[#39FF14]/40 transition-all duration-300 hover:-translate-y-0.5">
+              <div className="glass-morphism p-5 rounded-xl border border-[#76FF03]/20 bg-[#76FF03]/5 hover:border-[#76FF03]/40 transition-all duration-300 hover:-translate-y-0.5">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold text-[#39FF14] uppercase font-['Orbitron'] tracking-wider">Visitas</span>
-                  <Users className="w-4 h-4 text-[#39FF14]" />
+                  <span className="text-[10px] font-bold text-[#76FF03] uppercase font-semibold tracking-wider">Visitas</span>
+                  <Users className="w-4 h-4 text-[#76FF03]" />
                 </div>
-                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                <h3 className="text-2xl font-bold text-slate-100">
                   {resumoMetricas.totalVisitas.toLocaleString('pt-BR')}
                 </h3>
-                <p className="text-[9px] text-[#808080] mt-1 font-['Roboto_Mono']">Acessos únicos</p>
+                <p className="text-[9px] text-slate-400 mt-1">Acessos únicos</p>
               </div>
 
               {/* Card 2: Vendas */}
               <div className="glass-morphism p-5 rounded-xl border border-blue-500/20 bg-blue-500/5 hover:border-blue-500/40 transition-all duration-300 hover:-translate-y-0.5">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold text-blue-400 uppercase font-['Orbitron'] tracking-wider">Vendas</span>
+                  <span className="text-[10px] font-bold text-blue-400 uppercase font-semibold tracking-wider">Vendas</span>
                   <ShoppingBag className="w-4 h-4 text-blue-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                <h3 className="text-2xl font-bold text-slate-100">
                   {resumoMetricas.totalVendas}
                 </h3>
-                <p className="text-[9px] text-[#808080] mt-1 font-['Roboto_Mono']">Pedidos registrados</p>
+                <p className="text-[9px] text-slate-400 mt-1">Pedidos registrados</p>
               </div>
 
               {/* Card 3: Faturamento */}
               <div className="glass-morphism p-5 rounded-xl border border-purple-500/20 bg-purple-500/5 hover:border-purple-500/40 transition-all duration-300 hover:-translate-y-0.5">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold text-purple-400 uppercase font-['Orbitron'] tracking-wider">Faturamento</span>
+                  <span className="text-[10px] font-bold text-purple-400 uppercase font-semibold tracking-wider">Faturamento</span>
                   <DollarSign className="w-4 h-4 text-purple-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                <h3 className="text-2xl font-bold text-slate-100">
                   R$ {resumoMetricas.totalFaturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </h3>
-                <p className="text-[9px] text-[#808080] mt-1 font-['Roboto_Mono']">Faturamento líquido</p>
+                <p className="text-[9px] text-slate-400 mt-1">Faturamento líquido</p>
               </div>
 
               {/* Card 4: Taxa de Conversão */}
               <div className="glass-morphism p-5 rounded-xl border border-yellow-500/20 bg-yellow-500/5 hover:border-yellow-500/40 transition-all duration-300 hover:-translate-y-0.5">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold text-yellow-500 uppercase font-['Orbitron'] tracking-wider">Conversão</span>
+                  <span className="text-[10px] font-bold text-yellow-500 uppercase font-semibold tracking-wider">Conversão</span>
                   <Percent className="w-4 h-4 text-yellow-500" />
                 </div>
-                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                <h3 className="text-2xl font-bold text-slate-100">
                   {resumoMetricas.conversaoGeral.toFixed(2)}%
                 </h3>
-                <p className="text-[9px] text-[#808080] mt-1 font-['Roboto_Mono']">Pedidos / Visitas</p>
+                <p className="text-[9px] text-slate-400 mt-1">Pedidos / Visitas</p>
               </div>
 
               {/* Card 5: Ticket Médio */}
               <div className="glass-morphism p-5 rounded-xl border border-orange-500/20 bg-orange-500/5 hover:border-orange-500/40 transition-all duration-300 hover:-translate-y-0.5">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-[10px] font-bold text-orange-400 uppercase font-['Orbitron'] tracking-wider">Ticket Médio</span>
+                  <span className="text-[10px] font-bold text-orange-400 uppercase font-semibold tracking-wider">Ticket Médio</span>
                   <Zap className="w-4 h-4 text-orange-400" />
                 </div>
-                <h3 className="text-2xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
+                <h3 className="text-2xl font-bold text-slate-100">
                   R$ {resumoMetricas.ticketMedioGeral.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                 </h3>
-                <p className="text-[9px] text-[#808080] mt-1 font-['Roboto_Mono']">Valor médio por compra</p>
+                <p className="text-[9px] text-slate-400 mt-1">Valor médio por compra</p>
               </div>
             </div>
 
             {/* Linha do Tempo e Evolução */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {/* Gráfico 1: Visitas vs Vendas & Conversão */}
-              <div className="lg:col-span-2 glass-morphism p-6 rounded-xl border border-[#39FF14]/10 bg-black/40 min-h-[400px] flex flex-col">
-                <h3 className="text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] mb-6 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-[#39FF14]" /> Evolução de Tráfego, Vendas & Conversão
+              <div className="lg:col-span-2 glass-morphism p-6 rounded-xl border border-[#76FF03]/10 bg-black/40 min-h-[400px] flex flex-col">
+                <h3 className="text-sm font-bold text-slate-300 uppercase font-['Outfit'] font-bold mb-6 flex items-center gap-2">
+                  <TrendingUp className="w-4 h-4 text-[#76FF03]" /> Evolução de Tráfego, Vendas & Conversão
                 </h3>
                 
                 {dataAgrupada.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center">
-                    <p className="text-[#808080] font-['Roboto_Mono']">Sem dados no período selecionado</p>
+                    <p className="text-slate-400">Sem dados no período selecionado</p>
                   </div>
                 ) : (
                   <div className="flex-1 min-h-[300px] w-full">
@@ -1945,8 +1945,8 @@ export default function Admin() {
                       <AreaChart data={dataAgrupada}>
                         <defs>
                           <linearGradient id="colorVisitas" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="5%" stopColor="#39FF14" stopOpacity={0.2}/>
-                            <stop offset="95%" stopColor="#39FF14" stopOpacity={0}/>
+                            <stop offset="5%" stopColor="#76FF03" stopOpacity={0.2}/>
+                            <stop offset="95%" stopColor="#76FF03" stopOpacity={0}/>
                           </linearGradient>
                           <linearGradient id="colorVendas" x1="0" y1="0" x2="0" y2="1">
                             <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
@@ -1982,21 +1982,21 @@ export default function Admin() {
                         <RechartsTooltip 
                           contentStyle={{ 
                             backgroundColor: 'rgba(0, 0, 0, 0.9)', 
-                            border: '1px solid #39FF14',
+                            border: '1px solid #76FF03',
                             borderRadius: '8px',
                             fontSize: '11px',
-                            fontFamily: 'Roboto Mono',
+                            fontFamily: 'Plus Jakarta Sans, sans-serif',
                             color: '#E0E0E0'
                           }}
                           itemStyle={{ padding: '2px 0' }}
                         />
-                        <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', fontFamily: 'Orbitron', color: '#C0C0C0' }} />
+                        <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#C0C0C0' }} />
                         <Area 
                           yAxisId="left"
                           name="Visitas"
                           type="monotone" 
                           dataKey="visitas" 
-                          stroke="#39FF14" 
+                          stroke="#76FF03" 
                           strokeWidth={2}
                           fillOpacity={1} 
                           fill="url(#colorVisitas)" 
@@ -2032,13 +2032,13 @@ export default function Admin() {
 
               {/* Gráfico 2: Faturamento & Ticket Médio */}
               <div className="glass-morphism p-6 rounded-xl border border-blue-500/10 bg-black/40 min-h-[400px] flex flex-col">
-                <h3 className="text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] mb-6 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-300 uppercase font-['Outfit'] font-bold mb-6 flex items-center gap-2">
                   <DollarSign className="w-4 h-4 text-purple-400" /> Faturamento vs. Ticket Médio
                 </h3>
                 
                 {dataAgrupada.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center">
-                    <p className="text-[#808080] font-['Roboto_Mono']">Sem dados no período selecionado</p>
+                    <p className="text-slate-400">Sem dados no período selecionado</p>
                   </div>
                 ) : (
                   <div className="flex-1 min-h-[300px] w-full">
@@ -2082,12 +2082,12 @@ export default function Admin() {
                             border: '1px solid #a855f7',
                             borderRadius: '8px',
                             fontSize: '11px',
-                            fontFamily: 'Roboto Mono',
+                            fontFamily: 'Plus Jakarta Sans, sans-serif',
                             color: '#E0E0E0'
                           }}
                           itemStyle={{ padding: '2px 0' }}
                         />
-                        <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', fontFamily: 'Orbitron', color: '#C0C0C0' }} />
+                        <Legend verticalAlign="top" height={36} wrapperStyle={{ fontSize: '11px', fontFamily: 'Plus Jakarta Sans, sans-serif', color: '#C0C0C0' }} />
                         <Area 
                           yAxisId="left"
                           name="Faturamento"
@@ -2121,12 +2121,12 @@ export default function Admin() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Top 5 Produtos */}
               <div className="glass-morphism p-6 rounded-xl border border-blue-500/10 bg-black/40 flex flex-col">
-                <h3 className="text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] mb-6 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-300 uppercase font-['Outfit'] font-bold mb-6 flex items-center gap-2">
                   <Box className="w-4 h-4 text-blue-400" /> Top 5 Produtos mais Vendidos
                 </h3>
                 {topProdutosEmarcas.topProdutos.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center min-h-[220px]">
-                    <p className="text-[#808080] font-['Roboto_Mono'] text-xs">Nenhum produto vendido no período</p>
+                    <p className="text-slate-400 text-xs">Nenhum produto vendido no período</p>
                   </div>
                 ) : (
                   <div className="flex-1 min-h-[220px] w-full">
@@ -2150,7 +2150,7 @@ export default function Admin() {
                             border: '1px solid #3b82f6',
                             borderRadius: '8px',
                             fontSize: '11px',
-                            fontFamily: 'Roboto Mono',
+                            fontFamily: 'Plus Jakarta Sans, sans-serif',
                             color: '#E0E0E0'
                           }}
                         />
@@ -2168,12 +2168,12 @@ export default function Admin() {
 
               {/* Top 5 Marcas */}
               <div className="glass-morphism p-6 rounded-xl border border-purple-500/10 bg-black/40 flex flex-col">
-                <h3 className="text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] mb-6 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-300 uppercase font-['Outfit'] font-bold mb-6 flex items-center gap-2">
                   <Zap className="w-4 h-4 text-purple-400" /> Top 5 Marcas mais Vendidas
                 </h3>
                 {topProdutosEmarcas.topMarcas.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center min-h-[220px]">
-                    <p className="text-[#808080] font-['Roboto_Mono'] text-xs">Nenhuma marca vendida no período</p>
+                    <p className="text-slate-400 text-xs">Nenhuma marca vendida no período</p>
                   </div>
                 ) : (
                   <div className="flex-1 min-h-[220px] w-full">
@@ -2188,7 +2188,7 @@ export default function Admin() {
                             border: '1px solid #a855f7',
                             borderRadius: '8px',
                             fontSize: '11px',
-                            fontFamily: 'Roboto Mono',
+                            fontFamily: 'Plus Jakarta Sans, sans-serif',
                             color: '#E0E0E0'
                           }}
                         />
@@ -2206,29 +2206,29 @@ export default function Admin() {
 
               {/* Performance por Indicação (Canais) */}
               <div className="glass-morphism p-6 rounded-xl border border-yellow-500/10 bg-black/40 flex flex-col">
-                <h3 className="text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] mb-6 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-slate-300 uppercase font-['Outfit'] font-bold mb-6 flex items-center gap-2">
                   <Users className="w-4 h-4 text-yellow-500" /> Origens de Pedidos (Indicações)
                 </h3>
                 {topProdutosEmarcas.topIndicacoes.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center min-h-[220px]">
-                    <p className="text-[#808080] font-['Roboto_Mono'] text-xs">Nenhum pedido registrado no período</p>
+                    <p className="text-slate-400 text-xs">Nenhum pedido registrado no período</p>
                   </div>
                 ) : (
                   <div className="flex-1 overflow-y-auto max-h-[220px] custom-scrollbar space-y-2 pr-1">
-                    <table className="w-full text-left text-xs font-['Roboto_Mono']">
+                    <table className="w-full text-left text-xs">
                       <thead>
-                        <tr className="text-[#808080] border-b border-white/10 pb-2">
-                          <th className="pb-2 font-['Orbitron'] uppercase text-[9px]">Origem</th>
-                          <th className="pb-2 text-right font-['Orbitron'] uppercase text-[9px]">Pedidos</th>
-                          <th className="pb-2 text-right font-['Orbitron'] uppercase text-[9px]">Faturamento</th>
+                        <tr className="text-slate-400 border-b border-white/10 pb-2">
+                          <th className="pb-2 font-semibold uppercase text-[9px]">Origem</th>
+                          <th className="pb-2 text-right font-semibold uppercase text-[9px]">Pedidos</th>
+                          <th className="pb-2 text-right font-semibold uppercase text-[9px]">Faturamento</th>
                         </tr>
                       </thead>
                       <tbody>
                         {topProdutosEmarcas.topIndicacoes.map((ind, i) => (
-                          <tr key={i} className="border-b border-white/5 py-2 hover:bg-[#39FF14]/5 transition-colors">
-                            <td className="py-2 text-[#E0E0E0] truncate max-w-[120px] font-bold">{ind.indicacao}</td>
+                          <tr key={i} className="border-b border-white/5 py-2 hover:bg-[#76FF03]/5 transition-colors">
+                            <td className="py-2 text-slate-100 truncate max-w-[120px] font-bold">{ind.indicacao}</td>
                             <td className="py-2 text-right text-blue-400 font-bold">{ind.pedidos}</td>
-                            <td className="py-2 text-right text-[#39FF14] font-bold">
+                            <td className="py-2 text-right text-[#76FF03] font-bold">
                               R$ {ind.faturamento.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                             </td>
                           </tr>
@@ -2244,36 +2244,36 @@ export default function Admin() {
           /* SEÇÃO DE SAÚDE E EDUCAÇÃO */
           <section className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
             <div className="flex flex-col gap-2">
-              <h2 className="text-3xl font-bold neon-glow font-['Orbitron']">Saúde do Sistema</h2>
-              <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-sm">Cartilha de boas práticas para mitigação de custos e performance.</p>
+              <h2 className="text-3xl font-bold neon-glow font-['Outfit'] font-bold">Saúde do Sistema</h2>
+              <p className="text-slate-300 text-sm">Cartilha de boas práticas para mitigação de custos e performance.</p>
             </div>
 
             {/* Resumo de Carga Real */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="glass-morphism p-4 rounded-xl border border-[#39FF14]/20 bg-black/40">
-                <p className="text-[10px] font-bold text-[#39FF14] uppercase font-['Orbitron']">Peso do Banco (Linhas)</p>
-                <h3 className="text-xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
-                  {produtos.length + pedidos.length + metricasVisitas.length} <span className="text-[10px] text-[#808080] font-normal">registros</span>
+              <div className="glass-morphism p-4 rounded-xl border border-[#76FF03]/20 bg-black/40">
+                <p className="text-[10px] font-bold text-[#76FF03] uppercase font-semibold">Peso do Banco (Linhas)</p>
+                <h3 className="text-xl font-bold text-slate-100">
+                  {produtos.length + pedidos.length + metricasVisitas.length} <span className="text-[10px] text-slate-400 font-normal">registros</span>
                 </h3>
               </div>
               <div className="glass-morphism p-4 rounded-xl border border-blue-500/20 bg-black/40">
-                <p className="text-[10px] font-bold text-blue-400 uppercase font-['Orbitron']">Arquivos de Imagem</p>
-                <h3 className="text-xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
-                  {produtos.filter(p => p.imagem_url).length} <span className="text-[10px] text-[#808080] font-normal">no storage</span>
+                <p className="text-[10px] font-bold text-blue-400 uppercase font-semibold">Arquivos de Imagem</p>
+                <h3 className="text-xl font-bold text-slate-100">
+                  {produtos.filter(p => p.imagem_url).length} <span className="text-[10px] text-slate-400 font-normal">no storage</span>
                 </h3>
               </div>
               <div className="glass-morphism p-4 rounded-xl border border-yellow-500/20 bg-black/40">
-                <p className="text-[10px] font-bold text-yellow-500 uppercase font-['Orbitron']">Pressão de Egress</p>
-                <h3 className="text-xl font-bold text-[#E0E0E0] font-['Roboto_Mono']">
-                  {metricasVisitas.reduce((acc, v) => acc + v.acessos, 0)} <span className="text-[10px] text-[#808080] font-normal">visitas totais</span>
+                <p className="text-[10px] font-bold text-yellow-500 uppercase font-semibold">Pressão de Egress</p>
+                <h3 className="text-xl font-bold text-slate-100">
+                  {metricasVisitas.reduce((acc, v) => acc + v.acessos, 0)} <span className="text-[10px] text-slate-400 font-normal">visitas totais</span>
                 </h3>
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
               {/* Checklist de Mitigação */}
-              <div className="glass-morphism p-8 rounded-xl border border-[#39FF14]/30 space-y-6">
-                <h3 className="text-xl font-bold text-[#39FF14] font-['Orbitron'] flex items-center gap-3">
+              <div className="glass-morphism p-8 rounded-xl border border-[#76FF03]/30 space-y-6">
+                <h3 className="text-xl font-bold text-[#76FF03] font-['Outfit'] font-bold flex items-center gap-3">
                   <CheckCircle2 className="w-6 h-6" /> Checklist de Mitigação
                 </h3>
                 
@@ -2285,13 +2285,13 @@ export default function Admin() {
                     { title: "Proteção contra Bots", desc: "O registro de visitas agora ignora crawlers conhecidos e evita duplicatas por sessão.", status: "Ativo" },
                     { title: "Limites de Query", desc: "Listagem de pedidos agora possui limite de 500 registros para evitar sobrecarga.", status: "Ativo" }
                   ].map((item, i) => (
-                    <div key={i} className="flex gap-4 p-4 bg-black/40 rounded-lg border border-[#39FF14]/10 hover:border-[#39FF14]/30 transition-all">
+                    <div key={i} className="flex gap-4 p-4 bg-black/40 rounded-lg border border-[#76FF03]/10 hover:border-[#76FF03]/30 transition-all">
                       <div className="mt-1">
-                        <div className={`w-3 h-3 rounded-full ${item.status === 'Ativo' ? 'bg-[#39FF14]' : 'bg-yellow-500'}`} />
+                        <div className={`w-3 h-3 rounded-full ${item.status === 'Ativo' ? 'bg-[#76FF03]' : 'bg-yellow-500'}`} />
                       </div>
                       <div>
-                        <h4 className="text-[#E0E0E0] font-bold text-sm font-['Orbitron']">{item.title}</h4>
-                        <p className="text-[#808080] text-xs font-['Roboto_Mono'] mt-1">{item.desc}</p>
+                        <h4 className="text-slate-100 font-bold text-sm font-['Outfit'] font-bold">{item.title}</h4>
+                        <p className="text-slate-400 text-xs mt-1">{item.desc}</p>
                       </div>
                     </div>
                   ))}
@@ -2301,10 +2301,10 @@ export default function Admin() {
               {/* Educação sobre Egress */}
               <div className="space-y-6">
                 <div className="glass-morphism p-8 rounded-xl border border-blue-500/30 bg-blue-500/5">
-                  <h3 className="text-xl font-bold text-blue-400 font-['Orbitron'] flex items-center gap-3 mb-4">
+                  <h3 className="text-xl font-bold text-blue-400 font-['Outfit'] font-bold flex items-center gap-3 mb-4">
                     <TrendingUp className="w-6 h-6" /> O que é Cached Egress?
                   </h3>
-                  <p className="text-[#C0C0C0] text-sm font-['Roboto_Mono'] leading-relaxed">
+                  <p className="text-slate-300 text-sm leading-relaxed">
                     É o tráfego de dados que sai do Supabase para o navegador do cliente, mas que passou pelo cache do CDN. 
                     <br /><br />
                     No plano gratuito, o limite é de **5GB/mês**. Ultrapassar esse limite pode causar o bloqueio temporário do projeto.
@@ -2312,10 +2312,10 @@ export default function Admin() {
                 </div>
 
                 <div className="glass-morphism p-8 rounded-xl border border-red-500/30 bg-red-500/5">
-                  <h3 className="text-xl font-bold text-red-400 font-['Orbitron'] flex items-center gap-3 mb-4">
+                  <h3 className="text-xl font-bold text-red-400 font-['Outfit'] font-bold flex items-center gap-3 mb-4">
                     <AlertCircle className="w-6 h-6" /> Alerta Vermelho
                   </h3>
-                  <ul className="text-[#C0C0C0] text-xs font-['Roboto_Mono'] space-y-3 list-disc pl-4">
+                  <ul className="text-slate-300 text-xs space-y-3 list-disc pl-4">
                     <li>**Nunca** suba vídeos diretamente no Storage (use YouTube/Vimeo).</li>
                     <li>**Evite** abrir o Admin repetidamente sem necessidade (cada abertura consome dados).</li>
                     <li>**Monitore** o dashboard do Supabase semanalmente.</li>
@@ -2329,21 +2329,21 @@ export default function Admin() {
           /* SEÇÃO DE CONFIGURAÇÕES PROMOCIONAIS */
           <section className="max-w-2xl mx-auto space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col gap-2">
-              <h2 className="text-3xl font-bold neon-glow font-['Orbitron']">Configurações da Promoção</h2>
-              <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-sm">Configure o horário e dias da semana em que as promoções ficam ativas no catálogo.</p>
+              <h2 className="text-3xl font-bold neon-glow font-['Outfit'] font-bold">Configurações da Promoção</h2>
+              <p className="text-slate-300 text-sm">Configure o horário e dias da semana em que as promoções ficam ativas no catálogo.</p>
             </div>
 
             {tabelaConfigNaoExiste && (
               <div className="p-6 bg-yellow-500/10 border border-yellow-500/50 rounded-xl space-y-4 shadow-[0_0_20px_rgba(234,179,8,0.15)]">
                 <div className="flex items-center gap-3">
                   <AlertCircle className="w-6 h-6 text-yellow-500 flex-shrink-0" />
-                  <h3 className="text-lg font-bold text-yellow-500 font-['Orbitron']">Tabela Não Configurada no Supabase</h3>
+                  <h3 className="text-lg font-bold text-yellow-500 font-['Outfit'] font-bold">Tabela Não Configurada no Supabase</h3>
                 </div>
-                <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-sm leading-relaxed">
+                <p className="text-slate-300 text-sm leading-relaxed">
                   A tabela <code>configuracoes</code> não foi encontrada no seu banco de dados Supabase. Execute o script SQL abaixo no **SQL Editor** do seu painel Supabase para habilitar este painel.
                 </p>
                 <div className="relative">
-                  <pre className="bg-black/60 border border-yellow-500/30 p-4 rounded-lg text-xs font-['Roboto_Mono'] text-[#E0E0E0] overflow-x-auto select-all max-h-60">
+                  <pre className="bg-black/60 border border-yellow-500/30 p-4 rounded-lg text-xs text-slate-100 overflow-x-auto select-all max-h-60">
 {`-- Criar tabela de configuracoes
 CREATE TABLE IF NOT EXISTS configuracoes (
   chave VARCHAR(50) PRIMARY KEY,
@@ -2368,11 +2368,11 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
               </div>
             )}
 
-            <form onSubmit={handleSalvarConfiguracoes} className="glass-morphism p-8 rounded-xl border border-[#39FF14]/30 bg-black/40 space-y-6">
+            <form onSubmit={handleSalvarConfiguracoes} className="glass-morphism p-8 rounded-xl border border-[#76FF03]/30 bg-black/40 space-y-6">
               {/* Dias da Semana */}
               <div className="space-y-3">
-                <label className="block text-sm font-bold text-[#C0C0C0] uppercase font-['Orbitron'] tracking-wider">Dias da Semana</label>
-                <p className="text-xs text-[#808080] font-['Roboto_Mono'] mb-3">Selecione os dias em que a aba promocional estará disponível.</p>
+                <label className="block text-sm font-bold text-slate-300 uppercase font-semibold tracking-wider">Dias da Semana</label>
+                <p className="text-xs text-slate-400 mb-3">Selecione os dias em que a aba promocional estará disponível.</p>
                 
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                   {['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'].map((nomeDia, index) => {
@@ -2380,9 +2380,9 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                     return (
                       <label 
                         key={index} 
-                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer select-none transition-all duration-300 font-['Roboto_Mono'] text-xs ${
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer select-none transition-all duration-300  text-xs ${
                           selecionado 
-                            ? 'bg-[#39FF14]/20 border-[#39FF14] text-[#39FF14] shadow-[0_0_10px_rgba(57,255,20,0.15)]' 
+                            ? 'bg-[#76FF03]/20 border-[#76FF03] text-[#76FF03] shadow-[0_0_10px_rgba(118,255,3,0.15)]' 
                             : 'bg-black/60 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-300'
                         }`}
                       >
@@ -2398,7 +2398,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                           className="hidden"
                         />
                         <div className={`w-4 h-4 rounded border flex items-center justify-center ${
-                          selecionado ? 'border-[#39FF14] bg-[#39FF14] text-black' : 'border-zinc-700'
+                          selecionado ? 'border-[#76FF03] bg-[#76FF03] text-black' : 'border-zinc-700'
                         }`}>
                           {selecionado && <span className="text-[10px] font-bold">✓</span>}
                         </div>
@@ -2412,28 +2412,28 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
               {/* Horários */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron'] tracking-wider">Hora de Início</label>
+                  <label className="block text-xs font-bold text-slate-300 uppercase font-semibold tracking-wider">Hora de Início</label>
                   <input 
                     type="time" 
                     value={promoConfig.hora_inicio}
                     onChange={(e) => setPromoConfig({ ...promoConfig, hora_inicio: e.target.value })}
-                    className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
+                    className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-3 rounded-lg focus:border-[#76FF03] focus:outline-none transition-all duration-300"
                     required
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron'] tracking-wider">Hora de Término</label>
+                  <label className="block text-xs font-bold text-slate-300 uppercase font-semibold tracking-wider">Hora de Término</label>
                   <input 
                     type="time" 
                     value={promoConfig.hora_fim}
                     onChange={(e) => setPromoConfig({ ...promoConfig, hora_fim: e.target.value })}
-                    className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']"
+                    className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-3 rounded-lg focus:border-[#76FF03] focus:outline-none transition-all duration-300"
                     required
                   />
                 </div>
               </div>
 
-              <div className="pt-4 border-t border-[#39FF14]/10">
+              <div className="pt-4 border-t border-[#76FF03]/10">
                 <button 
                   type="submit" 
                   disabled={salvandoConfig} 
@@ -2457,13 +2457,13 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
           <section className="max-w-4xl mx-auto space-y-8 animate-in fade-in duration-500">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h2 className="text-3xl font-bold neon-glow font-['Orbitron']">Personalização do Hero Banner</h2>
-                <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-sm">Gerencie os slides, textos, botões e os produtos em destaque exibidos no topo do catálogo.</p>
+                <h2 className="text-3xl font-bold neon-glow font-['Outfit'] font-bold">Personalização do Hero Banner</h2>
+                <p className="text-slate-300 text-sm">Gerencie os slides, textos, botões e os produtos em destaque exibidos no topo do catálogo.</p>
               </div>
               <button
                 type="button"
                 onClick={handleAdicionarSlide}
-                className="px-4 py-2.5 bg-[#39FF14]/20 border border-[#39FF14] text-[#39FF14] rounded-lg font-['Orbitron'] font-bold text-xs hover:bg-[#39FF14]/30 transition-all flex items-center gap-2 self-start sm:self-auto shadow-[0_0_15px_rgba(57,255,20,0.2)]"
+                className="px-4 py-2.5 bg-[#76FF03]/20 border border-[#76FF03] text-[#76FF03] rounded-lg font-bold text-xs hover:bg-[#76FF03]/30 transition-all flex items-center gap-2 self-start sm:self-auto shadow-[0_0_15px_rgba(118,255,3,0.2)]"
               >
                 <Plus className="w-4 h-4" /> Adicionar Slide
               </button>
@@ -2471,7 +2471,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
 
             {/* Pré-visualização em Tempo Real */}
             <div className="space-y-3">
-              <h3 className="text-xs font-bold text-[#39FF14] uppercase tracking-wider font-['Orbitron'] flex items-center gap-2">
+              <h3 className="text-xs font-bold text-[#76FF03] uppercase tracking-wider font-['Outfit'] font-bold flex items-center gap-2">
                 <Sparkles className="w-4 h-4 animate-spin" style={{ animationDuration: '6s' }} /> Pré-visualização do Hero Banner
               </h3>
               <HeroBanner
@@ -2487,30 +2487,30 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
             <form onSubmit={handleSalvarHeroConfig} className="space-y-6">
               <div className="space-y-6">
                 {heroConfig.slides.map((slide, index) => (
-                  <div key={slide.id || index} className="glass-morphism p-6 rounded-xl border border-[#39FF14]/30 bg-black/50 space-y-6">
+                  <div key={slide.id || index} className="glass-morphism p-6 rounded-xl border border-[#76FF03]/30 bg-black/50 space-y-6">
                     {/* Header do Card do Slide */}
-                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#39FF14]/20 pb-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#76FF03]/20 pb-4">
                       <div className="flex items-center gap-3">
-                        <span className="w-7 h-7 rounded-lg bg-[#39FF14]/20 border border-[#39FF14]/50 flex items-center justify-center font-['Orbitron'] font-bold text-xs text-[#39FF14]">
+                        <span className="w-7 h-7 rounded-lg bg-[#76FF03]/20 border border-[#76FF03]/50 flex items-center justify-center font-bold text-xs text-[#76FF03]">
                           #{index + 1}
                         </span>
-                        <h4 className="font-bold text-[#E0E0E0] font-['Orbitron'] text-base truncate max-w-[220px] sm:max-w-sm">
+                        <h4 className="font-bold text-slate-100 font-['Outfit'] font-bold text-base truncate max-w-[220px] sm:max-w-sm">
                           {slide.titulo || 'Novo Slide'}
                         </h4>
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-['Orbitron'] font-bold ${
-                          slide.ativo ? 'bg-[#39FF14]/20 border border-[#39FF14]/50 text-[#39FF14]' : 'bg-zinc-800 text-zinc-500'
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          slide.ativo ? 'bg-[#76FF03]/20 border border-[#76FF03]/50 text-[#76FF03]' : 'bg-zinc-800 text-zinc-500'
                         }`}>
                           {slide.ativo ? 'Ativo' : 'Inativo'}
                         </span>
                       </div>
 
                       <div className="flex items-center gap-2">
-                        <label className="flex items-center gap-2 text-xs font-bold text-[#C0C0C0] font-['Roboto_Mono'] cursor-pointer mr-2">
+                        <label className="flex items-center gap-2 text-xs font-bold text-slate-300 cursor-pointer mr-2">
                           <input
                             type="checkbox"
                             checked={slide.ativo}
                             onChange={(e) => handleAtualizarSlide(index, { ativo: e.target.checked })}
-                            className="accent-[#39FF14] w-4 h-4"
+                            className="accent-[#76FF03] w-4 h-4"
                           />
                           Exibir Slide
                         </label>
@@ -2519,7 +2519,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                           type="button"
                           onClick={() => handleMoverSlide(index, 'up')}
                           disabled={index === 0}
-                          className="p-1.5 bg-black/60 border border-zinc-700 text-zinc-300 rounded hover:border-[#39FF14] hover:text-[#39FF14] disabled:opacity-30 transition-colors"
+                          className="p-1.5 bg-black/60 border border-zinc-700 text-zinc-300 rounded hover:border-[#76FF03] hover:text-[#76FF03] disabled:opacity-30 transition-colors"
                           title="Mover para cima"
                         >
                           <ArrowUp className="w-4 h-4" />
@@ -2528,7 +2528,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                           type="button"
                           onClick={() => handleMoverSlide(index, 'down')}
                           disabled={index === heroConfig.slides.length - 1}
-                          className="p-1.5 bg-black/60 border border-zinc-700 text-zinc-300 rounded hover:border-[#39FF14] hover:text-[#39FF14] disabled:opacity-30 transition-colors"
+                          className="p-1.5 bg-black/60 border border-zinc-700 text-zinc-300 rounded hover:border-[#76FF03] hover:text-[#76FF03] disabled:opacity-30 transition-colors"
                           title="Mover para baixo"
                         >
                           <ArrowDown className="w-4 h-4" />
@@ -2548,23 +2548,23 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Badge / Tag */}
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Texto da Tag (Badge)</label>
+                        <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Texto da Tag (Badge)</label>
                         <input
                           type="text"
                           value={slide.badge.texto}
                           onChange={(e) => handleAtualizarSlide(index, { badge: { ...slide.badge, texto: e.target.value } })}
-                          className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                          className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none text-sm"
                           placeholder="ex: OFERTAS RELÂMPAGO"
                         />
                       </div>
 
                       <div className="flex gap-4 items-end">
                         <div className="space-y-2 flex-1">
-                          <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Cor da Tag</label>
+                          <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Cor da Tag</label>
                           <select
                             value={slide.badge.cor}
                             onChange={(e) => handleAtualizarSlide(index, { badge: { ...slide.badge, cor: e.target.value as 'red' | 'green' | 'blue' } })}
-                            className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                            className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none text-sm"
                           >
                             <option value="green">Verde (Novidade)</option>
                             <option value="red">Vermelho (Oferta)</option>
@@ -2572,7 +2572,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                           </select>
                         </div>
 
-                        <label className="flex items-center gap-2 text-xs text-[#C0C0C0] font-['Roboto_Mono'] cursor-pointer pb-2.5">
+                        <label className="flex items-center gap-2 text-xs text-slate-300 cursor-pointer pb-2.5">
                           <input
                             type="checkbox"
                             checked={!!slide.badge.aoVivoBadge}
@@ -2585,57 +2585,57 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
 
                       {/* Títulos */}
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Título Principal</label>
+                        <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Título Principal</label>
                         <input
                           type="text"
                           value={slide.titulo}
                           onChange={(e) => handleAtualizarSlide(index, { titulo: e.target.value })}
-                          className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                          className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none text-sm"
                           placeholder="ex: Super Preços &"
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-[#39FF14] uppercase font-['Orbitron']">Título Destaque (Neon)</label>
+                        <label className="block text-xs font-bold text-[#76FF03] uppercase font-semibold">Título Destaque (Neon)</label>
                         <input
                           type="text"
                           value={slide.tituloDestaque}
                           onChange={(e) => handleAtualizarSlide(index, { tituloDestaque: e.target.value })}
-                          className="w-full bg-black/60 border border-[#39FF14] text-[#39FF14] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm font-bold"
+                          className="w-full bg-black/60 border border-[#76FF03] text-[#76FF03] px-4 py-2 rounded-lg outline-none text-sm font-bold"
                           placeholder="ex: Promoções Especiais"
                         />
                       </div>
 
                       {/* Descrição */}
                       <div className="md:col-span-2 space-y-2">
-                        <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Descrição do Slide</label>
+                        <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Descrição do Slide</label>
                         <textarea
                           rows={2}
                           value={slide.descricao}
                           onChange={(e) => handleAtualizarSlide(index, { descricao: e.target.value })}
-                          className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                          className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none text-sm"
                           placeholder="Breve descrição em destaque..."
                         />
                       </div>
 
                       {/* Botão de Ação */}
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Texto do Botão</label>
+                        <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Texto do Botão</label>
                         <input
                           type="text"
                           value={slide.botaoTexto}
                           onChange={(e) => handleAtualizarSlide(index, { botaoTexto: e.target.value })}
-                          className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                          className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none text-sm"
                           placeholder="ex: Ver Ofertas Promocionais"
                         />
                       </div>
 
                       <div className="space-y-2">
-                        <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Ação do Botão</label>
+                        <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Ação do Botão</label>
                         <select
                           value={slide.botaoAcao}
                           onChange={(e) => handleAtualizarSlide(index, { botaoAcao: e.target.value as any })}
-                          className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                          className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none text-sm"
                         >
                           <option value="promocionais">Ir para Aba Promocionais</option>
                           <option value="expressos">Ir para Aba Expressos</option>
@@ -2645,12 +2645,12 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
 
                       {slide.botaoAcao === 'url' && (
                         <div className="md:col-span-2 space-y-2">
-                          <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">URL de Destino</label>
+                          <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">URL de Destino</label>
                           <input
                             type="text"
                             value={slide.botaoUrl || ''}
                             onChange={(e) => handleAtualizarSlide(index, { botaoUrl: e.target.value })}
-                            className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                            className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none text-sm"
                             placeholder="ex: /como-funciona ou https://..."
                           />
                         </div>
@@ -2658,11 +2658,11 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
 
                       {/* Destaque Lateral */}
                       <div className="md:col-span-2 space-y-3 pt-3 border-t border-white/10">
-                        <label className="block text-xs font-bold text-[#39FF14] uppercase font-['Orbitron']">Conteúdo Lateral (Card de Destaque)</label>
+                        <label className="block text-xs font-bold text-[#76FF03] uppercase font-semibold">Conteúdo Lateral (Card de Destaque)</label>
                         <select
                           value={slide.tipoDestaque}
                           onChange={(e) => handleAtualizarSlide(index, { tipoDestaque: e.target.value as any })}
-                          className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                          className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none text-sm"
                         >
                           <option value="produto_especifico">Produto Específico do Catálogo (Selecionar)</option>
                           <option value="produto_promo">Automático: Primeiro Produto da Promoção</option>
@@ -2672,11 +2672,11 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
 
                         {slide.tipoDestaque === 'produto_especifico' && (
                           <div className="space-y-2">
-                            <label className="block text-[11px] font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Selecionar Produto em Destaque</label>
+                            <label className="block text-[11px] font-bold text-slate-300 uppercase font-semibold">Selecionar Produto em Destaque</label>
                             <select
                               value={slide.produtoDestaqueId || ''}
                               onChange={(e) => handleAtualizarSlide(index, { produtoDestaqueId: e.target.value || null })}
-                              className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                              className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none text-sm"
                             >
                               <option value="">Nenhum (Exibir 2 novidades aleatórias)</option>
                               {produtos.map(p => (
@@ -2691,22 +2691,22 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                         {slide.tipoDestaque === 'custom' && (
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
                             <div className="space-y-1">
-                              <label className="block text-[11px] font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Destaque Grande (ex: 100%)</label>
+                              <label className="block text-[11px] font-bold text-slate-300 uppercase font-semibold">Destaque Grande (ex: 100%)</label>
                               <input
                                 type="text"
                                 value={slide.customTitulo || ''}
                                 onChange={(e) => handleAtualizarSlide(index, { customTitulo: e.target.value })}
-                                className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-3 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                                className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-3 py-2 rounded-lg outline-none text-sm"
                                 placeholder="100%"
                               />
                             </div>
                             <div className="space-y-1">
-                              <label className="block text-[11px] font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Subtítulo (ex: PRODUTOS SELECIONADOS)</label>
+                              <label className="block text-[11px] font-bold text-slate-300 uppercase font-semibold">Subtítulo (ex: PRODUTOS SELECIONADOS)</label>
                               <input
                                 type="text"
                                 value={slide.customSubtitulo || ''}
                                 onChange={(e) => handleAtualizarSlide(index, { customSubtitulo: e.target.value })}
-                                className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-3 py-2 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                                className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-3 py-2 rounded-lg outline-none text-sm"
                                 placeholder="PRODUTOS SELECIONADOS"
                               />
                             </div>
@@ -2718,7 +2718,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                 ))}
               </div>
 
-              <div className="flex gap-4 pt-4 border-t border-[#39FF14]/10">
+              <div className="flex gap-4 pt-4 border-t border-[#76FF03]/10">
                 <button
                   type="submit"
                   disabled={salvandoHero}
@@ -2742,32 +2742,32 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
       </main>
 
       {/* Footer Discreto - Portfolio */}
-      <footer className="py-8 mt-12 border-t border-[#39FF14]/10">
+      <footer className="py-8 mt-12 border-t border-[#76FF03]/10">
         <div className="container flex flex-col items-center justify-center gap-4">
-          <p className="text-[#606060] font-['Roboto_Mono'] text-[10px] tracking-widest uppercase text-center">
-            Desenvolvido por <span className="text-[#808080]">Alberto Ramos</span>
+          <p className="text-[#606060] text-[10px] tracking-widest uppercase text-center">
+            Desenvolvido por <span className="text-slate-400">Alberto Ramos</span>
           </p>
           <div className="flex items-center gap-6">
             <a 
               href="https://github.com/albertoramos98" 
               target="_blank" 
               rel="noopener noreferrer"
-              className="group flex items-center gap-2 text-[#606060] hover:text-[#39FF14] transition-all duration-300"
+              className="group flex items-center gap-2 text-[#606060] hover:text-[#76FF03] transition-all duration-300"
               title="GitHub"
             >
               <Github className="w-4 h-4" />
-              <span className="text-[10px] font-['Orbitron'] font-bold opacity-0 group-hover:opacity-100 transition-opacity">GITHUB</span>
+              <span className="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">GITHUB</span>
             </a>
             <a 
               href="mailto:alpemc.dev@gmail.com" 
-              className="group flex items-center gap-2 text-[#606060] hover:text-[#39FF14] transition-all duration-300"
+              className="group flex items-center gap-2 text-[#606060] hover:text-[#76FF03] transition-all duration-300"
               title="Email para contato"
             >
               <Mail className="w-4 h-4" />
-              <span className="text-[10px] font-['Orbitron'] font-bold opacity-0 group-hover:opacity-100 transition-opacity">CONTATO</span>
+              <span className="text-[10px] font-bold opacity-0 group-hover:opacity-100 transition-opacity">CONTATO</span>
             </a>
           </div>
-          <p className="text-[#404040] font-['Roboto_Mono'] text-[8px]">
+          <p className="text-[#404040] text-[8px]">
             &copy; {new Date().getFullYear()} — Fullstack Developer
           </p>
         </div>
@@ -2778,44 +2778,44 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="w-full max-w-lg glass-morphism p-6 rounded-xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold neon-glow font-['Orbitron']">{editandoId ? 'Editar Produto' : 'Novo Produto'}</h3>
-              <button onClick={fecharModal} className="p-2 hover:bg-[#39FF14]/20 rounded-lg"><X className="w-6 h-6 text-[#39FF14]" /></button>
+              <h3 className="text-2xl font-bold neon-glow font-['Outfit'] font-bold">{editandoId ? 'Editar Produto' : 'Novo Produto'}</h3>
+              <button onClick={fecharModal} className="p-2 hover:bg-[#76FF03]/20 rounded-lg"><X className="w-6 h-6 text-[#76FF03]" /></button>
             </div>
             <form onSubmit={handleSalvarProduto} className="space-y-4">
-              <div className="border border-[#39FF14]/30 rounded-xl p-4 bg-black/30">
-                <label className="flex items-center gap-2 text-sm font-bold text-[#C0C0C0] mb-3 font-['Orbitron']"><ImagePlus className="w-4 h-4 text-[#39FF14]" /> Imagem</label>
+              <div className="border border-[#76FF03]/30 rounded-xl p-4 bg-black/30">
+                <label className="flex items-center gap-2 text-sm font-bold text-slate-300 mb-3 font-semibold"><ImagePlus className="w-4 h-4 text-[#76FF03]" /> Imagem</label>
                 {(imagemPreview || (imagemUrlAtual && !removerImagem)) ? (
-                  <div className="relative mb-3"><img src={imagemPreview || imagemUrlAtual || ''} alt="Preview" className="w-full h-48 object-cover rounded-lg border border-[#39FF14]/50" /><button type="button" onClick={handleRemoverImagem} className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full"><X className="w-4 h-4" /></button></div>
+                  <div className="relative mb-3"><img src={imagemPreview || imagemUrlAtual || ''} alt="Preview" className="w-full h-48 object-cover rounded-lg border border-[#76FF03]/50" /><button type="button" onClick={handleRemoverImagem} className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full"><X className="w-4 h-4" /></button></div>
                 ) : (
-                  <div onClick={() => inputImagemRef.current?.click()} className="w-full h-32 border-2 border-dashed border-[#39FF14]/40 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-[#39FF14] transition-all"><ImagePlus className="w-8 h-8 text-[#39FF14]/50 mb-2" /><p className="text-[#808080] text-xs">Clique para selecionar</p></div>
+                  <div onClick={() => inputImagemRef.current?.click()} className="w-full h-32 border-2 border-dashed border-[#76FF03]/40 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-[#76FF03] transition-all"><ImagePlus className="w-8 h-8 text-[#76FF03]/50 mb-2" /><p className="text-slate-400 text-xs">Clique para selecionar</p></div>
                 )}
                 <input ref={inputImagemRef} type="file" accept="image/*" onChange={handleSelecionarImagem} className="hidden" />
               </div>
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Marca</label>
-                <select value={marcaCustomizada ? '' : formProduto.marca} onChange={(e) => { setFormProduto({ ...formProduto, marca: e.target.value }); setMarcaCustomizada(''); }} className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono']">
+                <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Marca</label>
+                <select value={marcaCustomizada ? '' : formProduto.marca} onChange={(e) => { setFormProduto({ ...formProduto, marca: e.target.value }); setMarcaCustomizada(''); }} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none">
                   <option value="">Selecione uma marca</option>
                   {marcas.map(marca => <option key={marca} value={marca}>{marca}</option>)}
                   <option value="">─ Outra marca ─</option>
                 </select>
-                {formProduto.marca === '' && <input type="text" value={marcaCustomizada} onChange={(e) => setMarcaCustomizada(e.target.value)} placeholder="Digite a marca" className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono']" />}
+                {formProduto.marca === '' && <input type="text" value={marcaCustomizada} onChange={(e) => setMarcaCustomizada(e.target.value)} placeholder="Digite a marca" className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none" />}
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Nome</label>
-                <input type="text" value={formProduto.nome} onChange={(e) => setFormProduto({ ...formProduto, nome: e.target.value })} className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono']" placeholder="ex: IGNITE 8.000" />
+                <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Nome</label>
+                <input type="text" value={formProduto.nome} onChange={(e) => setFormProduto({ ...formProduto, nome: e.target.value })} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none" placeholder="ex: IGNITE 8.000" />
               </div>
               <div>
-                <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Preço (R$)</label>
-                <input type="number" step="0.01" value={formProduto.preco} onChange={(e) => setFormProduto({ ...formProduto, preco: e.target.value })} className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono']" placeholder="115.00" />
+                <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Preço (R$)</label>
+                <input type="number" step="0.01" value={formProduto.preco} onChange={(e) => setFormProduto({ ...formProduto, preco: e.target.value })} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none" placeholder="115.00" />
               </div>
               
-              <div className="border border-[#39FF14]/30 rounded-xl p-4 bg-black/30 space-y-3">
+              <div className="border border-[#76FF03]/30 rounded-xl p-4 bg-black/30 space-y-3">
                 <div className="flex justify-between items-center">
-                  <label className="block text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Sabores e Estoques</label>
+                  <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Sabores e Estoques</label>
                   <button
                     type="button"
                     onClick={() => setFormSaboresEstoque([...formSaboresEstoque, { sabor: '', estoque: 10 }])}
-                    className="flex items-center gap-1 text-xs font-bold text-[#39FF14] hover:text-[#39FF14]/80 transition-colors"
+                    className="flex items-center gap-1 text-xs font-bold text-[#76FF03] hover:text-[#76FF03]/80 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5" /> Adicionar Sabor
                   </button>
@@ -2832,7 +2832,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                           newItems[index].sabor = e.target.value;
                           setFormSaboresEstoque(newItems);
                         }}
-                        className="flex-1 bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-3 py-1.5 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                        className="flex-1 bg-black/60 border border-[#76FF03]/50 text-slate-100 px-3 py-1.5 rounded-lg outline-none text-sm"
                         placeholder="ex: Menta Ice"
                         required
                       />
@@ -2845,7 +2845,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                           newItems[index].estoque = parseInt(e.target.value) || 0;
                           setFormSaboresEstoque(newItems);
                         }}
-                        className="w-24 bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-3 py-1.5 rounded-lg outline-none font-['Roboto_Mono'] text-sm"
+                        className="w-24 bg-black/60 border border-[#76FF03]/50 text-slate-100 px-3 py-1.5 rounded-lg outline-none text-sm"
                         placeholder="Estoque"
                         required
                       />
@@ -2866,17 +2866,17 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                   ))}
                 </div>
                 
-                <div className="text-[10px] text-[#808080] font-['Roboto_Mono'] flex justify-between border-t border-[#39FF14]/20 pt-2 mt-2 font-bold uppercase">
+                <div className="text-[10px] text-slate-400 flex justify-between border-t border-[#76FF03]/20 pt-2 mt-2 font-bold uppercase">
                   <span>Sabores: {formSaboresEstoque.filter(i => i.sabor.trim() !== '').length}</span>
                   <span>Estoque Total: {formSaboresEstoque.reduce((sum, item) => sum + (item.sabor.trim() !== '' ? item.estoque : 0), 0)}</span>
                 </div>
               </div>
 
               {/* Seletor de Regiões / Zonas */}
-              <div className="border border-[#39FF14]/30 rounded-xl p-4 bg-black/30 space-y-2">
+              <div className="border border-[#76FF03]/30 rounded-xl p-4 bg-black/30 space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">
-                    <MapPin className="w-4 h-4 text-[#39FF14]" /> Regiões / Zonas de Atendimento
+                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-300 uppercase font-semibold">
+                    <MapPin className="w-4 h-4 text-[#76FF03]" /> Regiões / Zonas de Atendimento
                   </label>
                   <button
                     type="button"
@@ -2887,12 +2887,12 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                         setFormProduto({ ...formProduto, zonas: ['norte', 'sul', 'oeste'] });
                       }
                     }}
-                    className="text-[10px] text-[#39FF14] hover:underline font-bold font-['Roboto_Mono']"
+                    className="text-[10px] text-[#76FF03] hover:underline font-bold"
                   >
                     {formProduto.zonas.length === 3 ? 'Desmarcar todas' : 'Marcar todas'}
                   </button>
                 </div>
-                <p className="text-[11px] text-[#808080]">
+                <p className="text-[11px] text-slate-400">
                   Selecione em quais regiões este vape aparecerá disponível no catálogo:
                 </p>
                 <div className="grid grid-cols-3 gap-2 pt-1">
@@ -2911,9 +2911,9 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                           }
                           setFormProduto({ ...formProduto, zonas: novasZonas });
                         }}
-                        className={`py-2 px-2.5 rounded-lg text-xs font-bold font-['Orbitron'] border transition-all flex items-center justify-center gap-1.5 ${
+                        className={`py-2 px-2.5 rounded-lg text-xs font-bold font-semibold border transition-all flex items-center justify-center gap-1.5 ${
                           active
-                            ? 'bg-[#39FF14]/20 border-[#39FF14] text-[#39FF14] shadow-[0_0_10px_rgba(57,255,20,0.2)]'
+                            ? 'bg-[#76FF03]/20 border-[#76FF03] text-[#76FF03] shadow-[0_0_10px_rgba(118,255,3,0.2)]'
                             : 'bg-black/50 border-white/10 text-slate-400 hover:border-white/30'
                         }`}
                       >
@@ -2926,11 +2926,11 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
               </div>
 
               <div className="flex items-center gap-2">
-                <input type="checkbox" checked={formProduto.is_promo} onChange={(e) => setFormProduto({ ...formProduto, is_promo: e.target.checked })} className="accent-[#39FF14]" />
-                <label className="text-xs font-bold text-[#C0C0C0] uppercase font-['Orbitron']">Promoção?</label>
+                <input type="checkbox" checked={formProduto.is_promo} onChange={(e) => setFormProduto({ ...formProduto, is_promo: e.target.checked })} className="accent-[#76FF03]" />
+                <label className="text-xs font-bold text-slate-300 uppercase font-semibold">Promoção?</label>
               </div>
               {formProduto.is_promo && (
-                <input type="number" step="0.01" value={formProduto.preco_promo} onChange={(e) => setFormProduto({ ...formProduto, preco_promo: e.target.value })} className="w-full bg-black/60 border border-red-500/50 text-[#E0E0E0] px-4 py-2 rounded-lg outline-none font-['Roboto_Mono']" placeholder="Preço Promo" />
+                <input type="number" step="0.01" value={formProduto.preco_promo} onChange={(e) => setFormProduto({ ...formProduto, preco_promo: e.target.value })} className="w-full bg-black/60 border border-red-500/50 text-slate-100 px-4 py-2 rounded-lg outline-none" placeholder="Preço Promo" />
               )}
               <button type="submit" disabled={salvando || uploadandoImagem} className="cyber-button w-full flex items-center justify-center gap-2">
                 {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : editandoId ? 'Atualizar' : 'Criar'}
