@@ -13,7 +13,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const BUCKET_IMAGENS = 'produto-imagens';
 
 // Tipos de Zonas
-export type ZonaId = 'norte' | 'sul' | 'oeste';
+export type ZonaId = 'norte' | 'sul_oeste' | 'sul' | 'oeste';
 
 export interface ZonaInfo {
   id: ZonaId;
@@ -21,6 +21,7 @@ export interface ZonaInfo {
   badge: string;
   descricao: string;
   cor: string;
+  sigla?: string;
 }
 
 export const ZONAS_DISPONIVEIS: ZonaInfo[] = [
@@ -29,21 +30,16 @@ export const ZONAS_DISPONIVEIS: ZonaInfo[] = [
     nome: 'Zona Norte', 
     badge: 'Atendimento Rápido', 
     descricao: 'Disponibilidade e estoque para Zona Norte',
-    cor: '#76FF03' 
+    cor: '#76FF03',
+    sigla: 'ZN'
   },
   { 
-    id: 'sul', 
-    nome: 'Zona Sul', 
+    id: 'sul_oeste', 
+    nome: 'Zona Oeste/Sul', 
     badge: 'Atendimento Rápido', 
-    descricao: 'Disponibilidade e estoque para Zona Sul',
-    cor: '#38bdf8' 
-  },
-  { 
-    id: 'oeste', 
-    nome: 'Zona Oeste', 
-    badge: 'Atendimento Rápido', 
-    descricao: 'Disponibilidade e estoque para Zona Oeste',
-    cor: '#a855f7' 
+    descricao: 'Disponibilidade e estoque para Zona Oeste e Zona Sul',
+    cor: '#38bdf8',
+    sigla: 'ZS/ZO'
   }
 ];
 
@@ -52,7 +48,7 @@ export interface EstoqueZona {
   sabores_estoque?: { [sabor: string]: number };
 }
 
-export type EstoqueZonasMap = Partial<Record<ZonaId, EstoqueZona>>;
+export type EstoqueZonasMap = Partial<Record<string, EstoqueZona>>;
 
 // Tipos para o banco de dados
 export interface Produto {
@@ -68,6 +64,7 @@ export interface Produto {
   is_promo?: boolean;
   preco_promo?: number;
   imagem_url?: string | null;
+  ativo?: boolean; // Controle de ativação/visibilidade (especialmente vapes promocionais)
   created_at?: string;
   updated_at?: string;
 }
@@ -703,6 +700,73 @@ export const utils = {
     return dias.map(d => nomes[d]).join(', ');
   },
 
+  // Extrair número aproximado de puffs para ordenação
+  extrairPuffs(nome: string): number {
+    if (!nome) return 0;
+    const texto = nome.toLowerCase();
+
+    // 1. Caso "15k", "10k", "20k", "8.5k"
+    const matchK = texto.match(/(\d+(?:[.,]\d+)?)\s*k\b/);
+    if (matchK) {
+      const num = parseFloat(matchK[1].replace(',', '.'));
+      return Math.round(num * 1000);
+    }
+
+    // 2. Caso "15000 puffs", "10.000 puffs", "8000 puff"
+    const matchPuffs = texto.match(/(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:puffs?|puf)/);
+    if (matchPuffs) {
+      const num = parseInt(matchPuffs[1].replace(/\./g, ''), 10);
+      if (!isNaN(num)) return num;
+    }
+
+    // 3. Caso "V50" => 5000, "V80" => 8000, "V150" => 15000, "V250" => 25000
+    const matchV = texto.match(/\bv(\d+)\b/);
+    if (matchV) {
+      const vNum = parseInt(matchV[1], 10);
+      if (vNum === 50) return 5000;
+      if (vNum === 60) return 6000;
+      if (vNum === 80) return 8000;
+      if (vNum === 150) return 15000;
+      if (vNum === 250) return 25000;
+      if (vNum >= 1000) return vNum;
+    }
+
+    // 4. Caso número direto de 4 ou mais dígitos (ex: "10000", "8000", "5000")
+    const matchNum = texto.match(/\b(\d{4,6})\b/);
+    if (matchNum) {
+      const num = parseInt(matchNum[1], 10);
+      if (!isNaN(num)) return num;
+    }
+
+    // 5. Caso número grudado em letras (ex: "MO20000", "BC10000", "G8000")
+    const matchEmbedded = texto.match(/[a-z](\d{4,6})/);
+    if (matchEmbedded) {
+      const num = parseInt(matchEmbedded[1], 10);
+      if (!isNaN(num)) return num;
+    }
+
+    return 0;
+  },
+
+  // Ordenar lista de vapes por Marca (A-Z) e Puffs em ordem crescente
+  ordenarProdutosPorMarcaEPuffs(produtos: Produto[]): Produto[] {
+    return [...produtos].sort((a, b) => {
+      // 1. Marca alfabética
+      const marcaA = (a.marca || '').trim().toLowerCase();
+      const marcaB = (b.marca || '').trim().toLowerCase();
+      const compMarca = marcaA.localeCompare(marcaB, 'pt-BR');
+      if (compMarca !== 0) return compMarca;
+
+      // 2. Puffs em ordem crescente
+      const puffsA = utils.extrairPuffs(a.nome);
+      const puffsB = utils.extrairPuffs(b.nome);
+      if (puffsA !== puffsB) return puffsA - puffsB;
+
+      // 3. Nome alfabético
+      return (a.nome || '').localeCompare(b.nome || '', 'pt-BR');
+    });
+  },
+
   // Obter estoque e sabores disponíveis de um produto filtrado por zona
   obterEstoqueProdutoPorZona(
     produto: Produto,
@@ -717,6 +781,9 @@ export const utils = {
     if (zona && produto.zonas && Array.isArray(produto.zonas) && produto.zonas.length > 0) {
       const atende = produto.zonas.some(z => {
         const norm = utils.normalizarTexto(z);
+        if (zona === 'sul_oeste') {
+          return norm === 'sul_oeste' || norm.includes('oeste') || norm.includes('sul');
+        }
         return norm === zona || norm.includes(zona);
       });
       if (!atende) {
@@ -749,25 +816,32 @@ export const utils = {
     }
 
     // Se o produto possui configuração de estoque_zonas
-    if (produto.estoque_zonas && produto.estoque_zonas[zona] !== undefined) {
-      const zonaData = produto.estoque_zonas[zona];
-      const estoqueZona = zonaData?.estoque ?? 0;
-      const saboresEstoque = zonaData?.sabores_estoque || {};
-      const temControleSabores = Object.keys(saboresEstoque).length > 0;
+    if (produto.estoque_zonas) {
+      // Para sul_oeste, verificar sul_oeste, oeste ou sul
+      let zonaData = produto.estoque_zonas[zona];
+      if (!zonaData && zona === 'sul_oeste') {
+        zonaData = produto.estoque_zonas['sul_oeste'] || produto.estoque_zonas['oeste'] || produto.estoque_zonas['sul'];
+      }
 
-      const saboresDisponiveis = produto.sabores.filter(sabor => {
-        if (temControleSabores) {
-          return (saboresEstoque[sabor] ?? 0) > 0;
-        }
-        return estoqueZona > 0;
-      });
+      if (zonaData !== undefined) {
+        const estoqueZona = zonaData?.estoque ?? 0;
+        const saboresEstoque = zonaData?.sabores_estoque || {};
+        const temControleSabores = Object.keys(saboresEstoque).length > 0;
 
-      return {
-        estoque: estoqueZona,
-        saboresEstoque,
-        saboresDisponiveis,
-        possuiEstoqueNaZona: estoqueZona > 0 && saboresDisponiveis.length > 0
-      };
+        const saboresDisponiveis = produto.sabores.filter(sabor => {
+          if (temControleSabores) {
+            return (saboresEstoque[sabor] ?? 0) > 0;
+          }
+          return estoqueZona > 0;
+        });
+
+        return {
+          estoque: estoqueZona,
+          saboresEstoque,
+          saboresDisponiveis,
+          possuiEstoqueNaZona: estoqueZona > 0 && saboresDisponiveis.length > 0
+        };
+      }
     }
 
     // Fallback para produtos legados sem estoque_zonas configurado ainda

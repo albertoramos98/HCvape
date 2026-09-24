@@ -67,7 +67,8 @@ export default function Home() {
   const [popupAviso, setPopupAviso] = useState(true);
   const [zonaSelecionada, setZonaSelecionada] = useState<ZonaId | null>(() => {
     const salva = localStorage.getItem('hcvape_zona_selecionada');
-    if (salva === 'norte' || salva === 'sul' || salva === 'oeste') return salva as ZonaId;
+    if (salva === 'norte') return 'norte';
+    if (salva === 'sul' || salva === 'oeste' || salva === 'sul_oeste') return 'sul_oeste';
     return null;
   });
   const [modalZonaAberto, setModalZonaAberto] = useState(false);
@@ -148,22 +149,26 @@ export default function Home() {
     return () => clearInterval(intervalo);
   }, []);
 
-  // Produtos Expressos (não promocionais) disponíveis na zona selecionada
+  // Produtos Expressos (não promocionais) disponíveis na zona selecionada e ativos
   const produtosExpressos = useMemo(() => {
-    return produtos.filter(p => {
+    const expressos = produtos.filter(p => {
       if (p.is_promo) return false;
+      if (p.ativo === false) return false;
       const info = utils.obterEstoqueProdutoPorZona(p, zonaSelecionada);
       return info.possuiEstoqueNaZona;
     });
+    return utils.ordenarProdutosPorMarcaEPuffs(expressos);
   }, [produtos, zonaSelecionada]);
 
-  // Produtos Promocionais disponíveis na zona selecionada
+  // Produtos Promocionais disponíveis na zona selecionada e ativos
   const produtosPromo = useMemo(() => {
-    return produtos.filter(p => {
+    const promos = produtos.filter(p => {
       if (!p.is_promo) return false;
+      if (p.ativo === false) return false;
       const info = utils.obterEstoqueProdutoPorZona(p, zonaSelecionada);
       return info.possuiEstoqueNaZona;
     });
+    return utils.ordenarProdutosPorMarcaEPuffs(promos);
   }, [produtos, zonaSelecionada]);
 
   // Filtrar produtos Expressos por marca e pesquisa
@@ -521,7 +526,7 @@ export default function Home() {
               Selecione a sua zona para visualizarmos o estoque em tempo real e garantirmos agilidade na sua entrega:
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {ZONAS_DISPONIVEIS.map((zona) => {
                 const isSelected = zonaSelecionada === zona.id;
                 return (

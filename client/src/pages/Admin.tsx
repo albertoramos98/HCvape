@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles, MapPin, Compass } from 'lucide-react';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles, MapPin, Compass, Clock, Target, Flame, Eye, EyeOff, Gauge, Award, ChevronRight, ChevronLeft, Check, Layers } from 'lucide-react';
 import { authService, produtosService, pedidosService, imagemService, visitasService, Produto, Pedido, utils, configService, PromoSchedule, HeroBannerConfig, HeroSlideConfig, DEFAULT_HERO_BANNER_CONFIG, ZonaId, ZONAS_DISPONIVEIS } from '@/lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Legend } from 'recharts';
 import { HeroBanner } from '@/components/HeroBanner';
 
 /**
- * Página Admin - Gerenciamento Completo de Estoque + Promoções + Imagens + Pedidos
+ * Página Admin - Gerenciamento Completo de Estoque + Promoções + Imagens + Pedidos + Relógio de Metas
  * Design: Cyberpunk Dark Mode com Neon Verde
  * Acesso: Protegido por autenticação Supabase
  */
@@ -41,10 +41,27 @@ export default function Admin() {
   const [dataFimMetricas, setDataFimMetricas] = useState<string>('');
   const [agrupamentoMetricas, setAgrupamentoMetricas] = useState<'dia' | 'semana' | 'mes'>('dia');
   const [statusPedidoFiltro, setStatusPedidoFiltro] = useState<'todos' | 'concluidos'>('todos');
-  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'pedidos' | 'metricas' | 'saude' | 'configuracoes' | 'herobanner'>('produtos');
+  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'relogio_mensal' | 'pedidos' | 'metricas' | 'saude' | 'configuracoes' | 'herobanner'>('produtos');
+  const [subAbaEstoque, setSubAbaEstoque] = useState<'expressos' | 'promocional' | 'todos'>('expressos');
+  const [filtroZonaEstoqueExpresso, setFiltroZonaEstoqueExpresso] = useState<'todas' | 'norte' | 'sul_oeste'>('todas');
   const [pesquisa, setPesquisa] = useState('');
   const [filtroZonaProduto, setFiltroZonaProduto] = useState<string>('todas');
   const [filtroZonaPedido, setFiltroZonaPedido] = useState<string>('todas');
+
+  // Estados para o Relógio Mensal / Metas
+  const [mesRelogio, setMesRelogio] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [metaMensalValor, setMetaMensalValor] = useState<number>(() => {
+    return Number(localStorage.getItem('hcvape_meta_mensal_valor') || '15000');
+  });
+  const [metaMensalQtd, setMetaMensalQtd] = useState<number>(() => {
+    return Number(localStorage.getItem('hcvape_meta_mensal_qtd') || '200');
+  });
+  const [editandoMeta, setEditandoMeta] = useState(false);
+  const [tempMetaValor, setTempMetaValor] = useState('');
+  const [tempMetaQtd, setTempMetaQtd] = useState('');
 
   // Estados para configuração do horário promocional
   const [promoConfig, setPromoConfig] = useState<PromoSchedule>({
@@ -59,9 +76,57 @@ export default function Admin() {
   const [heroConfig, setHeroConfig] = useState<HeroBannerConfig>(DEFAULT_HERO_BANNER_CONFIG);
   const [salvandoHero, setSalvandoHero] = useState(false);
 
-  // Filtrar produtos por termo de pesquisa e por zona
+  // Separar e ordenar produtos: Marca (A-Z) e Puffs em ordem crescente
+  const { produtosExpressosOrdenados, produtosPromocionaisOrdenados, produtosTodosOrdenados } = useMemo(() => {
+    const expressos = produtos.filter(p => !p.is_promo);
+    const promocionais = produtos.filter(p => p.is_promo);
+
+    return {
+      produtosExpressosOrdenados: utils.ordenarProdutosPorMarcaEPuffs(expressos),
+      produtosPromocionaisOrdenados: utils.ordenarProdutosPorMarcaEPuffs(promocionais),
+      produtosTodosOrdenados: utils.ordenarProdutosPorMarcaEPuffs(produtos)
+    };
+  }, [produtos]);
+
+  // Lista de produtos Expressos filtrados por pesquisa e zona em tempo real
+  const produtosExpressosFiltrados = useMemo(() => {
+    let lista = produtosExpressosOrdenados;
+    if (pesquisa.trim()) {
+      const termo = utils.normalizarTexto(pesquisa);
+      lista = lista.filter(p => {
+        const nomeMatch = utils.normalizarTexto(p.nome).includes(termo);
+        const marcaMatch = utils.normalizarTexto(p.marca).includes(termo);
+        const saborMatch = p.sabores.some(s => utils.normalizarTexto(s).includes(termo));
+        return nomeMatch || marcaMatch || saborMatch;
+      });
+    }
+    if (filtroZonaEstoqueExpresso !== 'todas') {
+      lista = lista.filter(p => {
+        const info = utils.obterEstoqueProdutoPorZona(p, filtroZonaEstoqueExpresso as ZonaId);
+        return info.possuiEstoqueNaZona;
+      });
+    }
+    return lista;
+  }, [produtosExpressosOrdenados, pesquisa, filtroZonaEstoqueExpresso]);
+
+  // Lista de produtos Promocionais filtrados por pesquisa
+  const produtosPromocionaisFiltrados = useMemo(() => {
+    let lista = produtosPromocionaisOrdenados;
+    if (pesquisa.trim()) {
+      const termo = utils.normalizarTexto(pesquisa);
+      lista = lista.filter(p => {
+        const nomeMatch = utils.normalizarTexto(p.nome).includes(termo);
+        const marcaMatch = utils.normalizarTexto(p.marca).includes(termo);
+        const saborMatch = p.sabores.some(s => utils.normalizarTexto(s).includes(termo));
+        return nomeMatch || marcaMatch || saborMatch;
+      });
+    }
+    return lista;
+  }, [produtosPromocionaisOrdenados, pesquisa]);
+
+  // Filtrar produtos por termo de pesquisa e por zona (Visão Geral)
   const produtosFiltrados = useMemo(() => {
-    let lista = produtos;
+    let lista = produtosTodosOrdenados;
     if (pesquisa.trim()) {
       const termo = utils.normalizarTexto(pesquisa);
       lista = lista.filter(p => {
@@ -73,17 +138,188 @@ export default function Admin() {
     }
     if (filtroZonaProduto !== 'todas') {
       lista = lista.filter(p => {
-        if (p.zonas && p.zonas.length > 0) {
-          return p.zonas.some(z => utils.normalizarTexto(z) === filtroZonaProduto || utils.normalizarTexto(z).includes(filtroZonaProduto));
-        }
-        if (p.estoque_zonas && p.estoque_zonas[filtroZonaProduto as ZonaId]) {
-          return (p.estoque_zonas[filtroZonaProduto as ZonaId]?.estoque ?? 0) > 0;
-        }
-        return true;
+        const info = utils.obterEstoqueProdutoPorZona(p, filtroZonaProduto as ZonaId);
+        return info.possuiEstoqueNaZona;
       });
     }
     return lista;
-  }, [produtos, pesquisa, filtroZonaProduto]);
+  }, [produtosTodosOrdenados, pesquisa, filtroZonaProduto]);
+
+  // Alternar status ativo/inativo (visível/oculto) de um produto (especialmente promocional)
+  const handleToggleAtivoProduto = async (produto: Produto) => {
+    const novoStatus = produto.ativo === false ? true : false;
+    try {
+      // Optimistic UI update
+      setProdutos(prev => prev.map(p => p.id === produto.id ? { ...p, ativo: novoStatus } : p));
+      await produtosService.editar(produto.id, { ativo: novoStatus });
+      setSucesso(`"${produto.nome}" agora está ${novoStatus ? 'ATIVO (visível para clientes)' : 'INATIVO (oculto no catálogo)'}!`);
+      setTimeout(() => setSucesso(null), 3000);
+    } catch (err: any) {
+      console.error('Erro ao alterar status de ativação do produto:', err);
+      // Revert on error
+      setProdutos(prev => prev.map(p => p.id === produto.id ? { ...p, ativo: !novoStatus } : p));
+      setErro('Erro ao atualizar status de ativação no banco.');
+    }
+  };
+
+  // Salvar metas personalizadas no localStorage
+  const handleSalvarMetas = () => {
+    const v = parseFloat(tempMetaValor);
+    const q = parseInt(tempMetaQtd, 10);
+    if (!isNaN(v) && v > 0) {
+      setMetaMensalValor(v);
+      localStorage.setItem('hcvape_meta_mensal_valor', String(v));
+    }
+    if (!isNaN(q) && q > 0) {
+      setMetaMensalQtd(q);
+      localStorage.setItem('hcvape_meta_mensal_qtd', String(q));
+    }
+    setEditandoMeta(false);
+    setSucesso('Metas do mês atualizadas!');
+    setTimeout(() => setSucesso(null), 3000);
+  };
+
+  // Cálculos completos do Relógio Mensal (1º ao último dia do mês)
+  const relogioMensalData = useMemo(() => {
+    const [anoStr, mesStr] = mesRelogio.split('-');
+    const ano = parseInt(anoStr, 10);
+    const mes = parseInt(mesStr, 10) - 1; // 0-indexed
+
+    const inicioMes = new Date(ano, mes, 1, 0, 0, 0, 0);
+    const fimMes = new Date(ano, mes + 1, 0, 23, 59, 59, 999);
+    const diasNoMes = new Date(ano, mes + 1, 0).getDate();
+
+    const hoje = new Date();
+    const isMesAtual = hoje.getFullYear() === ano && hoje.getMonth() === mes;
+    const diaAtual = isMesAtual ? hoje.getDate() : (hoje > fimMes ? diasNoMes : 1);
+    const diasRestantes = isMesAtual ? Math.max(0, diasNoMes - diaAtual) : (hoje > fimMes ? 0 : diasNoMes);
+
+    // Filtrar pedidos deste mês (excluídos ignorados)
+    const pedidosDoMes = pedidos.filter(p => {
+      if (!p.created_at) return false;
+      const d = new Date(p.created_at);
+      return d >= inicioMes && d <= fimMes;
+    });
+
+    let faturamentoTotal = 0;
+    let quantidadeTotal = 0;
+    let faturamentoExpresso = 0;
+    let quantidadeExpresso = 0;
+    let faturamentoPromo = 0;
+    let quantidadePromo = 0;
+
+    // Timeline de cada dia do mês (1 a diasNoMes)
+    const diasTimeline: { dia: number; dataStr: string; faturamento: number; quantidade: number; expresso: number; promo: number; acumulado: number }[] = [];
+    for (let d = 1; d <= diasNoMes; d++) {
+      diasTimeline.push({
+        dia: d,
+        dataStr: `${String(d).padStart(2, '0')}/${String(mes + 1).padStart(2, '0')}`,
+        faturamento: 0,
+        quantidade: 0,
+        expresso: 0,
+        promo: 0,
+        acumulado: 0
+      });
+    }
+
+    const rankingProdutos: { [key: string]: { id: string; nome: string; marca: string; is_promo: boolean; quantidade: number; receita: number } } = {};
+
+    pedidosDoMes.forEach(p => {
+      const valorPedido = p.total_final;
+      faturamentoTotal += valorPedido;
+
+      const d = new Date(p.created_at!).getDate();
+      const diaObj = diasTimeline[d - 1];
+
+      if (p.itens && Array.isArray(p.itens)) {
+        p.itens.forEach(item => {
+          const qtd = item.quantidade || 1;
+          const precoUnit = item.preco_unitario || 0;
+          const itemTotal = precoUnit * qtd;
+          quantidadeTotal += qtd;
+
+          // Identificar se é promo ou expresso
+          const isPromo = item.is_promo ?? produtos.find(prod => prod.id === item.id || prod.nome === item.nome)?.is_promo ?? false;
+
+          if (isPromo) {
+            faturamentoPromo += itemTotal;
+            quantidadePromo += qtd;
+            if (diaObj) diaObj.promo += itemTotal;
+          } else {
+            faturamentoExpresso += itemTotal;
+            quantidadeExpresso += qtd;
+            if (diaObj) diaObj.expresso += itemTotal;
+          }
+
+          if (diaObj) {
+            diaObj.faturamento += itemTotal;
+            diaObj.quantidade += qtd;
+          }
+
+          const chave = item.nome;
+          if (!rankingProdutos[chave]) {
+            rankingProdutos[chave] = {
+              id: item.id,
+              nome: item.nome,
+              marca: item.marca || 'HC Vape',
+              is_promo: isPromo,
+              quantidade: 0,
+              receita: 0
+            };
+          }
+          rankingProdutos[chave].quantidade += qtd;
+          rankingProdutos[chave].receita += itemTotal;
+        });
+      }
+    });
+
+    let acumuladoValor = 0;
+    diasTimeline.forEach(d => {
+      acumuladoValor += d.faturamento;
+      d.acumulado = acumuladoValor;
+    });
+
+    const percentualValor = metaMensalValor > 0 ? (faturamentoTotal / metaMensalValor) * 100 : 0;
+    const percentualQtd = metaMensalQtd > 0 ? (quantidadeTotal / metaMensalQtd) * 100 : 0;
+    const valorFaltante = Math.max(0, metaMensalValor - faturamentoTotal);
+    const qtdFaltante = Math.max(0, metaMensalQtd - quantidadeTotal);
+
+    const ritmoDiarioAtual = diaAtual > 0 ? faturamentoTotal / diaAtual : 0;
+    const metaDiariaNecessaria = diasRestantes > 0 ? valorFaltante / diasRestantes : 0;
+    const projecaoFimMes = ritmoDiarioAtual * diasNoMes;
+
+    const rankingOrdenado = Object.values(rankingProdutos).sort((a, b) => b.quantidade - a.quantidade);
+    const ticketMedio = pedidosDoMes.length > 0 ? faturamentoTotal / pedidosDoMes.length : 0;
+
+    const mesFormatado = inicioMes.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    const mesFormatadoCapitalizado = mesFormatado.charAt(0).toUpperCase() + mesFormatado.slice(1);
+
+    return {
+      mesLabel: mesFormatadoCapitalizado,
+      diasNoMes,
+      diaAtual,
+      diasRestantes,
+      isMesAtual,
+      totalPedidos: pedidosDoMes.length,
+      faturamentoTotal,
+      quantidadeTotal,
+      faturamentoExpresso,
+      quantidadeExpresso,
+      faturamentoPromo,
+      quantidadePromo,
+      ticketMedio,
+      percentualValor,
+      percentualQtd,
+      valorFaltante,
+      qtdFaltante,
+      ritmoDiarioAtual,
+      metaDiariaNecessaria,
+      projecaoFimMes,
+      diasTimeline,
+      rankingOrdenado,
+      pedidosDoMes
+    };
+  }, [mesRelogio, pedidos, produtos, metaMensalValor, metaMensalQtd]);
 
   // Lógica de processamento de métricas ricas com preenchimento de gaps
   const { diasArray, dataAgrupada, resumoMetricas, topProdutosEmarcas } = useMemo(() => {
@@ -361,7 +597,7 @@ export default function Admin() {
     preco: '',
     estoque: '',
     sabores: '',
-    zonas: ['norte', 'sul', 'oeste'],
+    zonas: ['norte', 'sul_oeste'],
     is_promo: false,
     preco_promo: '',
   });
@@ -510,8 +746,8 @@ export default function Admin() {
       preco: '',
       estoque: '',
       sabores: '',
-      zonas: ['norte', 'sul', 'oeste'],
-      is_promo: false,
+      zonas: ['norte', 'sul_oeste'],
+      is_promo: subAbaEstoque === 'promocional',
       preco_promo: '',
     });
     setFormSaboresEstoque([{ sabor: '', estoque: 10 }]);
@@ -532,7 +768,7 @@ export default function Admin() {
       preco: produto.preco.toString(),
       estoque: produto.estoque.toString(),
       sabores: produto.sabores.join(', '),
-      zonas: produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul', 'oeste'],
+      zonas: produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul_oeste'],
       is_promo: produto.is_promo || false,
       preco_promo: produto.preco_promo?.toString() || '',
     });
@@ -569,7 +805,7 @@ export default function Admin() {
       preco: '',
       estoque: '',
       sabores: '',
-      zonas: ['norte', 'sul', 'oeste'],
+      zonas: ['norte', 'sul_oeste'],
       is_promo: false,
       preco_promo: '',
     });
@@ -1318,7 +1554,11 @@ export default function Admin() {
         {/* Abas com scroll horizontal no mobile */}
         <div className="flex gap-2 sm:gap-4 border-b border-[#76FF03]/20 pb-1 overflow-x-auto scrollbar-none">
           <button onClick={() => setAbaAtiva('produtos')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'produtos' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
-            <Box className="w-4 h-4" /> Produtos
+            <Box className="w-4 h-4" /> Estoque / Produtos
+          </button>
+          <button onClick={() => setAbaAtiva('relogio_mensal')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'relogio_mensal' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
+            <Clock className="w-4 h-4 text-[#76FF03]" /> Relógio Mensal
+            <span className="text-[9px] px-1.5 py-0.2 rounded bg-[#76FF03]/20 text-[#76FF03] border border-[#76FF03]/40">Metas</span>
           </button>
           <button onClick={() => setAbaAtiva('pedidos')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'pedidos' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <ShoppingBag className="w-4 h-4" /> Pedidos
@@ -1345,87 +1585,523 @@ export default function Admin() {
         {abaAtiva === 'produtos' ? (
           <>
             <section className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold neon-glow font-['Outfit'] font-bold">Produtos {pesquisa.trim() ? `(${produtosFiltrados.length}/${produtos.length})` : `(${produtos.length})`}</h2>
-                <div className="flex gap-3">
-                  <button onClick={handleExportarProdutos} className="flex items-center gap-2 px-4 py-2 bg-[#76FF03]/20 border border-[#76FF03] text-[#76FF03] rounded-lg font-bold hover:bg-[#76FF03]/30 transition-all duration-300">
-                    <Download className="w-4 h-4" /> Exportar Estoque
+              {/* Header com botões de ação e exportação */}
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold neon-glow font-['Outfit']">Gerenciamento de Estoque</h2>
+                  <p className="text-xs text-slate-400 mt-0.5">Vapes organizados por Marca e Puffs crescentes</p>
+                </div>
+                <div className="flex flex-wrap gap-2.5">
+                  <button onClick={handleExportarProdutos} className="flex items-center gap-2 px-3.5 py-2 bg-[#76FF03]/15 border border-[#76FF03]/50 text-[#76FF03] rounded-lg font-bold text-xs hover:bg-[#76FF03]/25 transition-all">
+                    <Download className="w-4 h-4" /> Exportar
                   </button>
-                  <button onClick={abrirModalNovo} className="flex items-center gap-2 px-4 py-2 bg-[#76FF03] text-black rounded-lg font-bold hover:shadow-[0_0_15px_rgba(118,255,3,0.5)] transition-all duration-300">
+                  <button onClick={abrirModalNovo} className="flex items-center gap-2 px-4 py-2 bg-[#76FF03] text-black rounded-lg font-bold text-xs hover:shadow-[0_0_15px_rgba(118,255,3,0.5)] transition-all">
                     <Plus className="w-4 h-4" /> Novo Produto
                   </button>
                 </div>
               </div>
 
-              {/* RESUMO DE ESTOQUE POR PRODUTO E SABOR */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {/* Resumo por Produto/Modelo */}
-                <div className="glass-morphism p-5 rounded-xl border border-[#76FF03]/20 bg-black/40">
-                  <h3 className="text-sm font-bold text-[#76FF03] uppercase font-['Outfit'] font-bold mb-4 flex items-center gap-2">
-                    <Box className="w-4 h-4" /> Estoque por Modelo
-                  </h3>
-                  <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
-                    {(() => {
-                      const resumoModelo: { [key: string]: number } = {};
-                      produtosFiltrados.forEach(p => {
-                        const chave = `${p.marca} ${p.nome}`;
-                        resumoModelo[chave] = (resumoModelo[chave] || 0) + p.estoque;
-                      });
-                      
-                      const modelosOrdenados = Object.entries(resumoModelo).sort((a, b) => b[1] - a[1]);
-                      
-                      if (modelosOrdenados.length === 0) return <p className="text-xs text-slate-400">Nenhum dado disponível</p>;
-                      
-                      return modelosOrdenados.map(([modelo, total]) => (
-                        <div key={modelo} className="flex justify-between items-center text-xs border-b border-[#76FF03]/5 pb-1">
-                          <span className="text-slate-300 truncate pr-4">{modelo}</span>
-                          <span className={`font-bold ${total > 0 ? 'text-[#76FF03]' : 'text-red-500'}`}>{total} un</span>
-                        </div>
-                      ));
-                    })()}
-                  </div>
-                </div>
+              {/* Sub-abas de Separação de Estoque: EXPRESSO ///// PROMOCIONAL ///// TODOS */}
+              <div className="flex p-1.5 bg-black/60 border border-[#76FF03]/30 rounded-2xl max-w-xl">
+                <button
+                  onClick={() => setSubAbaEstoque('expressos')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 ${
+                    subAbaEstoque === 'expressos'
+                      ? 'bg-gradient-to-r from-[#76FF03] to-[#52C41A] text-black shadow-[0_0_15px_rgba(118,255,3,0.3)]'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Zap className="w-4 h-4" />
+                  <span>Expresso ({produtosExpressosOrdenados.length})</span>
+                </button>
 
-                {/* Resumo por Sabor */}
-                <div className="glass-morphism p-5 rounded-xl border border-blue-500/20 bg-black/40">
-                  <h3 className="text-sm font-bold text-blue-400 uppercase font-['Outfit'] font-bold mb-4 flex items-center gap-2">
-                    <Zap className="w-4 h-4" /> Estoque por Sabor
-                  </h3>
-                  <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
-                    {(() => {
-                      const resumoSabor: { [key: string]: number } = {};
-                      produtosFiltrados.forEach(p => {
-                        p.sabores.forEach(s => {
-                          const sabor = s.trim();
-                          if (sabor) {
-                            // Nota: Como o estoque é por produto e não por sabor individualmente no banco,
-                            // aqui mostramos a soma total de produtos que possuem este sabor.
-                            resumoSabor[sabor] = (resumoSabor[sabor] || 0) + p.estoque;
-                          }
-                        });
-                      });
-                      
-                      const saboresOrdenados = Object.entries(resumoSabor).sort((a, b) => b[1] - a[1]);
-                      
-                      if (saboresOrdenados.length === 0) return <p className="text-xs text-slate-400">Nenhum dado disponível</p>;
-                      
-                      return saboresOrdenados.map(([sabor, total]) => (
-                        <div key={sabor} className="flex justify-between items-center text-xs border-b border-blue-500/5 pb-1">
-                          <span className="text-slate-300 truncate pr-4">{sabor}</span>
-                          <span className={`font-bold ${total > 0 ? 'text-blue-400' : 'text-red-500'}`}>{total} un</span>
-                        </div>
-                      ));
-                    })()}
-                  </div>
-                </div>
+                <button
+                  onClick={() => setSubAbaEstoque('promocional')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 ${
+                    subAbaEstoque === 'promocional'
+                      ? 'bg-gradient-to-r from-[#FF3366] to-[#E60045] text-white shadow-[0_0_15px_rgba(255,51,102,0.3)]'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Flame className="w-4 h-4" />
+                  <span>Promocional ({produtosPromocionaisOrdenados.length})</span>
+                </button>
+
+                <button
+                  onClick={() => setSubAbaEstoque('todos')}
+                  className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-xs font-bold transition-all duration-200 ${
+                    subAbaEstoque === 'todos'
+                      ? 'bg-white/20 text-white border border-white/30'
+                      : 'text-slate-400 hover:text-white'
+                  }`}
+                >
+                  <Layers className="w-4 h-4" />
+                  <span>Todos ({produtos.length})</span>
+                </button>
               </div>
 
-              {produtos.length === 0 ? (
-                <div className="glass-morphism p-12 rounded-xl text-center">
-                  <p className="text-slate-400">Nenhum produto cadastrado</p>
+              {/* ======================= SUB-ABA: EXPRESSOS (TEMPO REAL) ======================= */}
+              {subAbaEstoque === 'expressos' && (
+                <div className="space-y-6 animate-in fade-in duration-300">
+                  {/* Banner de Demonstração em Tempo Real */}
+                  <div className="glass-morphism p-5 rounded-2xl border border-[#76FF03]/40 bg-gradient-to-br from-[#76FF03]/10 to-transparent space-y-4">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2.5 h-2.5 rounded-full bg-[#76FF03] animate-ping" />
+                          <h3 className="text-base font-bold text-slate-100 font-['Outfit']">
+                            Estoque em Tempo Real dos Expressos
+                          </h3>
+                        </div>
+                        <p className="text-xs text-slate-300">
+                          Visualize e gerencie a disponibilidade instantânea por região de atendimento:
+                        </p>
+                      </div>
+
+                      {/* Filtro em Tempo Real: TODOS ///// APENAS ZN ///// APENAS ZS/ZO */}
+                      <div className="flex flex-wrap gap-2 p-1.5 bg-black/80 rounded-xl border border-white/10">
+                        <button
+                          onClick={() => setFiltroZonaEstoqueExpresso('todas')}
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            filtroZonaEstoqueExpresso === 'todas'
+                              ? 'bg-[#76FF03] text-black shadow-[0_0_10px_rgba(118,255,3,0.4)]'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          🌐 Todos ({produtosExpressosOrdenados.length})
+                        </button>
+                        <button
+                          onClick={() => setFiltroZonaEstoqueExpresso('norte')}
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            filtroZonaEstoqueExpresso === 'norte'
+                              ? 'bg-[#76FF03] text-black shadow-[0_0_10px_rgba(118,255,3,0.4)]'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          🟢 Apenas ZN (Zona Norte)
+                        </button>
+                        <button
+                          onClick={() => setFiltroZonaEstoqueExpresso('sul_oeste')}
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            filtroZonaEstoqueExpresso === 'sul_oeste'
+                              ? 'bg-[#38bdf8] text-black shadow-[0_0_10px_rgba(56,189,248,0.4)]'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          🔵 Apenas ZS/ZO (Zona Oeste/Sul)
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Resumo Rápido de Números da Zona */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-white/10">
+                      <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Total em Estoque</span>
+                        <span className="text-xl font-black text-[#76FF03]">
+                          {produtosExpressosFiltrados.reduce((sum, p) => {
+                            const info = utils.obterEstoqueProdutoPorZona(p, filtroZonaEstoqueExpresso === 'todas' ? null : filtroZonaEstoqueExpresso);
+                            return sum + info.estoque;
+                          }, 0)} un
+                        </span>
+                      </div>
+                      <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Modelos Disponíveis</span>
+                        <span className="text-xl font-black text-slate-100">
+                          {produtosExpressosFiltrados.filter(p => {
+                            const info = utils.obterEstoqueProdutoPorZona(p, filtroZonaEstoqueExpresso === 'todas' ? null : filtroZonaEstoqueExpresso);
+                            return info.possuiEstoqueNaZona;
+                          }).length}
+                        </span>
+                      </div>
+                      <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Modelos Esgotados</span>
+                        <span className="text-xl font-black text-red-400">
+                          {produtosExpressosFiltrados.filter(p => {
+                            const info = utils.obterEstoqueProdutoPorZona(p, filtroZonaEstoqueExpresso === 'todas' ? null : filtroZonaEstoqueExpresso);
+                            return !info.possuiEstoqueNaZona;
+                          }).length}
+                        </span>
+                      </div>
+                      <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+                        <span className="text-[10px] uppercase font-bold text-slate-400 block">Valor em Estoque</span>
+                        <span className="text-xl font-black text-emerald-400">
+                          R$ {produtosExpressosFiltrados.reduce((sum, p) => {
+                            const info = utils.obterEstoqueProdutoPorZona(p, filtroZonaEstoqueExpresso === 'todas' ? null : filtroZonaEstoqueExpresso);
+                            return sum + (info.estoque * p.preco);
+                          }, 0).toFixed(2)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Barra de Pesquisa */}
+                  <div className="relative max-w-md">
+                    <input
+                      type="text"
+                      placeholder="Pesquisar vape expresso, marca ou sabor..."
+                      value={pesquisa}
+                      onChange={(e) => setPesquisa(e.target.value)}
+                      className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 pl-10 pr-10 py-2.5 rounded-lg focus:border-[#76FF03] focus:shadow-[0_0_15px_rgba(118,255,3,0.3)] focus:outline-none transition-all duration-300 text-sm"
+                    />
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-[13px]" />
+                    {pesquisa && (
+                      <button onClick={() => setPesquisa('')} className="absolute right-3 top-[11px] text-slate-400 hover:text-[#76FF03]">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Tabela de Expressos */}
+                  {produtosExpressosFiltrados.length === 0 ? (
+                    <div className="glass-morphism p-12 rounded-xl text-center border border-white/10 bg-black/40">
+                      <p className="text-slate-400">Nenhum vape expresso encontrado com os filtros aplicados</p>
+                    </div>
+                  ) : (
+                    <div className="glass-morphism rounded-xl overflow-hidden overflow-x-auto border border-[#76FF03]/20">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-[#76FF03]/30 text-left text-xs font-bold text-[#76FF03] uppercase">
+                            <th className="py-3 px-4">Img</th>
+                            <th className="py-3 px-4">Marca</th>
+                            <th className="py-3 px-4">Vape / Puffs</th>
+                            <th className="py-3 px-4">Preço</th>
+                            <th className="py-3 px-4">Zonas</th>
+                            <th className="py-3 px-4">Estoque Tempo Real</th>
+                            <th className="py-3 px-4">Novo Est.</th>
+                            <th className="py-3 px-4">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {produtosExpressosFiltrados.map((produto) => {
+                            const puffs = utils.extrairPuffs(produto.nome);
+                            const estoqueInfo = utils.obterEstoqueProdutoPorZona(produto, filtroZonaEstoqueExpresso === 'todas' ? null : filtroZonaEstoqueExpresso);
+                            return (
+                              <tr key={produto.id} className="border-b border-[#76FF03]/10 hover:bg-[#76FF03]/5 transition-colors duration-200 text-sm">
+                                <td className="py-3 px-4">
+                                  {produto.imagem_url ? (
+                                    <img src={produto.imagem_url} alt={produto.nome} className="w-10 h-10 object-cover rounded border border-[#76FF03]/30" />
+                                  ) : (
+                                    <ImageOff className="w-6 h-6 text-slate-600" />
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-slate-300 font-bold">{produto.marca}</td>
+                                <td className="py-3 px-4 text-slate-100">
+                                  <div className="font-bold flex items-center gap-2">
+                                    <span>{produto.nome}</span>
+                                    {puffs > 0 && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#76FF03]/20 text-[#76FF03] border border-[#76FF03]/40">
+                                        {puffs.toLocaleString('pt-BR')} Puffs
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 text-[#76FF03] font-bold">R$ {produto.preco.toFixed(2)}</td>
+                                <td className="py-3 px-4">
+                                  <div className="flex flex-wrap gap-1">
+                                    {(produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul_oeste']).map(z => {
+                                      const isNorte = z.toLowerCase().includes('norte');
+                                      const label = isNorte ? 'ZN' : 'ZS/ZO';
+                                      const colorClass = isNorte ? 'bg-[#76FF03]/15 text-[#76FF03] border-[#76FF03]/40' : 'bg-sky-500/15 text-sky-400 border-sky-500/40';
+                                      return (
+                                        <span key={z} className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${colorClass}`}>
+                                          {label}
+                                        </span>
+                                      );
+                                    })}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  {produto.sabores_estoque && Object.keys(produto.sabores_estoque).length > 0 ? (
+                                    <div className="flex flex-col gap-1 text-xs">
+                                      {Object.entries(produto.sabores_estoque).map(([sabor, est]) => (
+                                        <div key={sabor} className="flex justify-between gap-3">
+                                          <span className="text-slate-400">{sabor}:</span>
+                                          <span className={est > 0 ? 'text-[#76FF03] font-bold' : 'text-red-400 font-bold'}>{est}</span>
+                                        </div>
+                                      ))}
+                                      <div className="border-t border-[#76FF03]/20 mt-1 pt-1 flex justify-between font-bold text-[10px]">
+                                        <span className="text-slate-300">TOTAL:</span>
+                                        <span className={estoqueInfo.estoque > 0 ? 'text-[#76FF03]' : 'text-red-400'}>{estoqueInfo.estoque} un</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${estoqueInfo.estoque > 0 ? 'bg-[#76FF03]/20 text-[#76FF03]' : 'bg-red-500/20 text-red-400'}`}>
+                                      {estoqueInfo.estoque} un
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4">
+                                  {produto.sabores.length <= 1 ? (
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      value={estoqueEditado[produto.id] ?? produto.estoque}
+                                      onChange={(e) => setEstoqueEditado({ ...estoqueEditado, [produto.id]: parseInt(e.target.value) || 0 })}
+                                      className="w-16 bg-black/60 border border-[#76FF03]/50 text-slate-100 px-1 py-0.5 rounded focus:border-[#76FF03] outline-none"
+                                    />
+                                  ) : (
+                                    <span className="text-[10px] text-slate-400 italic">Editar sabores</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      onClick={() => handleAtualizarEstoque(produto.id)}
+                                      disabled={salvando || estoqueEditado[produto.id] === undefined || produto.sabores.length > 1}
+                                      className="p-1.5 bg-[#76FF03] text-black rounded disabled:opacity-50"
+                                      title="Salvar estoque"
+                                    >
+                                      <Save className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => abrirModalEditar(produto)}
+                                      className="p-1.5 bg-blue-500/20 border border-blue-500 text-blue-400 rounded hover:bg-blue-500/30"
+                                      title="Editar completo"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeletarProduto(produto.id, produto.nome)}
+                                      className="p-1.5 bg-red-500/20 border border-red-500 text-red-400 rounded hover:bg-red-500/30"
+                                      title="Deletar"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
-              ) : (
-                <div className="space-y-4">
+              )}
+
+              {/* ======================= SUB-ABA: PROMOCIONAL ======================= */}
+              {subAbaEstoque === 'promocional' && (
+                <div className="space-y-6 animate-in fade-in duration-300">
+                  {/* Banner Explicativo Promocional */}
+                  <div className="glass-morphism p-5 rounded-2xl border border-[#FF3366]/40 bg-gradient-to-br from-[#FF3366]/10 to-transparent flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <Flame className="w-5 h-5 text-[#FF3366]" />
+                        <h3 className="text-base font-bold text-slate-100 font-['Outfit']">
+                          Catálogo Promocional & Controle de Ativação
+                        </h3>
+                      </div>
+                      <p className="text-xs text-slate-300 mt-1">
+                        Defina quais vapes promocionais aparecem ativos ou inativos (ocultos) para os clientes no catálogo:
+                      </p>
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-black/60 px-4 py-2 rounded-xl border border-white/10 text-xs">
+                      <span className="text-slate-400 font-bold">Total Promo:</span>
+                      <span className="text-[#FF3366] font-extrabold">{produtosPromocionaisOrdenados.length} modelos</span>
+                      <span className="text-slate-500">•</span>
+                      <span className="text-[#76FF03] font-bold">
+                        {produtosPromocionaisOrdenados.filter(p => p.ativo !== false).length} Ativos
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Barra de Pesquisa */}
+                  <div className="relative max-w-md">
+                    <input
+                      type="text"
+                      placeholder="Pesquisar vape promocional..."
+                      value={pesquisa}
+                      onChange={(e) => setPesquisa(e.target.value)}
+                      className="w-full bg-black/60 border border-[#FF3366]/50 text-slate-100 pl-10 pr-10 py-2.5 rounded-lg focus:border-[#FF3366] focus:shadow-[0_0_15px_rgba(255,51,102,0.3)] focus:outline-none transition-all duration-300 text-sm"
+                    />
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-[13px]" />
+                    {pesquisa && (
+                      <button onClick={() => setPesquisa('')} className="absolute right-3 top-[11px] text-slate-400 hover:text-[#FF3366]">
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Tabela de Promocionais */}
+                  {produtosPromocionaisFiltrados.length === 0 ? (
+                    <div className="glass-morphism p-12 rounded-xl text-center border border-white/10 bg-black/40">
+                      <p className="text-slate-400">Nenhum vape promocional cadastrado ou encontrado</p>
+                    </div>
+                  ) : (
+                    <div className="glass-morphism rounded-xl overflow-hidden overflow-x-auto border border-[#FF3366]/20">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b border-[#FF3366]/30 text-left text-xs font-bold text-[#FF3366] uppercase">
+                            <th className="py-3 px-4">Status / Ativação</th>
+                            <th className="py-3 px-4">Img</th>
+                            <th className="py-3 px-4">Marca</th>
+                            <th className="py-3 px-4">Vape / Puffs</th>
+                            <th className="py-3 px-4">Preço Original</th>
+                            <th className="py-3 px-4">Preço Promo</th>
+                            <th className="py-3 px-4">Estoque</th>
+                            <th className="py-3 px-4">Ações</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {produtosPromocionaisFiltrados.map((produto) => {
+                            const isAtivo = produto.ativo !== false;
+                            const puffs = utils.extrairPuffs(produto.nome);
+                            const descontoPct = produto.preco_promo && produto.preco > 0
+                              ? Math.round(((produto.preco - produto.preco_promo) / produto.preco) * 100)
+                              : 0;
+
+                            return (
+                              <tr key={produto.id} className={`border-b border-white/5 transition-colors duration-200 text-sm ${isAtivo ? 'hover:bg-[#FF3366]/5' : 'opacity-60 bg-black/40'}`}>
+                                <td className="py-3 px-4">
+                                  {/* Botão de Ativo / Inativo */}
+                                  <button
+                                    onClick={() => handleToggleAtivoProduto(produto)}
+                                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-bold transition-all shadow-md ${
+                                      isAtivo
+                                        ? 'bg-[#76FF03]/20 border border-[#76FF03] text-[#76FF03] hover:bg-[#76FF03]/30 shadow-[0_0_10px_rgba(118,255,3,0.2)]'
+                                        : 'bg-zinc-800 border border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:text-white'
+                                    }`}
+                                  >
+                                    <span className={`w-2 h-2 rounded-full ${isAtivo ? 'bg-[#76FF03] animate-pulse' : 'bg-zinc-500'}`} />
+                                    <span>{isAtivo ? '🟢 Ativo no Catálogo' : '⚪ Inativo (Oculto)'}</span>
+                                  </button>
+                                </td>
+                                <td className="py-3 px-4">
+                                  {produto.imagem_url ? (
+                                    <img src={produto.imagem_url} alt={produto.nome} className="w-10 h-10 object-cover rounded border border-[#FF3366]/30" />
+                                  ) : (
+                                    <ImageOff className="w-6 h-6 text-slate-600" />
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-slate-300 font-bold">{produto.marca}</td>
+                                <td className="py-3 px-4 text-slate-100">
+                                  <div className="font-bold flex items-center gap-2">
+                                    <span>{produto.nome}</span>
+                                    {puffs > 0 && (
+                                      <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FF3366]/20 text-[#FF3366] border border-[#FF3366]/40">
+                                        {puffs.toLocaleString('pt-BR')} Puffs
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4 text-slate-400 line-through text-xs">
+                                  R$ {produto.preco.toFixed(2)}
+                                </td>
+                                <td className="py-3 px-4 text-[#FF3366] font-bold">
+                                  <div className="flex items-center gap-1.5">
+                                    <span>R$ {(produto.preco_promo || produto.preco).toFixed(2)}</span>
+                                    {descontoPct > 0 && (
+                                      <span className="text-[10px] px-1 py-0.2 rounded bg-red-500/20 text-red-400 font-bold">
+                                        -{descontoPct}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </td>
+                                <td className="py-3 px-4">
+                                  {produto.sabores_estoque && Object.keys(produto.sabores_estoque).length > 0 ? (
+                                    <div className="flex flex-col gap-1 text-xs">
+                                      {Object.entries(produto.sabores_estoque).map(([sabor, est]) => (
+                                        <div key={sabor} className="flex justify-between gap-3">
+                                          <span className="text-slate-400">{sabor}:</span>
+                                          <span className={est > 0 ? 'text-[#76FF03] font-bold' : 'text-red-400 font-bold'}>{est}</span>
+                                        </div>
+                                      ))}
+                                      <div className="border-t border-[#FF3366]/20 mt-1 pt-1 flex justify-between font-bold text-[10px]">
+                                        <span className="text-slate-300">TOTAL:</span>
+                                        <span className={produto.estoque > 0 ? 'text-[#76FF03]' : 'text-red-400'}>{produto.estoque} un</span>
+                                      </div>
+                                    </div>
+                                  ) : (
+                                    <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${produto.estoque > 0 ? 'bg-[#76FF03]/20 text-[#76FF03]' : 'bg-red-500/20 text-red-400'}`}>
+                                      {produto.estoque} un
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="flex gap-1.5">
+                                    <button
+                                      onClick={() => abrirModalEditar(produto)}
+                                      className="p-1.5 bg-blue-500/20 border border-blue-500 text-blue-400 rounded hover:bg-blue-500/30"
+                                      title="Editar completo"
+                                    >
+                                      <Edit2 className="w-3.5 h-3.5" />
+                                    </button>
+                                    <button
+                                      onClick={() => handleDeletarProduto(produto.id, produto.nome)}
+                                      className="p-1.5 bg-red-500/20 border border-red-500 text-red-400 rounded hover:bg-red-500/30"
+                                      title="Deletar"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ======================= SUB-ABA: TODOS OS PRODUTOS (UNIFICADO) ======================= */}
+              {subAbaEstoque === 'todos' && (
+                <div className="space-y-6 animate-in fade-in duration-300">
+                  {/* RESUMO DE ESTOQUE POR MODELO E SABOR */}
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div className="glass-morphism p-5 rounded-xl border border-[#76FF03]/20 bg-black/40">
+                      <h3 className="text-sm font-bold text-[#76FF03] uppercase font-['Outfit'] mb-4 flex items-center gap-2">
+                        <Box className="w-4 h-4" /> Estoque por Modelo (Marca + Nome)
+                      </h3>
+                      <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                        {(() => {
+                          const resumoModelo: { [key: string]: number } = {};
+                          produtosFiltrados.forEach(p => {
+                            const chave = `${p.marca} ${p.nome}`;
+                            resumoModelo[chave] = (resumoModelo[chave] || 0) + p.estoque;
+                          });
+                          const modelosOrdenados = Object.entries(resumoModelo).sort((a, b) => b[1] - a[1]);
+                          if (modelosOrdenados.length === 0) return <p className="text-xs text-slate-400">Nenhum dado disponível</p>;
+                          return modelosOrdenados.map(([modelo, total]) => (
+                            <div key={modelo} className="flex justify-between items-center text-xs border-b border-[#76FF03]/5 pb-1">
+                              <span className="text-slate-300 truncate pr-4">{modelo}</span>
+                              <span className={`font-bold ${total > 0 ? 'text-[#76FF03]' : 'text-red-500'}`}>{total} un</span>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+
+                    <div className="glass-morphism p-5 rounded-xl border border-blue-500/20 bg-black/40">
+                      <h3 className="text-sm font-bold text-blue-400 uppercase font-['Outfit'] mb-4 flex items-center gap-2">
+                        <Zap className="w-4 h-4" /> Estoque por Sabor
+                      </h3>
+                      <div className="max-h-60 overflow-y-auto pr-2 custom-scrollbar space-y-2">
+                        {(() => {
+                          const resumoSabor: { [key: string]: number } = {};
+                          produtosFiltrados.forEach(p => {
+                            p.sabores.forEach(s => {
+                              const sabor = s.trim();
+                              if (sabor) {
+                                resumoSabor[sabor] = (resumoSabor[sabor] || 0) + p.estoque;
+                              }
+                            });
+                          });
+                          const saboresOrdenados = Object.entries(resumoSabor).sort((a, b) => b[1] - a[1]);
+                          if (saboresOrdenados.length === 0) return <p className="text-xs text-slate-400">Nenhum dado disponível</p>;
+                          return saboresOrdenados.map(([sabor, total]) => (
+                            <div key={sabor} className="flex justify-between items-center text-xs border-b border-blue-500/5 pb-1">
+                              <span className="text-slate-300 truncate pr-4">{sabor}</span>
+                              <span className={`font-bold ${total > 0 ? 'text-blue-400' : 'text-red-500'}`}>{total} un</span>
+                            </div>
+                          ));
+                        })()}
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Barra de Pesquisa e Filtro de Zonas */}
                   <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
                     <div className="relative flex-1 max-w-md">
@@ -1438,10 +2114,7 @@ export default function Admin() {
                       />
                       <Search className="w-4 h-4 text-slate-400 absolute left-3 top-[13px]" />
                       {pesquisa && (
-                        <button
-                          onClick={() => setPesquisa('')}
-                          className="absolute right-3 top-[11px] text-slate-400 hover:text-[#76FF03] transition-colors"
-                        >
+                        <button onClick={() => setPesquisa('')} className="absolute right-3 top-[11px] text-slate-400 hover:text-[#76FF03]">
                           <X className="w-4 h-4" />
                         </button>
                       )}
@@ -1455,92 +2128,93 @@ export default function Admin() {
                         className="bg-black/80 text-slate-100 text-xs font-bold rounded px-2.5 py-1.5 outline-none border border-transparent focus:border-[#76FF03]"
                       >
                         <option value="todas">Todas as Regiões</option>
-                        <option value="norte">Zona Norte</option>
-                        <option value="sul">Zona Sul</option>
-                        <option value="oeste">Zona Oeste</option>
+                        <option value="norte">Zona Norte (ZN)</option>
+                        <option value="sul_oeste">Zona Oeste/Sul (ZS/ZO)</option>
                       </select>
                     </div>
                   </div>
 
+                  {/* Tabela de Todos os Produtos */}
                   {produtosFiltrados.length === 0 ? (
                     <div className="glass-morphism p-12 rounded-xl text-center border border-[#76FF03]/20 bg-black/40">
                       <p className="text-slate-400">Nenhum produto encontrado com os filtros aplicados</p>
                     </div>
                   ) : (
-                    <div className="glass-morphism rounded-xl overflow-hidden overflow-x-auto">
+                    <div className="glass-morphism rounded-xl overflow-hidden overflow-x-auto border border-white/10">
                       <table className="w-full">
                         <thead>
-                          <tr className="border-b border-[#76FF03]/30 text-left text-xs font-bold text-[#76FF03] font-semibold uppercase">
+                          <tr className="border-b border-[#76FF03]/30 text-left text-xs font-bold text-[#76FF03] uppercase">
                             <th className="py-3 px-4">Img</th>
+                            <th className="py-3 px-4">Tipo</th>
                             <th className="py-3 px-4">Marca</th>
-                            <th className="py-3 px-4">Nome / Zonas</th>
+                            <th className="py-3 px-4">Nome / Puffs</th>
                             <th className="py-3 px-4">Preço</th>
-                            <th className="py-3 px-4">Estoque</th>
-                            <th className="py-3 px-4">Novo Est.</th>
+                            <th className="py-3 px-4">Estoque Total</th>
                             <th className="py-3 px-4">Ações</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {produtosFiltrados.map((produto) => (
-                            <tr key={produto.id} className="border-b border-[#76FF03]/10 hover:bg-[#76FF03]/5 transition-colors duration-200 text-sm">
-                              <td className="py-3 px-4">
-                                {produto.imagem_url ? <img src={produto.imagem_url} alt={produto.nome} className="w-10 h-10 object-cover rounded border border-[#76FF03]/30" /> : <ImageOff className="w-6 h-6 text-[#606060]" />}
-                              </td>
-                              <td className="py-3 px-4 text-slate-300">{produto.marca}</td>
-                              <td className="py-3 px-4 text-slate-100">
-                                <div className="font-bold flex items-center gap-1.5">
-                                  <span>{produto.nome}</span>
-                                  {produto.is_promo && <Zap className="inline w-3 h-3 text-red-400" />}
-                                </div>
-                                <div className="flex flex-wrap gap-1 mt-1">
-                                  {(produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul', 'oeste']).map(z => {
-                                    const isNorte = z.toLowerCase().includes('norte');
-                                    const isSul = z.toLowerCase().includes('sul');
-                                    const label = isNorte ? 'Norte' : isSul ? 'Sul' : 'Oeste';
-                                    const colorClass = isNorte ? 'bg-[#76FF03]/15 text-[#76FF03] border-[#76FF03]/40' : isSul ? 'bg-sky-500/15 text-sky-400 border-sky-500/40' : 'bg-purple-500/15 text-purple-400 border-purple-500/40';
-                                    return (
-                                      <span key={z} className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${colorClass}`}>
-                                        {label}
+                          {produtosFiltrados.map((produto) => {
+                            const puffs = utils.extrairPuffs(produto.nome);
+                            return (
+                              <tr key={produto.id} className="border-b border-[#76FF03]/10 hover:bg-[#76FF03]/5 transition-colors duration-200 text-sm">
+                                <td className="py-3 px-4">
+                                  {produto.imagem_url ? (
+                                    <img src={produto.imagem_url} alt={produto.nome} className="w-10 h-10 object-cover rounded border border-[#76FF03]/30" />
+                                  ) : (
+                                    <ImageOff className="w-6 h-6 text-[#606060]" />
+                                  )}
+                                </td>
+                                <td className="py-3 px-4">
+                                  {produto.is_promo ? (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#FF3366]/20 text-[#FF3366] border border-[#FF3366]/40">
+                                      Promocional
+                                    </span>
+                                  ) : (
+                                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-[#76FF03]/20 text-[#76FF03] border border-[#76FF03]/40">
+                                      Expresso
+                                    </span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-slate-300 font-bold">{produto.marca}</td>
+                                <td className="py-3 px-4 text-slate-100">
+                                  <div className="font-bold flex items-center gap-1.5">
+                                    <span>{produto.nome}</span>
+                                    {puffs > 0 && (
+                                      <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-white/10 text-slate-300">
+                                        {puffs.toLocaleString('pt-BR')} Puffs
                                       </span>
-                                    );
-                                  })}
-                                </div>
-                              </td>
-                              <td className="py-3 px-4 text-[#76FF03] font-bold">R$ {produto.preco.toFixed(2)}</td>
-                              <td className="py-3 px-4">
-                                {produto.sabores_estoque && Object.keys(produto.sabores_estoque).length > 0 ? (
-                                  <div className="flex flex-col gap-1 text-xs">
-                                    {Object.entries(produto.sabores_estoque).map(([sabor, est]) => (
-                                      <div key={sabor} className="flex justify-between gap-3">
-                                        <span className="text-slate-400">{sabor}:</span>
-                                        <span className={est > 0 ? 'text-[#76FF03] font-bold' : 'text-red-400 font-bold'}>{est}</span>
-                                      </div>
-                                    ))}
-                                    <div className="border-t border-[#76FF03]/20 mt-1 pt-1 flex justify-between font-bold text-[10px]">
-                                      <span className="text-slate-300">TOTAL:</span>
-                                      <span className={produto.estoque > 0 ? 'text-[#76FF03]' : 'text-red-400'}>{produto.estoque}</span>
-                                    </div>
+                                    )}
                                   </div>
-                                ) : (
-                                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${produto.estoque > 0 ? 'bg-[#76FF03]/20 text-[#76FF03]' : 'bg-red-500/20 text-red-400'}`}>{produto.estoque}</span>
-                                )}
-                              </td>
-                              <td className="py-3 px-4">
-                                {produto.sabores.length <= 1 ? (
-                                  <input type="number" min="0" value={estoqueEditado[produto.id] ?? produto.estoque} onChange={(e) => setEstoqueEditado({ ...estoqueEditado, [produto.id]: parseInt(e.target.value) || 0 })} className="w-16 bg-black/60 border border-[#76FF03]/50 text-slate-100 px-1 py-0.5 rounded focus:border-[#76FF03] outline-none" />
-                                ) : (
-                                  <span className="text-[10px] text-slate-400 italic">Editar sabores</span>
-                                )}
-                              </td>
-                              <td className="py-3 px-4">
-                                <div className="flex gap-1">
-                                  <button onClick={() => handleAtualizarEstoque(produto.id)} disabled={salvando || estoqueEditado[produto.id] === undefined || produto.sabores.length > 1} className="p-1.5 bg-[#76FF03] text-black rounded disabled:opacity-50"><Save className="w-3 h-3" /></button>
-                                  <button onClick={() => abrirModalEditar(produto)} className="p-1.5 bg-blue-500/20 border border-blue-500 text-blue-400 rounded"><Edit2 className="w-3 h-3" /></button>
-                                  <button onClick={() => handleDeletarProduto(produto.id, produto.nome)} className="p-1.5 bg-red-500/20 border border-red-500 text-red-400 rounded"><Trash2 className="w-3 h-3" /></button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
+                                </td>
+                                <td className="py-3 px-4 text-[#76FF03] font-bold">
+                                  {produto.is_promo && produto.preco_promo ? (
+                                    <div>
+                                      <span>R$ {produto.preco_promo.toFixed(2)}</span>
+                                      <span className="block text-[10px] text-slate-400 line-through">R$ {produto.preco.toFixed(2)}</span>
+                                    </div>
+                                  ) : (
+                                    <span>R$ {produto.preco.toFixed(2)}</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4">
+                                  <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${produto.estoque > 0 ? 'bg-[#76FF03]/20 text-[#76FF03]' : 'bg-red-500/20 text-red-400'}`}>
+                                    {produto.estoque} un
+                                  </span>
+                                </td>
+                                <td className="py-3 px-4">
+                                  <div className="flex gap-1">
+                                    <button onClick={() => abrirModalEditar(produto)} className="p-1.5 bg-blue-500/20 border border-blue-500 text-blue-400 rounded">
+                                      <Edit2 className="w-3 h-3" />
+                                    </button>
+                                    <button onClick={() => handleDeletarProduto(produto.id, produto.nome)} className="p-1.5 bg-red-500/20 border border-red-500 text-red-400 rounded">
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
@@ -1549,6 +2223,438 @@ export default function Admin() {
               )}
             </section>
           </>
+        ) : abaAtiva === 'relogio_mensal' ? (
+          /* =========================================================================
+             NOVA ABA: RELÓGIO MENSAL DE METAS & DESEMPENHO (1º AO ÚLTIMO DIA DO MÊS)
+             ========================================================================= */
+          <section className="space-y-8 animate-in fade-in duration-300">
+            {/* Header com Navegação do Mês & Botão de Metas */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 glass-morphism p-6 rounded-3xl border border-[#76FF03]/30 bg-black/60">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <div className="p-2 rounded-xl bg-[#76FF03]/20 text-[#76FF03] border border-[#76FF03]/40">
+                    <Clock className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black neon-glow font-['Outfit']">Relógio Mensal de Metas</h2>
+                    <p className="text-xs text-slate-400">
+                      Acompanhamento de <strong>1º a {relogioMensalData.diasNoMes} de {relogioMensalData.mesLabel}</strong>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                {/* Seletor de Mês */}
+                <div className="flex items-center bg-black/80 rounded-xl border border-white/10 p-1">
+                  <button
+                    onClick={() => {
+                      const [ano, mes] = mesRelogio.split('-').map(Number);
+                      const d = new Date(ano, mes - 2, 1);
+                      setMesRelogio(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+                    }}
+                    className="p-2 hover:text-[#76FF03] text-slate-400 transition-colors"
+                    title="Mês anterior"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <input
+                    type="month"
+                    value={mesRelogio}
+                    onChange={(e) => setMesRelogio(e.target.value)}
+                    className="bg-transparent text-slate-100 font-bold text-xs px-2 py-1 outline-none cursor-pointer"
+                  />
+                  <button
+                    onClick={() => {
+                      const [ano, mes] = mesRelogio.split('-').map(Number);
+                      const d = new Date(ano, mes, 1);
+                      setMesRelogio(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+                    }}
+                    className="p-2 hover:text-[#76FF03] text-slate-400 transition-colors"
+                    title="Próximo mês"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setTempMetaValor(String(metaMensalValor));
+                    setTempMetaQtd(String(metaMensalQtd));
+                    setEditandoMeta(true);
+                  }}
+                  className="flex items-center gap-1.5 px-3.5 py-2 bg-[#76FF03]/20 border border-[#76FF03]/60 text-[#76FF03] rounded-xl font-bold text-xs hover:bg-[#76FF03]/30 transition-all shadow-md"
+                >
+                  <Target className="w-4 h-4" /> Configurar Metas
+                </button>
+              </div>
+            </div>
+
+            {/* Modal para Editar Metas */}
+            {editandoMeta && (
+              <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+                <div className="bg-[#0e120f] border border-[#76FF03]/50 rounded-2xl p-6 max-w-md w-full space-y-4 shadow-[0_0_30px_rgba(118,255,3,0.2)]">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-lg font-bold text-white font-['Outfit'] flex items-center gap-2">
+                      <Target className="w-5 h-5 text-[#76FF03]" /> Ajustar Metas Mensais
+                    </h3>
+                    <button onClick={() => setEditandoMeta(false)} className="text-slate-400 hover:text-white">
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                        Meta de Faturamento (R$)
+                      </label>
+                      <input
+                        type="number"
+                        value={tempMetaValor}
+                        onChange={(e) => setTempMetaValor(e.target.value)}
+                        className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-3 py-2 rounded-lg outline-none text-sm"
+                        placeholder="15000"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                        Meta de Quantidade (Unidades de Vapes)
+                      </label>
+                      <input
+                        type="number"
+                        value={tempMetaQtd}
+                        onChange={(e) => setTempMetaQtd(e.target.value)}
+                        className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-3 py-2 rounded-lg outline-none text-sm"
+                        placeholder="200"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2 pt-2">
+                    <button onClick={() => setEditandoMeta(false)} className="flex-1 py-2 rounded-lg bg-zinc-800 text-slate-300 font-bold text-xs">
+                      Cancelar
+                    </button>
+                    <button onClick={handleSalvarMetas} className="flex-1 py-2 rounded-lg bg-[#76FF03] text-black font-bold text-xs shadow-[0_0_15px_rgba(118,255,3,0.4)]">
+                      Salvar Metas
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* SEÇÃO PRINCIPAL: O RELÓGIO DE METAS (GAUGE NEON) + CARDS DE STATUS */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* O Relógio / Speedometer Visual de Metas */}
+              <div className="glass-morphism p-6 rounded-3xl border border-[#76FF03]/30 bg-black/50 flex flex-col items-center justify-between text-center relative overflow-hidden">
+                <div className="w-full flex items-center justify-between text-xs text-slate-400 pb-2 border-b border-white/5">
+                  <span className="font-bold flex items-center gap-1.5">
+                    <Gauge className="w-4 h-4 text-[#76FF03]" /> Relógio de Meta (Faturamento)
+                  </span>
+                  <span className="text-[#76FF03] font-extrabold">{relogioMensalData.percentualValor.toFixed(1)}%</span>
+                </div>
+
+                {/* Mostrador Circular Neon (Speedometer Dial) */}
+                <div className="relative my-6 flex items-center justify-center">
+                  <svg className="w-56 h-56 -rotate-90 transform">
+                    {/* Fundo do circulo */}
+                    <circle
+                      cx="112"
+                      cy="112"
+                      r="90"
+                      stroke="rgba(255, 255, 255, 0.08)"
+                      strokeWidth="14"
+                      fill="transparent"
+                    />
+                    {/* Barra de Progresso Neon */}
+                    <circle
+                      cx="112"
+                      cy="112"
+                      r="90"
+                      stroke="#76FF03"
+                      strokeWidth="14"
+                      fill="transparent"
+                      strokeDasharray={565.48}
+                      strokeDashoffset={565.48 - (565.48 * Math.min(100, relogioMensalData.percentualValor)) / 100}
+                      strokeLinecap="round"
+                      className="transition-all duration-1000 ease-out drop-shadow-[0_0_12px_rgba(118,255,3,0.8)]"
+                    />
+                  </svg>
+
+                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                    <span className="text-3xl sm:text-4xl font-black text-white font-['Outfit'] tracking-tight">
+                      {relogioMensalData.percentualValor.toFixed(0)}%
+                    </span>
+                    <span className="text-[11px] font-extrabold text-[#76FF03] uppercase tracking-wider mt-1">
+                      {relogioMensalData.percentualValor >= 100
+                        ? '🏆 Meta Batida!'
+                        : relogioMensalData.percentualValor >= 80
+                        ? '🔥 Quase Lá!'
+                        : '⚡ Em Andamento'}
+                    </span>
+                    <span className="text-[10px] text-slate-400 mt-1">
+                      R$ {relogioMensalData.faturamentoTotal.toFixed(2)} de R$ {metaMensalValor.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Rodapé do Relógio */}
+                <div className="w-full pt-3 border-t border-white/5 space-y-1.5 text-xs">
+                  <div className="flex justify-between text-slate-300">
+                    <span>Falta para a Meta:</span>
+                    <span className="font-bold text-red-400">
+                      R$ {relogioMensalData.valorFaltante.toFixed(2)}
+                    </span>
+                  </div>
+                  {relogioMensalData.isMesAtual && relogioMensalData.diasRestantes > 0 && (
+                    <div className="flex justify-between text-slate-300">
+                      <span>Meta Diária Necessária:</span>
+                      <span className="font-bold text-amber-400">
+                        R$ {relogioMensalData.metaDiariaNecessaria.toFixed(2)}/dia
+                      </span>
+                    </div>
+                  )}
+                  {relogioMensalData.isMesAtual && (
+                    <div className="flex justify-between text-slate-300">
+                      <span>Projeção Final do Mês:</span>
+                      <span className="font-bold text-[#76FF03]">
+                        R$ {relogioMensalData.projecaoFimMes.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Grid dos 4 Cards Principais de Separação (EXPRESSO ///// PROMOCIONAL) */}
+              <div className="lg:col-span-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* 1. FATURAMENTO TOTAL DO MÊS */}
+                <div className="glass-morphism p-5 rounded-2xl border border-[#76FF03]/30 bg-gradient-to-br from-[#76FF03]/10 to-transparent flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold text-[#76FF03] uppercase tracking-wider">Faturamento Total do Mês</span>
+                      <DollarSign className="w-5 h-5 text-[#76FF03]" />
+                    </div>
+                    <h3 className="text-3xl font-black text-white font-['Outfit']">
+                      R$ {relogioMensalData.faturamentoTotal.toFixed(2)}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      {relogioMensalData.totalPedidos} pedidos finalizados no mês
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs text-slate-300">
+                    <span>Ticket Médio:</span>
+                    <span className="font-bold text-[#76FF03]">R$ {relogioMensalData.ticketMedio.toFixed(2)}</span>
+                  </div>
+                </div>
+
+                {/* 2. QUANTIDADE TOTAL VENDIDA */}
+                <div className="glass-morphism p-5 rounded-2xl border border-blue-500/30 bg-gradient-to-br from-blue-500/10 to-transparent flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold text-blue-400 uppercase tracking-wider">Quantidade Total de Vapes</span>
+                      <ShoppingBag className="w-5 h-5 text-blue-400" />
+                    </div>
+                    <h3 className="text-3xl font-black text-white font-['Outfit']">
+                      {relogioMensalData.quantidadeTotal} <span className="text-sm font-normal text-slate-400">unidades</span>
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Meta: {metaMensalQtd} un ({relogioMensalData.percentualQtd.toFixed(0)}% batida)
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs text-slate-300">
+                    <span>Faltam para meta:</span>
+                    <span className="font-bold text-blue-400">{relogioMensalData.qtdFaltante} un</span>
+                  </div>
+                </div>
+
+                {/* 3. SEPARAÇÃO: VENDAS EXPRESSO */}
+                <div className="glass-morphism p-5 rounded-2xl border border-emerald-500/30 bg-gradient-to-br from-emerald-500/10 to-transparent flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Zap className="w-4 h-4" /> Vendas Expresso (Pronta Entrega)
+                      </span>
+                    </div>
+                    <h3 className="text-2xl font-black text-white font-['Outfit']">
+                      R$ {relogioMensalData.faturamentoExpresso.toFixed(2)}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      <strong>{relogioMensalData.quantidadeExpresso}</strong> vapes expressos vendidos
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs text-slate-300">
+                    <span>Participação no Faturamento:</span>
+                    <span className="font-bold text-emerald-400">
+                      {relogioMensalData.faturamentoTotal > 0
+                        ? ((relogioMensalData.faturamentoExpresso / relogioMensalData.faturamentoTotal) * 100).toFixed(1)
+                        : 0}%
+                    </span>
+                  </div>
+                </div>
+
+                {/* 4. SEPARAÇÃO: VENDAS PROMOCIONAL */}
+                <div className="glass-morphism p-5 rounded-2xl border border-[#FF3366]/30 bg-gradient-to-br from-[#FF3366]/10 to-transparent flex flex-col justify-between">
+                  <div>
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-[11px] font-bold text-[#FF3366] uppercase tracking-wider flex items-center gap-1.5">
+                        <Flame className="w-4 h-4" /> Vendas Promocional
+                      </span>
+                    </div>
+                    <h3 className="text-2xl font-black text-white font-['Outfit']">
+                      R$ {relogioMensalData.faturamentoPromo.toFixed(2)}
+                    </h3>
+                    <p className="text-xs text-slate-400 mt-1">
+                      <strong>{relogioMensalData.quantidadePromo}</strong> vapes promocionais vendidos
+                    </p>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-white/10 flex justify-between text-xs text-slate-300">
+                    <span>Participação no Faturamento:</span>
+                    <span className="font-bold text-[#FF3366]">
+                      {relogioMensalData.faturamentoTotal > 0
+                        ? ((relogioMensalData.faturamentoPromo / relogioMensalData.faturamentoTotal) * 100).toFixed(1)
+                        : 0}%
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* GRÁFICOS DO RELÓGIO MENSAL */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Gráfico de Evolução Acumulada do Mês (1º ao Último Dia) */}
+              <div className="lg:col-span-2 glass-morphism p-5 rounded-2xl border border-white/10 bg-black/40 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-slate-100 font-['Outfit'] flex items-center gap-2">
+                    <TrendingUp className="w-4 h-4 text-[#76FF03]" /> Evolução Diária Acumulada no Mês (R$)
+                  </h3>
+                  <span className="text-xs text-slate-400">1º a {relogioMensalData.diasNoMes} de {relogioMensalData.mesLabel}</span>
+                </div>
+
+                <div className="h-64 w-full">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={relogioMensalData.diasTimeline} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="gradAcumulado" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#76FF03" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#76FF03" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+                      <XAxis dataKey="dataStr" stroke="#666" fontSize={10} tickLine={false} />
+                      <YAxis stroke="#666" fontSize={10} tickLine={false} tickFormatter={(v) => `R$${v}`} />
+                      <RechartsTooltip
+                        contentStyle={{ backgroundColor: '#090d0a', borderColor: '#76FF03', borderRadius: '8px', fontSize: '12px' }}
+                        formatter={(val: any) => [`R$ ${Number(val).toFixed(2)}`, 'Acumulado']}
+                      />
+                      <Area type="monotone" dataKey="acumulado" stroke="#76FF03" strokeWidth={3} fillOpacity={1} fill="url(#gradAcumulado)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+
+              {/* Gráfico Comparativo de Faturamento: Expresso vs Promocional */}
+              <div className="glass-morphism p-5 rounded-2xl border border-white/10 bg-black/40 space-y-4 flex flex-col justify-between">
+                <h3 className="text-sm font-bold text-slate-100 font-['Outfit'] flex items-center gap-2">
+                  <Percent className="w-4 h-4 text-[#FF3366]" /> Divisão Expresso vs Promo
+                </h3>
+
+                <div className="h-48 w-full flex items-center justify-center">
+                  {relogioMensalData.faturamentoTotal > 0 ? (
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={[
+                            { name: 'Expresso', value: relogioMensalData.faturamentoExpresso, color: '#76FF03' },
+                            { name: 'Promocional', value: relogioMensalData.faturamentoPromo, color: '#FF3366' }
+                          ]}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={70}
+                          innerRadius={45}
+                          paddingAngle={5}
+                        >
+                          <Cell fill="#76FF03" />
+                          <Cell fill="#FF3366" />
+                        </Pie>
+                        <RechartsTooltip
+                          contentStyle={{ backgroundColor: '#090d0a', borderColor: '#444', borderRadius: '8px', fontSize: '12px' }}
+                          formatter={(val: any) => [`R$ ${Number(val).toFixed(2)}`, '']}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <p className="text-xs text-slate-500">Sem vendas registradas neste mês</p>
+                  )}
+                </div>
+
+                <div className="space-y-2 pt-2 border-t border-white/5 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-slate-300">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#76FF03]" /> Expresso:
+                    </span>
+                    <span className="font-bold text-[#76FF03]">
+                      R$ {relogioMensalData.faturamentoExpresso.toFixed(2)} ({relogioMensalData.quantidadeExpresso} un)
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2 text-slate-300">
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#FF3366]" /> Promocional:
+                    </span>
+                    <span className="font-bold text-[#FF3366]">
+                      R$ {relogioMensalData.faturamentoPromo.toFixed(2)} ({relogioMensalData.quantidadePromo} un)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* TABELA DE RANKING DOS PRODUTOS MAIS VENDIDOS NO MÊS */}
+            <div className="glass-morphism p-5 rounded-2xl border border-white/10 bg-black/40 space-y-4">
+              <h3 className="text-sm font-bold text-slate-100 font-['Outfit'] flex items-center gap-2">
+                <Award className="w-4 h-4 text-amber-400" /> Ranking dos Vapes Mais Vendidos no Mês ({relogioMensalData.mesLabel})
+              </h3>
+
+              {relogioMensalData.rankingOrdenado.length === 0 ? (
+                <p className="text-xs text-slate-400 py-4 text-center">Nenhum vape vendido ainda neste mês.</p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-white/10 text-left text-slate-400 uppercase">
+                        <th className="py-2.5 px-3">#</th>
+                        <th className="py-2.5 px-3">Modelo</th>
+                        <th className="py-2.5 px-3">Modalidade</th>
+                        <th className="py-2.5 px-3">Qtd Vendida</th>
+                        <th className="py-2.5 px-3">Receita Gerada</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {relogioMensalData.rankingOrdenado.map((item, idx) => (
+                        <tr key={item.nome} className="border-b border-white/5 hover:bg-white/5">
+                          <td className="py-2.5 px-3 font-bold text-slate-400">#{idx + 1}</td>
+                          <td className="py-2.5 px-3 text-slate-100 font-bold">{item.nome}</td>
+                          <td className="py-2.5 px-3">
+                            {item.is_promo ? (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#FF3366]/20 text-[#FF3366]">
+                                Promocional
+                              </span>
+                            ) : (
+                              <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-[#76FF03]/20 text-[#76FF03]">
+                                Expresso
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-100 font-extrabold">{item.quantidade} un</td>
+                          <td className="py-2.5 px-3 text-[#76FF03] font-bold">R$ {item.receita.toFixed(2)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
+          </section>
         ) : abaAtiva === 'pedidos' ? (
           /* SEÇÃO DE PEDIDOS COM DASHBOARD */
           <section className="space-y-8">
@@ -2881,23 +3987,29 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                   <button
                     type="button"
                     onClick={() => {
-                      if (formProduto.zonas.length === 3) {
+                      if (formProduto.zonas.length >= 2) {
                         setFormProduto({ ...formProduto, zonas: [] });
                       } else {
-                        setFormProduto({ ...formProduto, zonas: ['norte', 'sul', 'oeste'] });
+                        setFormProduto({ ...formProduto, zonas: ['norte', 'sul_oeste'] });
                       }
                     }}
                     className="text-[10px] text-[#76FF03] hover:underline font-bold"
                   >
-                    {formProduto.zonas.length === 3 ? 'Desmarcar todas' : 'Marcar todas'}
+                    {formProduto.zonas.length >= 2 ? 'Desmarcar todas' : 'Marcar todas'}
                   </button>
                 </div>
                 <p className="text-[11px] text-slate-400">
                   Selecione em quais regiões este vape aparecerá disponível no catálogo:
                 </p>
-                <div className="grid grid-cols-3 gap-2 pt-1">
+                <div className="grid grid-cols-2 gap-2 pt-1">
                   {ZONAS_DISPONIVEIS.map(z => {
-                    const active = formProduto.zonas.some(item => utils.normalizarTexto(item) === z.id || utils.normalizarTexto(item).includes(z.id));
+                    const active = formProduto.zonas.some(item => {
+                      const norm = utils.normalizarTexto(item);
+                      if (z.id === 'sul_oeste') {
+                        return norm === 'sul_oeste' || norm.includes('sul') || norm.includes('oeste');
+                      }
+                      return norm === z.id || norm.includes(z.id);
+                    });
                     return (
                       <button
                         key={z.id}
@@ -2905,13 +4017,19 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                         onClick={() => {
                           let novasZonas = [...formProduto.zonas];
                           if (active) {
-                            novasZonas = novasZonas.filter(item => utils.normalizarTexto(item) !== z.id && !utils.normalizarTexto(item).includes(z.id));
+                            novasZonas = novasZonas.filter(item => {
+                              const norm = utils.normalizarTexto(item);
+                              if (z.id === 'sul_oeste') {
+                                return norm !== 'sul_oeste' && !norm.includes('sul') && !norm.includes('oeste');
+                              }
+                              return norm !== z.id && !norm.includes(z.id);
+                            });
                           } else {
                             novasZonas.push(z.id);
                           }
                           setFormProduto({ ...formProduto, zonas: novasZonas });
                         }}
-                        className={`py-2 px-2.5 rounded-lg text-xs font-bold font-semibold border transition-all flex items-center justify-center gap-1.5 ${
+                        className={`py-2.5 px-3 rounded-lg text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
                           active
                             ? 'bg-[#76FF03]/20 border-[#76FF03] text-[#76FF03] shadow-[0_0_10px_rgba(118,255,3,0.2)]'
                             : 'bg-black/50 border-white/10 text-slate-400 hover:border-white/30'
