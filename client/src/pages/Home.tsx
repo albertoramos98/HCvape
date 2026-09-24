@@ -406,19 +406,24 @@ export default function Home() {
   const zonaAtualInfo = ZONAS_DISPONIVEIS.find(z => z.id === zonaSelecionada);
 
   return (
-    <div className="min-h-screen dark-atmosphere selection:bg-[#00F59B] selection:text-[#04140b]">
+    <div className="min-h-screen dark-atmosphere selection:bg-[#76FF03] selection:text-[#041202]">
       {/* 1. Pop-up de Aviso Informativo Inicial */}
       {popupAviso && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-lg bg-[#0e1320] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+          <div className="w-full max-w-lg bg-[#0d1310] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-3 bg-[#FF3366]/15 border border-[#FF3366]/30 rounded-2xl">
-                  <AlertCircle className="w-7 h-7 text-[#FF3366]" />
-                </div>
+                <img
+                  src="/logo.png"
+                  alt="HC Vape Logo"
+                  className="w-14 h-14 rounded-full object-cover shadow-[0_0_20px_rgba(118,255,3,0.35)] border border-white/20"
+                />
                 <div>
-                  <h3 className="text-xl font-bold text-slate-100 font-['Outfit']">Informações de Atendimento</h3>
-                  <p className="text-xs text-slate-400">Horários e condições para seus pedidos</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-xl font-black text-slate-100 font-['Outfit']">HC VAPE</h3>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#76FF03]/15 text-[#76FF03] border border-[#76FF03]/30">Desde 2020</span>
+                  </div>
+                  <p className="text-xs text-slate-300 font-medium">Não fume, vaporize! • Informações de Atendimento</p>
                 </div>
               </div>
               <button
@@ -440,8 +445,8 @@ export default function Home() {
                 </p>
               </div>
 
-              <div className="p-4 bg-gradient-to-r from-[#00F59B]/10 to-transparent border-l-4 border-[#00F59B] rounded-r-xl">
-                <span className="font-bold text-[#00F59B] block text-xs uppercase tracking-wider mb-1">
+              <div className="p-4 bg-gradient-to-r from-[#76FF03]/10 to-transparent border-l-4 border-[#76FF03] rounded-r-xl">
+                <span className="font-bold text-[#76FF03] block text-xs uppercase tracking-wider mb-1">
                   ⚡ PEDIDOS EXPRESSOS
                 </span>
                 <p>
@@ -464,12 +469,14 @@ export default function Home() {
       {/* 2. Pop-up / Modal de Seleção de Zona / Região */}
       {modalZonaAberto && (
         <div className="fixed inset-0 bg-black/85 backdrop-blur-md flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
-          <div className="w-full max-w-xl bg-[#0e1320] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
+          <div className="w-full max-w-xl bg-[#0d1310] border border-white/15 rounded-3xl p-6 sm:p-8 shadow-2xl space-y-6">
             <div className="flex items-start justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-3 bg-[#00F59B]/15 border border-[#00F59B]/30 rounded-2xl text-[#00F59B]">
-                  <MapPin className="w-7 h-7" />
-                </div>
+              <div className="flex items-center gap-3.5">
+                <img
+                  src="/logo.png"
+                  alt="HC Vape"
+                  className="w-12 h-12 rounded-full object-cover shadow-[0_0_16px_rgba(118,255,3,0.3)] border border-white/20"
+                />
                 <div>
                   <h3 className="text-xl font-bold text-slate-100 font-['Outfit']">Escolha sua Região</h3>
                   <p className="text-xs text-slate-400">Filtre os pods com pronta entrega para o seu bairro</p>
@@ -499,20 +506,20 @@ export default function Home() {
                     onClick={() => handleSelecionarZona(zona.id)}
                     className={`relative p-5 rounded-2xl border text-left transition-all duration-300 flex flex-col justify-between gap-3 group ${
                       isSelected
-                        ? 'bg-[#00F59B]/15 border-[#00F59B] shadow-[0_0_20px_rgba(0,245,155,0.2)]'
+                        ? 'bg-[#76FF03]/15 border-[#76FF03] shadow-[0_0_20px_rgba(118,255,3,0.25)]'
                         : 'bg-white/[0.03] border-white/10 hover:border-white/25 hover:bg-white/[0.06]'
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className={`p-2.5 rounded-xl ${isSelected ? 'bg-[#00F59B] text-[#04140b]' : 'bg-white/5 text-slate-300 group-hover:text-white'}`}>
+                      <div className={`p-2.5 rounded-xl ${isSelected ? 'bg-[#76FF03] text-[#041202]' : 'bg-white/5 text-slate-300 group-hover:text-white'}`}>
                         <Compass className="w-5 h-5" />
                       </div>
                       {isSelected && (
-                        <span className="w-2 h-2 rounded-full bg-[#00F59B] animate-pulse" />
+                        <span className="w-2 h-2 rounded-full bg-[#76FF03] shadow-[0_0_8px_#76FF03] animate-pulse" />
                       )}
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-100 font-['Outfit'] text-base group-hover:text-[#00F59B] transition-colors">
+                      <h4 className="font-bold text-slate-100 font-['Outfit'] text-base group-hover:text-[#76FF03] transition-colors">
                         {zona.nome}
                       </h4>
                       <p className="text-[11px] text-slate-400 mt-0.5">
@@ -520,10 +527,10 @@ export default function Home() {
                       </p>
                     </div>
                     <div className="pt-2 border-t border-white/5 flex items-center justify-between text-[11px] font-bold">
-                      <span className={isSelected ? 'text-[#00F59B]' : 'text-slate-400'}>
+                      <span className={isSelected ? 'text-[#76FF03]' : 'text-slate-400'}>
                         {isSelected ? 'Região Ativa' : 'Selecionar'}
                       </span>
-                      <ChevronRight className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-1 ${isSelected ? 'text-[#00F59B]' : 'text-slate-500'}`} />
+                      <ChevronRight className={`w-3.5 h-3.5 transition-transform group-hover:translate-x-1 ${isSelected ? 'text-[#76FF03]' : 'text-slate-500'}`} />
                     </div>
                   </button>
                 );
@@ -538,26 +545,31 @@ export default function Home() {
       )}
 
       {/* Modern Sticky Glass Navbar */}
-      <header className="sticky top-0 z-40 bg-[#080b11]/85 backdrop-blur-xl border-b border-white/10 transition-all duration-300">
-        <div className="container flex items-center justify-between py-3.5">
+      <header className="sticky top-0 z-40 bg-[#070908]/90 backdrop-blur-xl border-b border-white/10 transition-all duration-300">
+        <div className="container flex items-center justify-between py-3">
           {/* Logo & Status */}
           <div className="flex items-center gap-4">
             <a href="/" className="flex items-center gap-3 group">
-              <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#00F59B] to-[#00A86B] flex items-center justify-center font-extrabold text-[#04140b] text-lg font-['Outfit'] shadow-lg group-hover:scale-105 transition-transform">
-                HC
+              <div className="relative group-hover:scale-105 transition-all duration-300">
+                <img
+                  src="/logo.png"
+                  alt="HC Vape Logo"
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-full object-cover shadow-[0_0_15px_rgba(118,255,3,0.3)] border border-white/20"
+                />
               </div>
               <div>
                 <div className="flex items-center gap-2">
-                  <h1 className="text-lg sm:text-xl font-bold text-slate-100 tracking-tight font-['Outfit']">
-                    HC VAPE
+                  <h1 className="text-lg sm:text-xl font-black text-slate-100 tracking-tight font-['Outfit'] flex items-center gap-1.5">
+                    <span>HC</span>
+                    <span className="text-[#76FF03]">VAPE</span>
                   </h1>
-                  <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/5 text-slate-400 border border-white/10">
-                    Desde 2020
+                  <span className="hidden sm:inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-white/5 text-slate-300 border border-white/10">
+                    Não fume, vaporize!
                   </span>
                 </div>
-                <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
-                  <span className="w-2 h-2 rounded-full bg-[#00F59B] animate-pulse" />
-                  <span>Catálogo Online</span>
+                <div className="flex items-center gap-1.5 text-[11px] text-slate-400 font-medium">
+                  <span className="w-2 h-2 rounded-full bg-[#76FF03] shadow-[0_0_8px_#76FF03] animate-pulse" />
+                  <span>Desde 2020 • Catálogo Online</span>
                 </div>
               </div>
             </a>
@@ -568,10 +580,10 @@ export default function Home() {
             {/* Botão Seletor de Região / Zona */}
             <button
               onClick={() => setModalZonaAberto(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#00F59B]/40 transition-all duration-200"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#76FF03]/50 transition-all duration-200"
               title="Trocar região de entrega"
             >
-              <MapPin className="w-3.5 h-3.5 text-[#00F59B]" />
+              <MapPin className="w-3.5 h-3.5 text-[#76FF03]" />
               <span>{zonaAtualInfo ? zonaAtualInfo.nome : 'Escolher Zona'}</span>
               <span className="text-[10px] text-slate-400">▾</span>
             </button>
@@ -585,13 +597,13 @@ export default function Home() {
 
             <button
               onClick={() => setCarrinhoAberto(true)}
-              className="relative flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-[#00F59B]/15 to-[#00F59B]/5 hover:from-[#00F59B]/25 hover:to-[#00F59B]/10 border border-[#00F59B]/30 text-[#00F59B] transition-all duration-200 shadow-sm"
+              className="relative flex items-center gap-2 px-3.5 sm:px-4 py-2 rounded-xl bg-gradient-to-r from-[#76FF03]/15 to-[#76FF03]/5 hover:from-[#76FF03]/25 hover:to-[#76FF03]/10 border border-[#76FF03]/40 text-[#76FF03] transition-all duration-200 shadow-sm"
               aria-label="Abrir carrinho"
             >
               <ShoppingCart className="w-5 h-5" />
               <span className="hidden sm:inline text-xs font-bold font-['Outfit']">Carrinho</span>
               {totalItensCarrinho > 0 && (
-                <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-extrabold bg-[#00F59B] text-[#04140b] rounded-full shadow">
+                <span className="flex items-center justify-center min-w-[20px] h-5 px-1.5 text-[11px] font-extrabold bg-[#76FF03] text-[#041202] rounded-full shadow">
                   {totalItensCarrinho}
                 </span>
               )}
@@ -1222,22 +1234,29 @@ export default function Home() {
       )}
 
       {/* Modern Luxury Footer */}
-      <footer className="mt-16 border-t border-white/10 bg-[#06080e] py-10">
+      <footer className="mt-16 border-t border-white/10 bg-[#060807] py-12">
         <div className="container flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
-          <div className="space-y-1">
-            <div className="flex items-center justify-center md:justify-start gap-2">
-              <span className="font-extrabold text-slate-100 font-['Outfit'] text-base tracking-tight">HC VAPE</span>
-              <span className="text-[11px] text-slate-500 font-semibold">• Desde 2020</span>
+          <div className="flex flex-col md:flex-row items-center gap-4">
+            <img
+              src="/logo.png"
+              alt="HC Vape Logo"
+              className="w-14 h-14 rounded-full object-cover shadow-[0_0_18px_rgba(118,255,3,0.3)] border border-white/15"
+            />
+            <div className="space-y-1">
+              <div className="flex items-center justify-center md:justify-start gap-2">
+                <span className="font-black text-slate-100 font-['Outfit'] text-lg tracking-tight">HC <span className="text-[#76FF03]">VAPE</span></span>
+                <span className="text-[11px] text-[#76FF03] font-bold px-2 py-0.5 rounded-full bg-[#76FF03]/10 border border-[#76FF03]/30">Desde 2020</span>
+              </div>
+              <p className="text-xs text-slate-400 font-medium">
+                Não fume, vaporize! • Qualidade, atendimento ágil e os melhores pods do mercado.
+              </p>
             </div>
-            <p className="text-xs text-slate-400">
-              Qualidade, atendimento ágil e os melhores pods do mercado.
-            </p>
           </div>
 
-          <div className="flex items-center gap-6 text-xs text-slate-400">
-            <a href="/como-funciona" className="hover:text-[#00F59B] transition-colors">Como Funciona</a>
-            <a href="/promocional-info" className="hover:text-[#00F59B] transition-colors">Regras Promoção</a>
-            <a href="/admin" className="hover:text-[#00F59B] transition-colors">Acesso Restrito</a>
+          <div className="flex items-center gap-6 text-xs text-slate-400 font-semibold">
+            <a href="/como-funciona" className="hover:text-[#76FF03] transition-colors">Como Funciona</a>
+            <a href="/promocional-info" className="hover:text-[#76FF03] transition-colors">Regras Promoção</a>
+            <a href="/admin" className="hover:text-[#76FF03] transition-colors">Acesso Restrito</a>
           </div>
 
           <div className="flex items-center gap-4 text-slate-500">
@@ -1245,14 +1264,14 @@ export default function Home() {
               href="https://github.com/albertoramos98"
               target="_blank"
               rel="noopener noreferrer"
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 hover:text-[#00F59B] transition-all"
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 hover:text-[#76FF03] transition-all"
               title="GitHub Alberto Ramos"
             >
               <Github className="w-4 h-4" />
             </a>
             <a
               href="mailto:alpemc.dev@gmail.com"
-              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 hover:text-[#00F59B] transition-all"
+              className="p-2 rounded-xl bg-white/5 hover:bg-white/10 hover:text-[#76FF03] transition-all"
               title="Contato Desenvolvedor"
             >
               <Mail className="w-4 h-4" />

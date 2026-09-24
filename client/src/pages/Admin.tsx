@@ -1217,28 +1217,35 @@ export default function Admin() {
   if (!autenticado) {
     return (
       <div className="min-h-screen bg-black asphalt-texture flex items-center justify-center p-4">
-        <div className="w-full max-w-md glass-morphism p-8 rounded-xl">
-          <h1 className="text-3xl font-bold neon-glow font-['Orbitron'] mb-2 text-center">ADMIN</h1>
-          <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-center mb-8">Área restrita — HC Vape</p>
+        <div className="w-full max-w-md glass-morphism p-8 rounded-2xl text-center">
+          <div className="flex justify-center mb-4">
+            <img
+              src="/logo.png"
+              alt="HC Vape Logo"
+              className="w-20 h-20 rounded-full object-cover shadow-[0_0_25px_rgba(118,255,3,0.4)] border border-white/20"
+            />
+          </div>
+          <h1 className="text-3xl font-bold neon-glow font-['Orbitron'] mb-1">ADMIN</h1>
+          <p className="text-[#C0C0C0] font-['Roboto_Mono'] text-xs mb-6">HC Vape • Não fume, vaporize! (Desde 2020)</p>
 
           {erro && (
-            <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg flex items-center gap-2">
+            <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg flex items-center gap-2 text-left">
               <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
               <p className="text-red-400 text-sm font-['Roboto_Mono']">{erro}</p>
             </div>
           )}
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4 text-left">
             <div>
-              <label className="block text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">Email</label>
+              <label className="block text-xs font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">Email</label>
               <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']" placeholder="admin@exemplo.com" />
             </div>
             <div>
-              <label className="block text-sm font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">Senha</label>
+              <label className="block text-xs font-bold text-[#C0C0C0] mb-2 font-['Orbitron']">Senha</label>
               <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-black/60 border border-[#39FF14]/50 text-[#E0E0E0] px-4 py-3 rounded-lg focus:border-[#39FF14] focus:outline-none transition-all duration-300 font-['Roboto_Mono']" placeholder="••••••••" />
             </div>
             <button type="submit" disabled={salvando} className="cyber-button w-full disabled:opacity-50 disabled:cursor-not-allowed">
-              {salvando ? 'Entrando...' : 'Entrar'}
+              {salvando ? 'Entrando...' : 'Entrar no Painel'}
             </button>
           </form>
         </div>
@@ -1248,16 +1255,26 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen bg-black asphalt-texture">
-      <header className="sticky top-0 z-30 bg-black/80 backdrop-blur-md border-b border-[#39FF14]/30">
-        <div className="container flex items-center justify-between py-4">
-          <div>
-            <h1 className="text-2xl font-bold neon-glow font-['Orbitron']">ADMIN</h1>
-            <p className="text-xs text-[#C0C0C0] font-['Roboto_Mono']">{usuarioEmail}</p>
+      <header className="sticky top-0 z-30 bg-black/85 backdrop-blur-md border-b border-[#39FF14]/30">
+        <div className="container flex items-center justify-between py-3">
+          <div className="flex items-center gap-3">
+            <img
+              src="/logo.png"
+              alt="HC Vape Logo"
+              className="w-10 h-10 rounded-full object-cover shadow-[0_0_12px_rgba(118,255,3,0.3)] border border-white/20"
+            />
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-xl font-bold neon-glow font-['Orbitron'] leading-none">HC ADMIN</h1>
+                <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#39FF14]/20 text-[#39FF14] border border-[#39FF14]/40 font-['Roboto_Mono']">2020</span>
+              </div>
+              <p className="text-[11px] text-[#C0C0C0] font-['Roboto_Mono'] mt-0.5">{usuarioEmail}</p>
+            </div>
           </div>
           <div className="flex items-center gap-3">
-            <a href="/" className="px-4 py-2 bg-[#39FF14]/10 border border-[#39FF14]/50 text-[#39FF14] rounded-lg font-['Orbitron'] font-bold text-sm hover:bg-[#39FF14]/20 transition-all duration-300">Ver Catálogo</a>
-            <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 bg-red-500/20 border border-red-500 text-red-400 rounded-lg font-['Orbitron'] font-bold text-sm hover:bg-red-500/30 transition-all duration-300">
-              <LogOut className="w-4 h-4" /> Sair
+            <a href="/" className="px-4 py-2 bg-[#39FF14]/10 border border-[#39FF14]/50 text-[#39FF14] rounded-lg font-['Orbitron'] font-bold text-xs hover:bg-[#39FF14]/20 transition-all duration-300">Ver Catálogo</a>
+            <button onClick={handleLogout} className="flex items-center gap-1.5 px-3.5 py-2 bg-red-500/20 border border-red-500/60 text-red-400 rounded-lg font-['Orbitron'] font-bold text-xs hover:bg-red-500/30 transition-all duration-300">
+              <LogOut className="w-3.5 h-3.5" /> Sair
             </button>
           </div>
         </div>

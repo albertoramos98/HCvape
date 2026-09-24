@@ -21,25 +21,30 @@ export default function HowItWorks() {
   }, []);
 
   return (
-    <div className="min-h-screen dark-atmosphere selection:bg-[#00F59B] selection:text-[#04140b]">
+    <div className="min-h-screen dark-atmosphere selection:bg-[#76FF03] selection:text-[#041202]">
       {/* Header */}
-      <header className="sticky top-0 z-30 bg-[#080b11]/85 backdrop-blur-xl border-b border-white/10">
-        <div className="container flex items-center justify-between py-3.5">
+      <header className="sticky top-0 z-30 bg-[#070908]/90 backdrop-blur-xl border-b border-white/10">
+        <div className="container flex items-center justify-between py-3">
           <a href="/" className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#00F59B] to-[#00A86B] flex items-center justify-center font-extrabold text-[#04140b] text-base font-['Outfit'] shadow-lg">
-              HC
-            </div>
+            <img
+              src="/logo.png"
+              alt="HC Vape Logo"
+              className="w-10 h-10 rounded-full object-cover shadow-[0_0_12px_rgba(118,255,3,0.3)] border border-white/20"
+            />
             <div>
-              <span className="text-base font-bold text-slate-100 tracking-tight font-['Outfit']">HC VAPE</span>
-              <span className="text-[10px] text-slate-400 block -mt-0.5">Guia de Compras</span>
+              <div className="flex items-center gap-1.5">
+                <span className="text-base font-black text-slate-100 tracking-tight font-['Outfit']">HC <span className="text-[#76FF03]">VAPE</span></span>
+                <span className="text-[9px] text-[#76FF03] font-bold px-1.5 py-0.2 rounded-full bg-[#76FF03]/10 border border-[#76FF03]/30">Desde 2020</span>
+              </div>
+              <span className="text-[10px] text-slate-400 block -mt-0.5">Não fume, vaporize! • Guia</span>
             </div>
           </a>
 
           <a
             href="/"
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 transition-all duration-200"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#76FF03]/40 transition-all duration-200"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <ArrowLeft className="w-3.5 h-3.5 text-[#76FF03]" />
             <span>Voltar ao Catálogo</span>
           </a>
         </div>

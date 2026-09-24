@@ -24,15 +24,19 @@ export default function PromocionalInfo() {
   const isAtivo = utils.estaEmHorarioPromo(promoConfig);
 
   return (
-    <div className="min-h-screen dark-atmosphere selection:bg-[#00F59B] selection:text-[#04140b] flex flex-col items-center justify-center p-4 sm:p-8">
+    <div className="min-h-screen dark-atmosphere selection:bg-[#76FF03] selection:text-[#041202] flex flex-col items-center justify-center p-4 sm:p-8">
       <div className="max-w-2xl w-full space-y-8 animate-in fade-in duration-500">
         
-        {/* Header */}
+        {/* Header with Logo */}
         <div className="text-center space-y-3">
-          <div className="inline-flex items-center justify-center p-3.5 bg-[#FF3366]/15 rounded-3xl border border-[#FF3366]/30 mb-2">
-            <Flame className="w-8 h-8 text-[#FF3366] animate-pulse" />
+          <div className="flex justify-center mb-3">
+            <img
+              src="/logo.png"
+              alt="HC Vape Logo"
+              className="w-16 h-16 rounded-full object-cover shadow-[0_0_20px_rgba(118,255,3,0.35)] border border-white/20"
+            />
           </div>
-          <h1 className="text-3xl sm:text-5xl font-extrabold text-slate-100 font-['Outfit'] tracking-tight">
+          <h1 className="text-3xl sm:text-5xl font-black text-slate-100 font-['Outfit'] tracking-tight">
             Ofertas Relâmpago
           </h1>
           <p className="text-sm sm:text-base text-slate-400 max-w-md mx-auto">
@@ -95,7 +99,7 @@ export default function PromocionalInfo() {
               "Originalidade Garantida"
             ].map((benefit, i) => (
               <div key={i} className="flex items-center justify-center gap-2 py-3 px-4 rounded-2xl bg-white/[0.03] border border-white/5 text-slate-200 text-xs font-semibold">
-                <CheckCircle2 className="w-4 h-4 text-[#00F59B] flex-shrink-0" />
+                <CheckCircle2 className="w-4 h-4 text-[#76FF03] flex-shrink-0" />
                 <span>{benefit}</span>
               </div>
             ))}
