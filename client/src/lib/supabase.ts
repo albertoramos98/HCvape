@@ -1617,14 +1617,54 @@ export const utils = {
   },
 
   // Ordenar lista de marcas com prioridade para as marcas principais (Ignite, Elfbar, Black Sheep, Waka, Sex Addict)
+  // Identificar a família principal da marca (Ignite, Elf Bar, Black Sheep, Waka, Sex Addict, Lost Vape, Maskking, Extre Bar, etc.)
+  extrairFamiliaMarca(marca: string, nome: string): { familia: string; nomeExibicao: string } {
+    const texto = `${marca || ''} ${nome || ''}`.toLowerCase();
+
+    if (texto.includes('ignite') || /v\s*[-_.]?\d{2,4}\b/.test(texto) || texto.includes('vnano')) {
+      return { familia: 'ignite', nomeExibicao: 'IGNITE' };
+    }
+    if (texto.includes('elf bar') || texto.includes('elfbar') || texto.includes('lost mary')) {
+      return { familia: 'elf bar', nomeExibicao: 'ELF BAR' };
+    }
+    if (texto.includes('black sheep') || texto.includes('blacksheep')) {
+      return { familia: 'black sheep', nomeExibicao: 'BLACK SHEEP' };
+    }
+    if (texto.includes('waka')) {
+      return { familia: 'waka', nomeExibicao: 'WAKA' };
+    }
+    if (texto.includes('sex addic') || texto.includes('sexaddic')) {
+      return { familia: 'sex addict', nomeExibicao: 'SEX ADDICT' };
+    }
+    if (texto.includes('lost vape') || texto.includes('lostvape') || texto.includes('lost vaper')) {
+      return { familia: 'lost vape', nomeExibicao: 'LOST VAPE' };
+    }
+    if (texto.includes('maskking')) {
+      return { familia: 'maskking', nomeExibicao: 'MASKKING' };
+    }
+    if (texto.includes('extre bar') || texto.includes('oxbar')) {
+      return { familia: 'extre bar', nomeExibicao: 'EXTRE BAR' };
+    }
+
+    const m = (marca || '').trim();
+    // Limpa números e sufixos da marca (ex: "BRAND 20K" -> "BRAND")
+    const limpa = m.replace(/\s+\d+.*$/, '').trim();
+    return {
+      familia: (limpa || m || 'outros').toLowerCase(),
+      nomeExibicao: (limpa || m || 'Outros').toUpperCase()
+    };
+  },
+
+  // Ordenar lista de marcas com prioridade para as marcas principais (Ignite, Elfbar, Black Sheep, Waka, Sex Addict, Lost Vape, Maskking, Extre Bar)
   ordenarMarcas(marcas: string[]): string[] {
-    const prioridade = ['ignite', 'elf bar', 'elfbar', 'black sheep', 'waka', 'sex addict'];
+    const prioridade = ['ignite', 'elf bar', 'black sheep', 'waka', 'sex addict', 'lost vape', 'maskking', 'extre bar'];
     return [...marcas].sort((a, b) => {
-      const normA = (a || '').trim().toLowerCase();
-      const normB = (b || '').trim().toLowerCase();
-      if (normA === normB) return 0;
-      const idxA = prioridade.findIndex(m => normA.includes(m) || m.includes(normA));
-      const idxB = prioridade.findIndex(m => normB.includes(m) || m.includes(normB));
+      const famA = utils.extrairFamiliaMarca(a, '').familia;
+      const famB = utils.extrairFamiliaMarca(b, '').familia;
+      if (famA === famB) return (a || '').localeCompare(b || '', 'pt-BR');
+
+      const idxA = prioridade.findIndex(m => famA.includes(m) || m.includes(famA));
+      const idxB = prioridade.findIndex(m => famB.includes(m) || m.includes(famB));
       if (idxA !== -1 && idxB !== -1) {
         if (idxA !== idxB) return idxA - idxB;
       } else if (idxA !== -1) {
@@ -1632,22 +1672,22 @@ export const utils = {
       } else if (idxB !== -1) {
         return 1;
       }
-      return normA.localeCompare(normB, 'pt-BR');
+      return famA.localeCompare(famB, 'pt-BR');
     });
   },
 
-  // Ordenar lista de vapes: 1º por Marca (Ignite, Elfbar, Black Sheep, etc.), 2º dentro da marca por Puffs (do MAIOR para o MENOR por padrão oficial), 3º desempate por Nome
+  // Ordenar lista de vapes: 1º por Família de Marca (Ignite, Elfbar, Black Sheep, etc.), 2º dentro da família por Puffs (do MAIOR para o MENOR por padrão oficial), 3º desempate por Nome
   ordenarProdutosPorMarcaEPuffs(produtos: Produto[], direcaoPuffs: 'asc' | 'desc' = 'desc'): Produto[] {
-    const prioridadeMarcas = ['ignite', 'elf bar', 'elfbar', 'black sheep', 'waka', 'sex addict'];
+    const prioridadeMarcas = ['ignite', 'elf bar', 'black sheep', 'waka', 'sex addict', 'lost vape', 'maskking', 'extre bar'];
 
     return [...produtos].sort((a, b) => {
-      // 1. Marca (Ignite -> Elfbar -> Black Sheep -> Waka -> Sex Addict -> outras A-Z)
-      const marcaA = (a.marca || '').trim().toLowerCase();
-      const marcaB = (b.marca || '').trim().toLowerCase();
+      // 1. Marca / Família da Marca
+      const famA = utils.extrairFamiliaMarca(a.marca, a.nome).familia;
+      const famB = utils.extrairFamiliaMarca(b.marca, b.nome).familia;
 
-      if (marcaA !== marcaB) {
-        const idxA = prioridadeMarcas.findIndex(m => marcaA.includes(m) || m.includes(marcaA));
-        const idxB = prioridadeMarcas.findIndex(m => marcaB.includes(m) || m.includes(marcaB));
+      if (famA !== famB) {
+        const idxA = prioridadeMarcas.findIndex(m => famA.includes(m) || m.includes(famA));
+        const idxB = prioridadeMarcas.findIndex(m => famB.includes(m) || m.includes(famB));
 
         if (idxA !== -1 && idxB !== -1) {
           if (idxA !== idxB) return idxA - idxB;
@@ -1657,13 +1697,14 @@ export const utils = {
           return 1;
         }
 
-        const compMarca = marcaA.localeCompare(marcaB, 'pt-BR');
+        const compMarca = famA.localeCompare(famB, 'pt-BR');
         if (compMarca !== 0) return compMarca;
       }
 
-      // 2. Dentro da mesma marca: Puffs do maior para o menor (ou ascendente se configurado)
-      const puffsA = utils.extrairPuffs(a.nome);
-      const puffsB = utils.extrairPuffs(b.nome);
+      // 2. Dentro da mesma família de marca: Puffs do maior para o menor (ou ascendente se configurado)
+      const puffsA = Math.max(utils.extrairPuffs(a.nome), utils.extrairPuffs(a.marca));
+      const puffsB = Math.max(utils.extrairPuffs(b.nome), utils.extrairPuffs(b.marca));
+
       if (puffsA !== puffsB) {
         return direcaoPuffs === 'asc' ? puffsA - puffsB : puffsB - puffsA;
       }

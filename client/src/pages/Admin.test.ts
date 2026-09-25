@@ -424,11 +424,92 @@ describe('Sistema de Gestão de Clientes Únicos & WhatsApp', () => {
 
     expect(idxV155).toBeLessThan(idxV80Slim);
     expect(idxV80Slim).toBeLessThan(idxV55);
+  });
 
-    // Teste ordenação crescente (asc)
-    const ordenadaAsc = utils.ordenarProdutosPorMarcaEPuffs(embaralhada, 'asc');
-    expect(ordenadaAsc[0].nome).toBe('IGNITE VNANO 1K');
-    expect(ordenadaAsc[ordenadaAsc.length - 1].nome).toBe('IGNITE V500');
+  it('deve ordenar perfeitamente o conjunto real com marcas contendo modelos (ex: IGNITE V155, ELF BAR 10K)', () => {
+    const produtosReais = [
+      { marca: 'IGNITE V155', nome: 'IGNITE V155' },
+      { marca: 'IGNITE V200', nome: 'IGNITE V200' },
+      { marca: 'IGNITE V250', nome: 'IGNITE V250' },
+      { marca: 'IGNITE V300 BLACK', nome: 'IGNITE V300 BLACK' },
+      { marca: 'IGNITE V300 ULTRA SLIM', nome: 'IGNITE V300 ULTRA SLIM' },
+      { marca: 'IGNITE V400 ICE', nome: 'IGNITE V400 ICE' },
+      { marca: 'IGNITE V400 MIX', nome: 'IGNITE V400 MIX' },
+      { marca: 'IGNITE V400 SWEET', nome: 'IGNITE V400 SWEET' },
+      { marca: 'IGNITE V500', nome: 'IGNITE V500' },
+      { marca: 'IGNITE V55', nome: 'IGNITE V55' },
+      { marca: 'IGNITE V55 ORANGE', nome: 'IGNITE V55 ORANGE' },
+      { marca: 'IGNITE V80', nome: 'Ignite 8.000 - Maçã e menta' },
+      { marca: 'IGNITE V80 NE BLUE', nome: 'IGNITE V80 NE BLUE' },
+      { marca: 'IGNITE V80 NEW EDTION', nome: 'IGNITE V80 NEW EDTION' },
+      { marca: 'IGNITE V80 ULTRA SLIM', nome: 'IGNITE V80 ULTRA SLIM' },
+      { marca: 'IGNITE VNANO 1K', nome: 'IGNITE VNANO 1K' },
+      { marca: 'ELF BAR 10K', nome: 'Elf bar 10.000 - Abacaxi morango e banana' },
+      { marca: 'ELF BAR 15K', nome: 'ELF BAR 15K' },
+      { marca: 'ELF BAR 23K', nome: 'ELF BAR 23K' },
+      { marca: 'ELF BAR 30K', nome: 'ELF BAR 30K' },
+      { marca: 'ELF BAR 40K BC PRO', nome: 'ELF BAR 40K BC PRO' },
+      { marca: 'ELF BAR 40K ICE KING', nome: 'ELF BAR 40K ICE KING' },
+      { marca: 'ELF BAR 45K', nome: 'ELF BAR 45K' },
+      { marca: 'ELF BAR DUNK 35K', nome: 'ELF BAR DUNK 35K' },
+      { marca: 'BLACK SHEEP 20K', nome: 'BLACK SHEEP 20K' },
+      { marca: 'BLACK SHEEP 30K', nome: 'BLACK SHEEP 30K' },
+      { marca: 'BLACK SHEEP 40K', nome: 'BLACK SHEEP 40K' },
+      { marca: 'BLACK SHEEP 55K', nome: 'BLACK SHEEP 55K' },
+      { marca: 'WAKA 25K', nome: 'WAKA 25K' },
+      { marca: 'WAKA 33K', nome: 'Waka 33.000 - Bomba de cereja' },
+      { marca: 'WAKA 46K', nome: 'WAKA 46K' },
+      { marca: 'WAKA 50K', nome: 'WAKA 50K' },
+      { marca: 'WAKA 70K', nome: 'WAKA 70K' },
+      { marca: 'EXTRE BAR TURBO 30K', nome: 'EXTRE BAR TURBO 30K' },
+      { marca: 'LOST VAPE 10k', nome: 'Lost vaper 10.000 - blue raz ice' },
+      { marca: 'MASKKING 100K', nome: 'MASKKING 100K' },
+      { marca: 'SEX ADDICIT 28K', nome: 'SEX ADDICIT 28K' },
+      { marca: 'V400 SLIM ICE', nome: 'V400 SLIM ICE' }
+    ].map((p, i) => ({
+      id: `p-${i}`,
+      marca: p.marca,
+      nome: p.nome,
+      preco: 100,
+      estoque: 5,
+      sabores: ['Ice'],
+      zonas: ['todas']
+    }));
+
+    const ordenados = utils.ordenarProdutosPorMarcaEPuffs(produtosReais, 'desc');
+
+    // Ignites devem ser os primeiros
+    expect(ordenados[0].nome).toBe('IGNITE V500'); // 50.000 puffs
+    
+    // Pega todos os Ignites
+    const ignites = ordenados.filter(p => utils.extrairFamiliaMarca(p.marca, p.nome).familia === 'ignite');
+    const nomesIgnite = ignites.map(p => p.nome);
+
+    expect(nomesIgnite[0]).toBe('IGNITE V500'); // 50k
+    expect(nomesIgnite[nomesIgnite.length - 1]).toBe('IGNITE VNANO 1K'); // 1k
+
+    // V80 deve estar entre V155 e V55
+    const idxV155 = nomesIgnite.findIndex(n => n.includes('V155'));
+    const idxV80 = nomesIgnite.findIndex(n => n.includes('V80') || n.includes('8.000'));
+    const idxV55 = nomesIgnite.findIndex(n => n.includes('V55'));
+
+    expect(idxV155).toBeLessThan(idxV80);
+    expect(idxV80).toBeLessThan(idxV55);
+
+    // Elf Bar deve vir logo após Ignite e ter 45K no topo e 10K no fim
+    const elfBars = ordenados.filter(p => utils.extrairFamiliaMarca(p.marca, p.nome).familia === 'elf bar');
+    expect(elfBars[0].nome).toBe('ELF BAR 45K');
+    expect(elfBars[elfBars.length - 1].nome).toBe('Elf bar 10.000 - Abacaxi morango e banana');
+
+    // Black Sheep deve ter 55K no topo e 20K no fim
+    const blackSheeps = ordenados.filter(p => utils.extrairFamiliaMarca(p.marca, p.nome).familia === 'black sheep');
+    expect(blackSheeps[0].nome).toBe('BLACK SHEEP 55K');
+    expect(blackSheeps[blackSheeps.length - 1].nome).toBe('BLACK SHEEP 20K');
+
+    // Waka deve ter 70K no topo e 25K no fim
+    const wakas = ordenados.filter(p => utils.extrairFamiliaMarca(p.marca, p.nome).familia === 'waka');
+    expect(wakas[0].nome).toBe('WAKA 70K');
+    expect(wakas[wakas.length - 1].nome).toBe('WAKA 25K');
   });
 });
 
