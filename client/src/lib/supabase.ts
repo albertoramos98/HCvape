@@ -1514,10 +1514,15 @@ export const utils = {
     return dias.map(d => nomes[d]).join(', ');
   },
 
-  // Extrair número de puffs ou numeração de modelo pós-V (ex: V250, V150, V80, V55, V50, V40, V25, V15, 10k, 15000)
+  // Extrair número de puffs ou numeração de modelo pós-V (ex: V500, V400, V300, V250, V200, V155, V80, V55, VNANO 1K)
   extrairPuffs(nome: string): number {
     if (!nome) return 0;
     const texto = nome.toLowerCase();
+
+    // 0. Caso especial VNANO / NANO (1.000 puffs)
+    if (texto.includes('vnano') || texto.includes('nano')) {
+      return 1000;
+    }
 
     // 1. Caso "100k", "70k", "55k", "50k", "46k", "40k", "35k", "30k", "28k", "25k", "20k", "15k", "10k", "1k"
     const matchK = texto.match(/(\d+(?:[.,]\d+)?)\s*k\b/i);
@@ -1531,7 +1536,7 @@ export const utils = {
     if (matchV) {
       const vNum = parseInt(matchV[1], 10);
       if (vNum < 1000) {
-        // Converte V500 => 50000, V400 => 40000, V300 => 30000, V250 => 25000, V155 => 15500, V80 => 8000, V55 => 5500, etc.
+        // Converte V500 => 50000, V400 => 40000, V300 => 30000, V250 => 25000, V200 => 20000, V155 => 15500, V80 => 8000, V55 => 5500, etc.
         return vNum * 100;
       }
       return vNum;
@@ -1589,8 +1594,8 @@ export const utils = {
     });
   },
 
-  // Ordenar lista de vapes: 1º por Marca (Ignite, Elfbar, Black Sheep, etc.), 2º dentro da marca por Puffs (do MENOR para o MAIOR por padrão), 3º desempate por Nome
-  ordenarProdutosPorMarcaEPuffs(produtos: Produto[], direcaoPuffs: 'asc' | 'desc' = 'asc'): Produto[] {
+  // Ordenar lista de vapes: 1º por Marca (Ignite, Elfbar, Black Sheep, etc.), 2º dentro da marca por Puffs (do MAIOR para o MENOR por padrão oficial), 3º desempate por Nome
+  ordenarProdutosPorMarcaEPuffs(produtos: Produto[], direcaoPuffs: 'asc' | 'desc' = 'desc'): Produto[] {
     const prioridadeMarcas = ['ignite', 'elf bar', 'elfbar', 'black sheep', 'waka', 'sex addict'];
 
     return [...produtos].sort((a, b) => {
