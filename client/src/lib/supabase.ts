@@ -1,11 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Variáveis de ambiente Supabase não configuradas');
-}
+const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || 'https://placeholder-supabase.co';
+const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || 'placeholder-anon-key';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
@@ -1514,60 +1510,106 @@ export const utils = {
     return dias.map(d => nomes[d]).join(', ');
   },
 
-  // Extrair número de puffs ou numeração de modelo pós-V (ex: V500, V400, V300, V250, V200, V155, V80, V55, VNANO 1K)
+  // Extrair número de puffs ou numeração de modelo pós-V (ex: V500=50k, V400=40k, V300=30k, V250=25k, V200=20k, V155=15.5k, V80=8k, V55=5.5k, VNANO=1k, "8.000", "40.000 MIX")
   extrairPuffs(nome: string): number {
     if (!nome) return 0;
-    const texto = nome.toLowerCase();
+    const texto = nome.trim().toLowerCase();
 
-    // 0. Caso especial VNANO / NANO (1.000 puffs)
+    // 1. Caso especial VNANO / NANO (1.000 puffs)
     if (texto.includes('vnano') || texto.includes('nano')) {
+      const matchNanoK = texto.match(/nano\s*[-_]?\s*(\d+)\s*k/i);
+      if (matchNanoK) return parseInt(matchNanoK[1], 10) * 1000;
       return 1000;
     }
 
-    // 1. Caso "100k", "70k", "55k", "50k", "46k", "40k", "35k", "30k", "28k", "25k", "20k", "15k", "10k", "1k"
+    // 2. Notação 'K' explícita (ex: "50k", "40k", "30k", "25k", "20k", "15.5k", "15,5k", "8k", "5.5k", "1k")
     const matchK = texto.match(/(\d+(?:[.,]\d+)?)\s*k\b/i);
     if (matchK) {
       const num = parseFloat(matchK[1].replace(',', '.'));
       return Math.round(num * 1000);
     }
 
-    // 2. Padrão pós-V explícito (ex: "IGNITE V500", "V400", "V300", "V250", "V200", "V155", "V80", "V55", "V50", "V40", "V25", "V15")
-    const matchV = texto.match(/(?:^|[^a-z0-9]|ignite)\s*v\s*[-_]?\s*(\d+)/i) || texto.match(/v\s*[-_]?\s*(\d+)/i);
+    // 3. Notação com sufixo "puffs" / "puf" (ex: "50.000 puffs", "15.500 puffs", "8.000 puffs", "8000 puff")
+    const matchPuffs = texto.match(/(\d{1,3}(?:[.,]\d{3})+|\d+)\s*(?:puffs?|puf)\b/i);
+    if (matchPuffs) {
+      const raw = matchPuffs[1].replace(/\./g, '').replace(',', '.');
+      const num = parseFloat(raw);
+      if (!isNaN(num) && num > 0) return Math.round(num);
+    }
+
+    // 4. Padrão V-Series explícito (ex: "V500", "V400", "V300", "V250", "V200", "V155", "V80", "V55", "V50", "V40", "V25", "V15")
+    const matchV = texto.match(/(?:^|[^a-z0-9]|ignite)\s*v\s*[-_.]?\s*(\d+)/i) || texto.match(/\bv\s*[-_.]?\s*(\d+)/i);
     if (matchV) {
       const vNum = parseInt(matchV[1], 10);
-      if (vNum < 1000) {
-        // Converte V500 => 50000, V400 => 40000, V300 => 30000, V250 => 25000, V200 => 20000, V155 => 15500, V80 => 8000, V55 => 5500, etc.
-        return vNum * 100;
-      }
+      if (vNum === 500) return 50000;
+      if (vNum === 400) return 40000;
+      if (vNum === 300) return 30000;
+      if (vNum === 250) return 25000;
+      if (vNum === 200) return 20000;
+      if (vNum === 155) return 15500;
+      if (vNum === 80) return 8000;
+      if (vNum === 55) return 5500;
+      if (vNum === 50) return 5000;
+      if (vNum === 40) return 4000;
+      if (vNum === 25) return 2500;
+      if (vNum === 15) return 1500;
+      if (vNum < 1000) return vNum * 100;
       return vNum;
     }
 
-    // 3. Caso "15000 puffs", "10.000 puffs", "8000 puff"
-    const matchPuffs = texto.match(/(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:puffs?|puf)/i);
-    if (matchPuffs) {
-      const num = parseInt(matchPuffs[1].replace(/\./g, ''), 10);
-      if (!isNaN(num)) return num;
+    // 5. Notação com separador de milhar com ponto (ex: "50.000", "40.000", "30.000", "25.000", "20.000", "15.500", "8.000", "5.500", "1.000")
+    const matchMilhar = texto.match(/\b(\d{1,3})\.(\d{3})\b/);
+    if (matchMilhar) {
+      const num = parseInt(matchMilhar[1] + matchMilhar[2], 10);
+      if (!isNaN(num) && num > 0) return num;
     }
 
-    // 4. Caso número direto de 4 ou mais dígitos (ex: "10000", "8000", "5000", "4000")
+    // Decimal com vírgula ou ponto de milhar reduzido (ex: "15,500", "5,500", "15.5", "5.5")
+    const matchDecimal = texto.match(/\b(\d{1,2})[,.](\d{1,3})\b/);
+    if (matchDecimal) {
+      const parteInt = parseInt(matchDecimal[1], 10);
+      const parteDec = matchDecimal[2];
+      if (parteDec.length === 3) {
+        return parseInt(matchDecimal[1] + parteDec, 10);
+      } else {
+        const numFloat = parseFloat(`${parteInt}.${parteDec}`);
+        if (numFloat <= 100) return Math.round(numFloat * 1000);
+      }
+    }
+
+    // 6. Número direto de 4 a 6 dígitos (ex: "50000", "40000", "20000", "10000", "8000", "5000", "1000")
     const matchNum = texto.match(/\b(\d{4,6})\b/);
     if (matchNum) {
       const num = parseInt(matchNum[1], 10);
       if (!isNaN(num)) return num;
     }
 
-    // 5. Caso número grudado em letras (ex: "MO20000", "BC10000", "G8000", "V55")
+    // 7. Número grudado em letras de modelo (ex: "MO20000", "BC10000", "GH23000", "G8000")
     const matchEmbedded = texto.match(/[a-z]\s*[-_]?\s*(\d{2,6})/i);
     if (matchEmbedded) {
       const num = parseInt(matchEmbedded[1], 10);
+      if (num === 155) return 15500;
+      if (num === 55) return 5500;
       if (num < 1000) return num * 100;
       if (!isNaN(num)) return num;
     }
 
-    // 6. Número isolado de 2 ou 3 dígitos (ex: "55", "50", "80", "150")
+    // 8. Número isolado de 2 ou 3 dígitos (ex: "500", "400", "300", "250", "200", "155", "80", "55")
     const matchDoisDigitos = texto.match(/\b(\d{2,3})\b/);
     if (matchDoisDigitos) {
       const num = parseInt(matchDoisDigitos[1], 10);
+      if (num === 500) return 50000;
+      if (num === 400) return 40000;
+      if (num === 300) return 30000;
+      if (num === 250) return 25000;
+      if (num === 200) return 20000;
+      if (num === 155) return 15500;
+      if (num === 80) return 8000;
+      if (num === 55) return 5500;
+      if (num === 50) return 5000;
+      if (num === 40) return 4000;
+      if (num === 25) return 2500;
+      if (num === 15) return 1500;
       if (!isNaN(num)) return num * 100;
     }
 

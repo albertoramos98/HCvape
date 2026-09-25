@@ -94,7 +94,7 @@ export default function Admin() {
   const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'relogio_mensal' | 'pedidos' | 'clientes' | 'trocas' | 'metricas' | 'saude' | 'configuracoes' | 'herobanner'>('produtos');
   const [subAbaEstoque, setSubAbaEstoque] = useState<'expressos' | 'promocional' | 'todos'>('expressos');
   const [filtroZonaEstoqueExpresso, setFiltroZonaEstoqueExpresso] = useState<'todas' | 'norte' | 'sul_oeste'>('todas');
-  const [direcaoPuffs, setDirecaoPuffs] = useState<'asc' | 'desc'>('asc');
+  const [direcaoPuffs, setDirecaoPuffs] = useState<'asc' | 'desc'>('desc');
   const [pesquisa, setPesquisa] = useState('');
   const [filtroZonaProduto, setFiltroZonaProduto] = useState<string>('todas');
   const [filtroZonaPedido, setFiltroZonaPedido] = useState<string>('todas');
@@ -2413,17 +2413,17 @@ export default function Admin() {
                 <div>
                   <h2 className="text-2xl font-bold neon-glow font-['Outfit']">Gerenciamento de Estoque</h2>
                   <p className="text-xs text-slate-400 mt-0.5">
-                    Vapes agrupados por Marca e Puffs ({direcaoPuffs === 'asc' ? 'do menor para o maior — ex: V80 antes de V150/V250/V500' : 'do maior para o menor'})
+                    Vapes agrupados por Marca e Puffs ({direcaoPuffs === 'desc' ? 'do maior para o menor — ex: V500 ➔ V400 ➔ V80 ➔ V55 ➔ VNANO' : 'do menor para o maior — ex: VNANO ➔ V55 ➔ V80 ➔ V500'})
                   </p>
                 </div>
                 <div className="flex flex-wrap gap-2.5">
                   <button
-                    onClick={() => setDirecaoPuffs(prev => prev === 'asc' ? 'desc' : 'asc')}
+                    onClick={() => setDirecaoPuffs(prev => prev === 'desc' ? 'asc' : 'desc')}
                     className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-white/20 text-slate-200 rounded-lg font-bold text-xs hover:bg-white/10 transition-all"
                     title="Alternar ordenação de Puffs (crescente / decrescente)"
                   >
-                    {direcaoPuffs === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#76FF03]" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-400" />}
-                    Puffs: {direcaoPuffs === 'asc' ? 'Menor → Maior' : 'Maior → Menor'}
+                    {direcaoPuffs === 'desc' ? <ArrowDown className="w-3.5 h-3.5 text-[#76FF03]" /> : <ArrowUp className="w-3.5 h-3.5 text-sky-400" />}
+                    Puffs: {direcaoPuffs === 'desc' ? 'Maior → Menor (Padrão)' : 'Menor → Maior'}
                   </button>
                   <button onClick={handleExportarProdutos} className="flex items-center gap-2 px-3.5 py-2 bg-[#76FF03]/15 border border-[#76FF03]/50 text-[#76FF03] rounded-lg font-bold text-xs hover:bg-[#76FF03]/25 transition-all">
                     <Download className="w-4 h-4" /> Exportar

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { utils } from '../lib/supabase';
 
 // Simulação da lógica de filtragem que está dentro do useMemo em Admin.tsx
 const filtrarPedidos = (pedidos: any[], filtroData: string) => {
@@ -354,43 +355,7 @@ describe('Sistema de Gestão de Clientes Únicos & WhatsApp', () => {
     expect(filtrados.map(c => c.nome)).toEqual(['Cliente 2026', 'Cliente 2027']);
   });
 
-  it('deve ordenar a lista oficial de IGNITES exatamente na ordem decrescente de puffs', () => {
-    const extrairPuffs = (nome: string): number => {
-      if (!nome) return 0;
-      const texto = nome.toLowerCase();
-      if (texto.includes('nano') || texto.includes('vnano')) return 1000;
-      const matchK = texto.match(/(\d+(?:[.,]\d+)?)\s*k\b/i);
-      if (matchK) return Math.round(parseFloat(matchK[1].replace(',', '.')) * 1000);
-      const matchV = texto.match(/(?:^|[^a-z0-9]|ignite)\s*v\s*[-_]?\s*(\d+)/i) || texto.match(/v\s*[-_]?\s*(\d+)/i);
-      if (matchV) {
-        const vNum = parseInt(matchV[1], 10);
-        return vNum < 1000 ? vNum * 100 : vNum;
-      }
-      const matchPuffs = texto.match(/(\d{1,3}(?:\.\d{3})+|\d+)\s*(?:puffs?|puf)/i);
-      if (matchPuffs) return parseInt(matchPuffs[1].replace(/\./g, ''), 10);
-      const matchNum = texto.match(/\b(\d{4,6})\b/);
-      if (matchNum) return parseInt(matchNum[1], 10);
-      const matchEmbedded = texto.match(/[a-z]\s*[-_]?\s*(\d{2,6})/i);
-      if (matchEmbedded) {
-        const num = parseInt(matchEmbedded[1], 10);
-        return num < 1000 ? num * 100 : num;
-      }
-      const matchDoisDigitos = texto.match(/\b(\d{2,3})\b/);
-      if (matchDoisDigitos) return parseInt(matchDoisDigitos[1], 10) * 100;
-      return 0;
-    };
-
-    const ordenarIgnites = (nomes: string[]) => {
-      return [...nomes].sort((a, b) => {
-        const puffsA = extrairPuffs(a);
-        const puffsB = extrairPuffs(b);
-        if (puffsA !== puffsB) {
-          return puffsB - puffsA; // Decrescente (do maior para o menor)
-        }
-        return a.localeCompare(b, 'pt-BR');
-      });
-    };
-
+  it('deve ordenar a lista oficial de IGNITES exatamente na ordem decrescente de puffs usando utils', () => {
     const listaOriginal = [
       'IGNITE V500',
       'IGNITE V400 ICE',
@@ -410,31 +375,60 @@ describe('Sistema de Gestão de Clientes Únicos & WhatsApp', () => {
       'IGNITE VNANO 1K'
     ];
 
-    // Embaralha para testar ordenação
-    const embaralhada = [...listaOriginal].reverse();
-    const ordenada = ordenarIgnites(embaralhada);
+    expect(utils.extrairPuffs('IGNITE V500')).toBe(50000);
+    expect(utils.extrairPuffs('IGNITE V400 ICE')).toBe(40000);
+    expect(utils.extrairPuffs('IGNITE V300 ULTRA SLIM')).toBe(30000);
+    expect(utils.extrairPuffs('IGNITE V250')).toBe(25000);
+    expect(utils.extrairPuffs('IGNITE V200')).toBe(20000);
+    expect(utils.extrairPuffs('IGNITE V155')).toBe(15500);
+    expect(utils.extrairPuffs('IGNITE V80 NE BLUE')).toBe(8000);
+    expect(utils.extrairPuffs('IGNITE V80 NEW EDTION')).toBe(8000);
+    expect(utils.extrairPuffs('IGNITE V80 ULTRA SLIM')).toBe(8000);
+    expect(utils.extrairPuffs('IGNITE V80')).toBe(8000);
+    expect(utils.extrairPuffs('IGNITE V55')).toBe(5500);
+    expect(utils.extrairPuffs('IGNITE V55 ORANGE')).toBe(5500);
+    expect(utils.extrairPuffs('IGNITE VNANO 1K')).toBe(1000);
 
-    expect(extrairPuffs('IGNITE V500')).toBe(50000);
-    expect(extrairPuffs('IGNITE V400 ICE')).toBe(40000);
-    expect(extrairPuffs('IGNITE V300 ULTRA SLIM')).toBe(30000);
-    expect(extrairPuffs('IGNITE V250')).toBe(25000);
-    expect(extrairPuffs('IGNITE V200')).toBe(20000);
-    expect(extrairPuffs('IGNITE V155')).toBe(15500);
-    expect(extrairPuffs('IGNITE V80 ULTRA SLIM')).toBe(8000);
-    expect(extrairPuffs('IGNITE V55')).toBe(5500);
-    expect(extrairPuffs('IGNITE VNANO 1K')).toBe(1000);
+    // Formatos com ponto, k, sem V
+    expect(utils.extrairPuffs('IGNITE 8.000')).toBe(8000);
+    expect(utils.extrairPuffs('IGNITE 40.000 MIX')).toBe(40000);
+    expect(utils.extrairPuffs('IGNITE 50.000')).toBe(50000);
+    expect(utils.extrairPuffs('IGNITE 15.500')).toBe(15500);
+    expect(utils.extrairPuffs('IGNITE 5.500')).toBe(5500);
+    expect(utils.extrairPuffs('BLACK SHEEP 30K')).toBe(30000);
+    expect(utils.extrairPuffs('ELFBAR BC10000')).toBe(10000);
+
+    // Teste com objetos Produto ordenados decrescente
+    const produtosMock = listaOriginal.map((nome, index) => ({
+      id: `p-${index}`,
+      marca: 'IGNITE',
+      nome,
+      preco: 100,
+      estoque: 10,
+      sabores: ['Ice'],
+      zonas: ['todas']
+    }));
+
+    // Embaralha
+    const embaralhada = [...produtosMock].reverse();
+    const ordenadaDesc = utils.ordenarProdutosPorMarcaEPuffs(embaralhada, 'desc');
 
     // O primeiro DEVE ser o V500 (50.000 puffs) e o último o VNANO (1.000 puffs)
-    expect(ordenada[0]).toBe('IGNITE V500');
-    expect(ordenada[ordenada.length - 1]).toBe('IGNITE VNANO 1K');
+    expect(ordenadaDesc[0].nome).toBe('IGNITE V500');
+    expect(ordenadaDesc[ordenadaDesc.length - 1].nome).toBe('IGNITE VNANO 1K');
 
     // V80 ULTRA SLIM deve ficar no bloco de 8.000 puffs (após V155 de 15.5k e antes de V55 de 5.5k)
-    const idxV155 = ordenada.findIndex(n => n.includes('V155'));
-    const idxV80Slim = ordenada.findIndex(n => n.includes('V80 ULTRA SLIM'));
-    const idxV55 = ordenada.findIndex(n => n.includes('V55'));
+    const idxV155 = ordenadaDesc.findIndex(p => p.nome.includes('V155'));
+    const idxV80Slim = ordenadaDesc.findIndex(p => p.nome.includes('V80 ULTRA SLIM'));
+    const idxV55 = ordenadaDesc.findIndex(p => p.nome.includes('V55'));
 
     expect(idxV155).toBeLessThan(idxV80Slim);
     expect(idxV80Slim).toBeLessThan(idxV55);
+
+    // Teste ordenação crescente (asc)
+    const ordenadaAsc = utils.ordenarProdutosPorMarcaEPuffs(embaralhada, 'asc');
+    expect(ordenadaAsc[0].nome).toBe('IGNITE VNANO 1K');
+    expect(ordenadaAsc[ordenadaAsc.length - 1].nome).toBe('IGNITE V500');
   });
 });
 
