@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles, MapPin, Compass, Clock, Target, Flame, Eye, EyeOff, Gauge, Award, ChevronRight, ChevronLeft, Check, Layers, Phone, ArrowRight, ShieldCheck, ShieldAlert, AlertTriangle, MessageSquare, Repeat } from 'lucide-react';
-import { authService, produtosService, pedidosService, imagemService, visitasService, trocasService, Produto, Pedido, Troca, utils, configService, PromoSchedule, HeroBannerConfig, HeroSlideConfig, DEFAULT_HERO_BANNER_CONFIG, ZonaId, ZONAS_DISPONIVEIS } from '@/lib/supabase';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles, MapPin, Compass, Clock, Target, Flame, Eye, EyeOff, Gauge, Award, ChevronRight, ChevronLeft, Check, Layers, Phone, ArrowRight, ShieldCheck, ShieldAlert, AlertTriangle, MessageSquare, Repeat, UserCheck, UserPlus, CalendarRange, History } from 'lucide-react';
+import { authService, produtosService, pedidosService, imagemService, visitasService, trocasService, clientesService, Produto, Pedido, Troca, Cliente, InteracaoCliente, ClienteRelatorio, utils, configService, PromoSchedule, HeroBannerConfig, HeroSlideConfig, DEFAULT_HERO_BANNER_CONFIG, ZonaId, ZONAS_DISPONIVEIS, normalizarTelefoneWhatsApp, formatarTelefoneExibicao } from '@/lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Legend } from 'recharts';
 import { HeroBanner } from '@/components/HeroBanner';
 
@@ -91,13 +91,45 @@ export default function Admin() {
   const [dataFimMetricas, setDataFimMetricas] = useState<string>('');
   const [agrupamentoMetricas, setAgrupamentoMetricas] = useState<'dia' | 'semana' | 'mes'>('dia');
   const [statusPedidoFiltro, setStatusPedidoFiltro] = useState<'todos' | 'concluidos'>('todos');
-  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'relogio_mensal' | 'pedidos' | 'trocas' | 'metricas' | 'saude' | 'configuracoes' | 'herobanner'>('produtos');
+  const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'relogio_mensal' | 'pedidos' | 'clientes' | 'trocas' | 'metricas' | 'saude' | 'configuracoes' | 'herobanner'>('produtos');
   const [subAbaEstoque, setSubAbaEstoque] = useState<'expressos' | 'promocional' | 'todos'>('expressos');
   const [filtroZonaEstoqueExpresso, setFiltroZonaEstoqueExpresso] = useState<'todas' | 'norte' | 'sul_oeste'>('todas');
-  const [direcaoPuffs, setDirecaoPuffs] = useState<'asc' | 'desc'>('desc');
+  const [direcaoPuffs, setDirecaoPuffs] = useState<'asc' | 'desc'>('asc');
   const [pesquisa, setPesquisa] = useState('');
   const [filtroZonaProduto, setFiltroZonaProduto] = useState<string>('todas');
   const [filtroZonaPedido, setFiltroZonaPedido] = useState<string>('todas');
+
+  // Estados para Gestão Única de Clientes & Relatórios WhatsApp
+  const [clientes, setClientes] = useState<Cliente[]>([]);
+  const [interacoesCliente, setInteracoesCliente] = useState<InteracaoCliente[]>([]);
+  const [usandoFallbackClientes, setUsandoFallbackClientes] = useState(false);
+  const [pesquisaCliente, setPesquisaCliente] = useState('');
+  const [filtroPeriodoCliente, setFiltroPeriodoCliente] = useState<'tudo' | 'hoje' | '7d' | '30d' | 'mes_atual' | 'ano_atual' | '2026_2027' | 'custom'>('tudo');
+  const [dataInicioCliente, setDataInicioCliente] = useState<string>('2026-09-01');
+  const [dataFimCliente, setDataFimCliente] = useState<string>('2027-09-30');
+  const [filtroTipoCliente, setFiltroTipoCliente] = useState<'todos' | 'com_compras' | 'com_trocas' | 'recorrentes'>('todos');
+  const [clienteSelecionado, setClienteSelecionado] = useState<Cliente | null>(null);
+  const [modalClienteDetalhesAberto, setModalClienteDetalhesAberto] = useState(false);
+  const [modalNovoClienteAberto, setModalNovoClienteAberto] = useState(false);
+  const [modalNovaInteracaoAberto, setModalNovaInteracaoAberto] = useState(false);
+  const [formNovoCliente, setFormNovoCliente] = useState({
+    nome: '',
+    telefone: '',
+    zona: 'norte',
+    observacoes: ''
+  });
+  const [formNovaInteracao, setFormNovaInteracao] = useState<{
+    tipo: 'contato_whatsapp' | 'pedido' | 'troca' | 'duvida' | 'outro';
+    descricao: string;
+    valor: string;
+  }>({
+    tipo: 'contato_whatsapp',
+    descricao: '',
+    valor: ''
+  });
+  const [salvandoCliente, setSalvandoCliente] = useState(false);
+  const [salvandoInteracao, setSalvandoInteracao] = useState(false);
+  const [sincronizandoClientes, setSincronizandoClientes] = useState(false);
 
   // Estados para Trocas & Garantia
   const [trocas, setTrocas] = useState<Troca[]>([]);
@@ -698,7 +730,7 @@ export default function Admin() {
   const carregarTudo = async () => {
     try {
       setErro(null);
-      const [produtosData, pedidosData, pedidosExcluidosData, marcasData, metricasData, configData, heroData, trocasData] = await Promise.all([
+      const [produtosData, pedidosData, pedidosExcluidosData, marcasData, metricasData, configData, heroData, trocasData, clientesData, interacoesData] = await Promise.all([
         produtosService.obterTodos(),
         pedidosService.obterTodos(),
         pedidosService.obterExcluidos(),
@@ -720,6 +752,14 @@ export default function Admin() {
         trocasService.obterTodas().catch(err => {
           console.warn('Erro ao obter trocas no carregarTudo:', err);
           return { trocas: [], usandoFallback: true };
+        }),
+        clientesService.obterTodos().catch(err => {
+          console.warn('Erro ao obter clientes no carregarTudo:', err);
+          return { clientes: [], usandoFallback: true };
+        }),
+        clientesService.obterInteracoes().catch(err => {
+          console.warn('Erro ao obter interações no carregarTudo:', err);
+          return { interacoes: [], usandoFallback: true };
         })
       ]);
       setProdutos(produtosData);
@@ -731,6 +771,9 @@ export default function Admin() {
       setHeroConfig(heroData);
       setTrocas(trocasData.trocas);
       setUsandoFallbackTrocas(trocasData.usandoFallback);
+      setClientes(clientesData.clientes);
+      setUsandoFallbackClientes(clientesData.usandoFallback);
+      setInteracoesCliente(interacoesData.interacoes);
       setEstoqueEditado({});
     } catch (err) {
       console.error('Erro ao carregar dados:', err);
@@ -796,6 +839,9 @@ export default function Admin() {
       setPedidos([]);
       setPedidosExcluidos([]);
       setMarcas([]);
+      setClientes([]);
+      setInteracoesCliente([]);
+      setClienteSelecionado(null);
       setEstoqueEditado({});
       setErro(null);
       setSucesso(null);
@@ -1881,6 +1927,327 @@ export default function Admin() {
     document.body.removeChild(link);
   };
 
+  // =========================================================================
+  // --- LÓGICA DE CLIENTES & RELATÓRIOS WHATSAPP (CADASTRO ÚNICO) ---
+  // =========================================================================
+
+  // Aplicar atalhos rápidos de período
+  const handleAplicarAtalhoPeriodoCliente = (tipo: string) => {
+    setFiltroPeriodoCliente(tipo as any);
+    const agora = new Date();
+    const anoAtual = agora.getFullYear();
+    const mesAtual = agora.getMonth();
+
+    if (tipo === 'hoje') {
+      const hojeStr = agora.toISOString().split('T')[0];
+      setDataInicioCliente(hojeStr);
+      setDataFimCliente(hojeStr);
+    } else if (tipo === '7d') {
+      const d7 = new Date(agora.getTime() - 7 * 24 * 60 * 60 * 1000);
+      setDataInicioCliente(d7.toISOString().split('T')[0]);
+      setDataFimCliente(agora.toISOString().split('T')[0]);
+    } else if (tipo === '30d') {
+      const d30 = new Date(agora.getTime() - 30 * 24 * 60 * 60 * 1000);
+      setDataInicioCliente(d30.toISOString().split('T')[0]);
+      setDataFimCliente(agora.toISOString().split('T')[0]);
+    } else if (tipo === 'mes_atual') {
+      const primeiroDia = new Date(anoAtual, mesAtual, 1);
+      const ultimoDia = new Date(anoAtual, mesAtual + 1, 0);
+      setDataInicioCliente(primeiroDia.toISOString().split('T')[0]);
+      setDataFimCliente(ultimoDia.toISOString().split('T')[0]);
+    } else if (tipo === 'ano_atual') {
+      setDataInicioCliente(`${anoAtual}-01-01`);
+      setDataFimCliente(`${anoAtual}-12-31`);
+    } else if (tipo === '2026_2027') {
+      setDataInicioCliente('2026-09-01');
+      setDataFimCliente('2027-09-30');
+    } else if (tipo === 'tudo') {
+      setDataInicioCliente('2020-01-01');
+      setDataFimCliente('2030-12-31');
+    }
+  };
+
+  // Relatório consolidado por período (REGRA FUNDAMENTAL: 1 CLIENTE = 1 LINHA NO RELATÓRIO)
+  const relatorioClientesConsolidado = useMemo(() => {
+    const dInicio = new Date(`${dataInicioCliente}T00:00:00`);
+    const dFim = new Date(`${dataFimCliente}T23:59:59`);
+
+    // Mapear interações no período por telefone_normalizado
+    const mapaInteracoes: Record<string, InteracaoCliente[]> = {};
+
+    interacoesCliente.forEach(int => {
+      const d = new Date(int.data_interacao || int.created_at || '');
+      if (isNaN(d.getTime())) return;
+      if (d >= dInicio && d <= dFim) {
+        const norm = int.cliente_telefone_normalizado;
+        if (!mapaInteracoes[norm]) {
+          mapaInteracoes[norm] = [];
+        }
+        mapaInteracoes[norm].push(int);
+      }
+    });
+
+    // Mapear clientes elegíveis (sem duplicidade!)
+    const mapaClientesConsolidados = new Map<string, ClienteRelatorio>();
+
+    clientes.forEach(cli => {
+      const norm = cli.telefone_normalizado;
+      const ints = (mapaInteracoes[norm] || []).sort(
+        (a, b) => new Date(b.data_interacao).getTime() - new Date(a.data_interacao).getTime()
+      );
+
+      const dPrimeiro = new Date(cli.data_primeiro_contato);
+      const dUltimo = new Date(cli.data_ultimo_contato);
+      const primeiroNoPeriodo = !isNaN(dPrimeiro.getTime()) && dPrimeiro >= dInicio && dPrimeiro <= dFim;
+      const ultimoNoPeriodo = !isNaN(dUltimo.getTime()) && dUltimo >= dInicio && dUltimo <= dFim;
+      const temInteracao = ints.length > 0;
+
+      // Se o cliente teve qualquer contato/interação/compra no período
+      if (temInteracao || primeiroNoPeriodo || ultimoNoPeriodo) {
+        const qtdInteracoes = temInteracao ? ints.length : 1;
+        const pedidos = ints.filter(i => i.tipo === 'pedido');
+        const qtdPedidos = pedidos.length;
+        const valorTotal = pedidos.reduce((acc, p) => acc + (Number(p.valor) || 0), 0);
+
+        const ultimoContato = ints.length > 0 ? ints[0].data_interacao : cli.data_ultimo_contato;
+        const primeiroContato = ints.length > 0 ? ints[ints.length - 1].data_interacao : cli.data_primeiro_contato;
+
+        mapaClientesConsolidados.set(norm, {
+          cliente: cli,
+          interacoes_no_periodo: qtdInteracoes,
+          pedidos_no_periodo: qtdPedidos,
+          valor_total_no_periodo: valorTotal > 0 ? valorTotal : (qtdPedidos > 0 ? cli.valor_total_gasto : 0),
+          primeiro_contato_periodo: primeiroContato,
+          ultimo_contato_periodo: ultimoContato,
+          interacoes: ints
+        });
+      }
+    });
+
+    let lista = Array.from(mapaClientesConsolidados.values());
+
+    // Filtro de pesquisa textual (Nome ou WhatsApp)
+    if (pesquisaCliente.trim()) {
+      const termo = utils.normalizarTexto(pesquisaCliente);
+      const termoNumerico = pesquisaCliente.replace(/\D/g, '');
+      lista = lista.filter(item => {
+        const nomeMatch = utils.normalizarTexto(item.cliente.nome).includes(termo);
+        const telMatch = item.cliente.telefone.replace(/\D/g, '').includes(termoNumerico) ||
+          item.cliente.telefone_normalizado.includes(termoNumerico);
+        return nomeMatch || telMatch;
+      });
+    }
+
+    // Filtro de tipo de cliente
+    if (filtroTipoCliente === 'com_compras') {
+      lista = lista.filter(item => item.pedidos_no_periodo > 0 || (item.cliente.total_pedidos || 0) > 0);
+    } else if (filtroTipoCliente === 'com_trocas') {
+      lista = lista.filter(item => item.interacoes.some(i => i.tipo === 'troca'));
+    } else if (filtroTipoCliente === 'recorrentes') {
+      lista = lista.filter(item => item.interacoes_no_periodo > 1 || (item.cliente.total_interacoes || 0) > 1);
+    }
+
+    // Ordenar pelo último contato mais recente
+    return lista.sort((a, b) => new Date(b.ultimo_contato_periodo).getTime() - new Date(a.ultimo_contato_periodo).getTime());
+  }, [clientes, interacoesCliente, dataInicioCliente, dataFimCliente, pesquisaCliente, filtroTipoCliente]);
+
+  // Métricas do período selecionado
+  const metricasClientes = useMemo(() => {
+    const totalClientesUnicos = relatorioClientesConsolidado.length;
+    const dInicio = new Date(`${dataInicioCliente}T00:00:00`);
+    const dFim = new Date(`${dataFimCliente}T23:59:59`);
+
+    let novosClientes = 0;
+    let clientesRecorrentes = 0;
+    let totalInteracoes = 0;
+    let totalPedidos = 0;
+    let faturamentoPeriodo = 0;
+
+    relatorioClientesConsolidado.forEach(item => {
+      const dPri = new Date(item.cliente.data_primeiro_contato);
+      if (!isNaN(dPri.getTime()) && dPri >= dInicio && dPri <= dFim) {
+        novosClientes++;
+      }
+      if (item.interacoes_no_periodo > 1 || (item.cliente.total_interacoes || 0) > 1) {
+        clientesRecorrentes++;
+      }
+      totalInteracoes += item.interacoes_no_periodo;
+      totalPedidos += item.pedidos_no_periodo;
+      faturamentoPeriodo += item.valor_total_no_periodo;
+    });
+
+    return {
+      totalClientesUnicos,
+      novosClientes,
+      clientesRecorrentes,
+      totalInteracoes,
+      totalPedidos,
+      faturamentoPeriodo,
+      totalCadastradosGeral: clientes.length
+    };
+  }, [relatorioClientesConsolidado, dataInicioCliente, dataFimCliente, clientes]);
+
+  // Sincronizar pedidos e trocas existentes com a base única
+  const handleSincronizarClientes = async () => {
+    try {
+      setSincronizandoClientes(true);
+      setErro(null);
+      const res = await clientesService.sincronizarHistoricoExistente(pedidos, trocas);
+      const [novosClientesData, novasInteracoesData] = await Promise.all([
+        clientesService.obterTodos(),
+        clientesService.obterInteracoes()
+      ]);
+      setClientes(novosClientesData.clientes);
+      setUsandoFallbackClientes(novosClientesData.usandoFallback);
+      setInteracoesCliente(novasInteracoesData.interacoes);
+      setSucesso(`Sincronização concluída! ${novosClientesData.clientes.length} clientes únicos consolidados com base em pedidos e trocas.`);
+      setTimeout(() => setSucesso(null), 4000);
+    } catch (err: any) {
+      console.error('Erro ao sincronizar clientes:', err);
+      setErro('Erro ao sincronizar histórico de clientes');
+    } finally {
+      setSincronizandoClientes(false);
+    }
+  };
+
+  // Exportar Relatório de Clientes Consolidado para CSV
+  const handleExportarRelatorioClientesCSV = () => {
+    if (relatorioClientesConsolidado.length === 0) {
+      alert('Nenhum dado de cliente para o período selecionado.');
+      return;
+    }
+
+    const headers = [
+      'NOME DO CLIENTE',
+      'WHATSAPP FORMATADO',
+      'WHATSAPP NORMALIZADO',
+      'PRIMEIRO CONTATO',
+      'ULTIMO CONTATO',
+      'QTD INTERACOES NO PERIODO',
+      'QTD COMPRAS / PEDIDOS NO PERIODO',
+      'VALOR TOTAL GASTO NO PERIODO (R$)',
+      'ZONA / REGIAO PREFERIDA'
+    ];
+
+    const rows = relatorioClientesConsolidado.map(item => [
+      item.cliente.nome,
+      formatarTelefoneExibicao(item.cliente.telefone),
+      item.cliente.telefone_normalizado,
+      new Date(item.primeiro_contato_periodo).toLocaleString('pt-BR'),
+      new Date(item.ultimo_contato_periodo).toLocaleString('pt-BR'),
+      item.interacoes_no_periodo,
+      item.pedidos_no_periodo,
+      item.valor_total_no_periodo.toFixed(2).replace('.', ','),
+      item.cliente.zona_frequente || 'Geral'
+    ]);
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(r => r.map(c => `"${String(c)}"`).join(';'))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `relatorio_clientes_hcvape_${dataInicioCliente}_a_${dataFimCliente}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Abrir modal de detalhes / linha do tempo do cliente
+  const handleAbrirDetalhesCliente = async (cli: Cliente) => {
+    setClienteSelecionado(cli);
+    setFormNovaInteracao({
+      tipo: 'contato_whatsapp',
+      descricao: '',
+      valor: ''
+    });
+    setModalClienteDetalhesAberto(true);
+  };
+
+  // Salvar novo cliente manual
+  const handleSalvarNovoCliente = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formNovoCliente.nome.trim() || !formNovoCliente.telefone.trim()) {
+      setErro('Nome e WhatsApp são obrigatórios!');
+      return;
+    }
+
+    try {
+      setSalvandoCliente(true);
+      setErro(null);
+      const clienteSalvo = await clientesService.registrarOuAtualizarCliente({
+        nome: formNovoCliente.nome.trim(),
+        telefone: formNovoCliente.telefone.trim(),
+        tipoInteracao: 'contato_whatsapp',
+        descricaoInteracao: formNovoCliente.observacoes.trim() || 'Cadastro manual de cliente',
+        zona: formNovoCliente.zona
+      });
+
+      const [novosClientes, novasInteracoes] = await Promise.all([
+        clientesService.obterTodos(),
+        clientesService.obterInteracoes()
+      ]);
+      setClientes(novosClientes.clientes);
+      setInteracoesCliente(novasInteracoes.interacoes);
+      setModalNovoClienteAberto(false);
+      setFormNovoCliente({ nome: '', telefone: '', zona: 'norte', observacoes: '' });
+      setSucesso(`Cliente "${clienteSalvo.nome}" salvo com sucesso no cadastro único!`);
+      setTimeout(() => setSucesso(null), 3000);
+    } catch (err: any) {
+      console.error('Erro ao salvar cliente:', err);
+      setErro(err.message || 'Erro ao cadastrar cliente');
+    } finally {
+      setSalvandoCliente(false);
+    }
+  };
+
+  // Salvar nova interação para o cliente selecionado
+  const handleSalvarNovaInteracao = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clienteSelecionado) return;
+    if (!formNovaInteracao.descricao.trim()) {
+      setErro('Informe uma descrição da interação!');
+      return;
+    }
+
+    try {
+      setSalvandoInteracao(true);
+      setErro(null);
+      const valor = parseFloat(formNovaInteracao.valor.replace(',', '.')) || 0;
+      await clientesService.registrarOuAtualizarCliente({
+        nome: clienteSelecionado.nome,
+        telefone: clienteSelecionado.telefone_normalizado,
+        tipoInteracao: formNovaInteracao.tipo,
+        descricaoInteracao: formNovaInteracao.descricao.trim(),
+        valor: valor
+      });
+
+      const [novosClientes, novasInteracoes] = await Promise.all([
+        clientesService.obterTodos(),
+        clientesService.obterInteracoes()
+      ]);
+      setClientes(novosClientes.clientes);
+      setInteracoesCliente(novasInteracoes.interacoes);
+      
+      const cliAtualizado = novosClientes.clientes.find(c => c.telefone_normalizado === clienteSelecionado.telefone_normalizado);
+      if (cliAtualizado) {
+        setClienteSelecionado(cliAtualizado);
+      }
+
+      setFormNovaInteracao({ tipo: 'contato_whatsapp', descricao: '', valor: '' });
+      setSucesso('Nova interação registrada no histórico do cliente!');
+      setTimeout(() => setSucesso(null), 3000);
+    } catch (err: any) {
+      console.error('Erro ao salvar interação:', err);
+      setErro(err.message || 'Erro ao registrar interação');
+    } finally {
+      setSalvandoInteracao(false);
+    }
+  };
+
   if (carregando) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center p-4">
@@ -2010,6 +2377,12 @@ export default function Admin() {
               </span>
             )}
           </button>
+          <button onClick={() => setAbaAtiva('clientes')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'clientes' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
+            <Users className="w-4 h-4 text-[#76FF03]" /> Clientes & Relatórios
+            <span className="bg-[#76FF03]/20 border border-[#76FF03]/40 text-[#76FF03] text-[10px] px-1.5 py-0.2 rounded-full ml-1 font-bold">
+              {clientes.length}
+            </span>
+          </button>
           <button onClick={() => setAbaAtiva('trocas')} className={`flex items-center gap-1.5 sm:gap-2 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-300 border-b-2 ${abaAtiva === 'trocas' ? 'text-[#76FF03] border-[#76FF03]' : 'text-slate-400 border-transparent hover:text-slate-300'}`}>
             <RefreshCw className="w-4 h-4 text-[#76FF03]" /> Trocas / Garantia
             {trocas.length > 0 && (
@@ -2039,9 +2412,19 @@ export default function Admin() {
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-2xl font-bold neon-glow font-['Outfit']">Gerenciamento de Estoque</h2>
-                  <p className="text-xs text-slate-400 mt-0.5">Vapes agrupados por Marca e Puffs do maior para o menor</p>
+                  <p className="text-xs text-slate-400 mt-0.5">
+                    Vapes agrupados por Marca e Puffs ({direcaoPuffs === 'asc' ? 'do menor para o maior — ex: V80 antes de V150/V250/V500' : 'do maior para o menor'})
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2.5">
+                  <button
+                    onClick={() => setDirecaoPuffs(prev => prev === 'asc' ? 'desc' : 'asc')}
+                    className="flex items-center gap-1.5 px-3 py-2 bg-white/5 border border-white/20 text-slate-200 rounded-lg font-bold text-xs hover:bg-white/10 transition-all"
+                    title="Alternar ordenação de Puffs (crescente / decrescente)"
+                  >
+                    {direcaoPuffs === 'asc' ? <ArrowUp className="w-3.5 h-3.5 text-[#76FF03]" /> : <ArrowDown className="w-3.5 h-3.5 text-blue-400" />}
+                    Puffs: {direcaoPuffs === 'asc' ? 'Menor → Maior' : 'Maior → Menor'}
+                  </button>
                   <button onClick={handleExportarProdutos} className="flex items-center gap-2 px-3.5 py-2 bg-[#76FF03]/15 border border-[#76FF03]/50 text-[#76FF03] rounded-lg font-bold text-xs hover:bg-[#76FF03]/25 transition-all">
                     <Download className="w-4 h-4" /> Exportar
                   </button>
@@ -3387,6 +3770,382 @@ export default function Admin() {
                     </div>
                   </div>
                 ))
+              )}
+            </div>
+          </section>
+        ) : abaAtiva === 'clientes' ? (
+          /* SEÇÃO DE CLIENTES & RELATÓRIOS WHATSAPP (CADASTRO ÚNICO) */
+          <section className="space-y-6 animate-in fade-in duration-300">
+            {/* Header da Seção */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h2 className="text-2xl font-bold neon-glow font-['Outfit'] flex items-center gap-2">
+                    <Users className="w-6 h-6 text-[#76FF03]" /> Base Única de Clientes & Relatórios WhatsApp
+                  </h2>
+                  <span className="text-[10px] px-2 py-0.5 rounded bg-[#76FF03]/20 text-[#76FF03] border border-[#76FF03]/40 font-bold">
+                    {clientes.length} {clientes.length === 1 ? 'cliente único' : 'clientes únicos'}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  1 Número de WhatsApp = 1 Cadastro permanente com histórico consolidado de conversas, compras e trocas sem duplicidades
+                </p>
+              </div>
+
+              <div className="flex flex-wrap gap-2.5">
+                <button
+                  onClick={handleSincronizarClientes}
+                  disabled={sincronizandoClientes}
+                  className="flex items-center gap-2 px-3.5 py-2 bg-blue-500/20 border border-blue-500/50 text-blue-400 rounded-lg font-bold text-xs hover:bg-blue-500/30 transition-all disabled:opacity-50"
+                  title="Varre todos os pedidos e trocas existentes para cadastrar e consolidar clientes anteriores"
+                >
+                  <RefreshCw className={`w-4 h-4 ${sincronizandoClientes ? 'animate-spin' : ''}`} />
+                  {sincronizandoClientes ? 'Sincronizando...' : 'Sincronizar Pedidos Anteriores'}
+                </button>
+                <button
+                  onClick={handleExportarRelatorioClientesCSV}
+                  disabled={relatorioClientesConsolidado.length === 0}
+                  className="flex items-center gap-2 px-3.5 py-2 bg-[#76FF03]/15 border border-[#76FF03]/50 text-[#76FF03] rounded-lg font-bold text-xs hover:bg-[#76FF03]/25 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Download className="w-4 h-4" /> Exportar Relatório ({relatorioClientesConsolidado.length})
+                </button>
+                <button
+                  onClick={() => {
+                    setFormNovoCliente({ nome: '', telefone: '', zona: 'norte', observacoes: '' });
+                    setModalNovoClienteAberto(true);
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-[#76FF03] text-black rounded-lg font-bold text-xs hover:shadow-[0_0_15px_rgba(118,255,3,0.5)] transition-all"
+                >
+                  <Plus className="w-4 h-4" /> Novo Cliente Manual
+                </button>
+              </div>
+            </div>
+
+            {/* Aviso se estiver usando armazenamento de fallback */}
+            {usandoFallbackClientes && (
+              <div className="p-3.5 bg-yellow-500/10 border border-yellow-500/40 rounded-xl flex items-start gap-3 text-xs text-yellow-300">
+                <AlertCircle className="w-4 h-4 text-yellow-400 flex-shrink-0 mt-0.5" />
+                <div>
+                  <strong className="block text-yellow-200">Armazenamento Local / Fallback Ativo</strong>
+                  <p className="text-[11px] text-yellow-300/80 mt-0.5">
+                    Os clientes e histórico estão sendo salvos normalmente no sistema. Para persistência nativa com índices de alta velocidade e integridade no PostgreSQL, execute o script SQL da seção <strong>Tabelas de Clientes</strong> no editor SQL do Supabase.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* BARRA DE FILTRO POR PERÍODO (Flexível para qualquer intervalo e anos diferentes) */}
+            <div className="glass-morphism p-4 sm:p-5 rounded-2xl border border-[#76FF03]/20 space-y-4">
+              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
+                {/* Atalhos Rápidos */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-xs font-bold text-slate-300 flex items-center gap-1.5 mr-1">
+                    <Calendar className="w-3.5 h-3.5 text-[#76FF03]" /> Período:
+                  </span>
+                  {[
+                    { id: 'tudo', label: 'Todo Histórico' },
+                    { id: 'hoje', label: 'Hoje' },
+                    { id: '7d', label: '7 Dias' },
+                    { id: '30d', label: '30 Dias' },
+                    { id: 'mes_atual', label: 'Mês Atual' },
+                    { id: 'ano_atual', label: 'Ano Atual' },
+                    { id: '2026_2027', label: 'Set/2026 a Set/2027 (Exemplo)' },
+                    { id: 'custom', label: 'Personalizado' },
+                  ].map((btn) => (
+                    <button
+                      key={btn.id}
+                      onClick={() => handleAplicarAtalhoPeriodoCliente(btn.id)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all border ${
+                        filtroPeriodoCliente === btn.id
+                          ? 'bg-[#76FF03] text-black border-[#76FF03] shadow-[0_0_10px_rgba(118,255,3,0.3)]'
+                          : 'bg-black/50 text-slate-300 border-white/10 hover:border-[#76FF03]/40'
+                      }`}
+                    >
+                      {btn.label}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Seleção de Datas Personalizadas (De / Até) */}
+                <div className="flex items-center gap-2 flex-wrap w-full lg:w-auto bg-black/40 p-2 rounded-xl border border-white/10">
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="text-slate-400 font-bold uppercase text-[10px]">De:</span>
+                    <input
+                      type="date"
+                      value={dataInicioCliente}
+                      onChange={(e) => {
+                        setDataInicioCliente(e.target.value);
+                        setFiltroPeriodoCliente('custom');
+                      }}
+                      className="bg-black/80 border border-[#76FF03]/40 text-slate-100 px-2.5 py-1 rounded-lg text-xs outline-none focus:border-[#76FF03]"
+                    />
+                  </div>
+                  <div className="flex items-center gap-1.5 text-xs">
+                    <span className="text-slate-400 font-bold uppercase text-[10px]">Até:</span>
+                    <input
+                      type="date"
+                      value={dataFimCliente}
+                      onChange={(e) => {
+                        setDataFimCliente(e.target.value);
+                        setFiltroPeriodoCliente('custom');
+                      }}
+                      className="bg-black/80 border border-[#76FF03]/40 text-slate-100 px-2.5 py-1 rounded-lg text-xs outline-none focus:border-[#76FF03]"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Filtros Secundários: Busca & Tipo */}
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-3 pt-2 border-t border-white/10">
+                {/* Campo de Busca Instantânea */}
+                <div className="md:col-span-8 relative">
+                  <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Buscar cliente por nome, telefone ou WhatsApp (ex: 81999999999)..."
+                    value={pesquisaCliente}
+                    onChange={(e) => setPesquisaCliente(e.target.value)}
+                    className="w-full bg-black/60 border border-[#76FF03]/30 text-slate-100 pl-10 pr-4 py-2 rounded-xl outline-none text-xs focus:border-[#76FF03] placeholder:text-slate-500"
+                  />
+                  {pesquisaCliente && (
+                    <button
+                      onClick={() => setPesquisaCliente('')}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Filtro por Tipo de Cliente */}
+                <div className="md:col-span-4">
+                  <select
+                    value={filtroTipoCliente}
+                    onChange={(e) => setFiltroTipoCliente(e.target.value as any)}
+                    className="w-full bg-black/60 border border-[#76FF03]/30 text-slate-100 px-3 py-2 rounded-xl outline-none text-xs focus:border-[#76FF03]"
+                  >
+                    <option value="todos">Todos os Clientes do Período</option>
+                    <option value="com_compras">Apenas Clientes com Compras</option>
+                    <option value="com_trocas">Apenas Clientes com Trocas/Garantia</option>
+                    <option value="recorrentes">Apenas Clientes Recorrentes (2+ interações)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* CARDS DE RESUMO E MÉTRICAS CONSOLIDADAS */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+              <div className="glass-morphism p-3.5 sm:p-4 rounded-xl border border-[#76FF03]/30 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-bold">Clientes Únicos</span>
+                  <Users className="w-4 h-4 text-[#76FF03]" />
+                </div>
+                <p className="text-xl sm:text-2xl font-black text-white font-['Outfit']">
+                  {metricasClientes.totalClientesUnicos}
+                </p>
+                <p className="text-[10px] text-slate-400">
+                  {metricasClientes.totalCadastradosGeral} no total geral
+                </p>
+              </div>
+
+              <div className="glass-morphism p-3.5 sm:p-4 rounded-xl border border-blue-500/30 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-bold">Novos Clientes</span>
+                  <UserPlus className="w-4 h-4 text-blue-400" />
+                </div>
+                <p className="text-xl sm:text-2xl font-black text-blue-400 font-['Outfit']">
+                  {metricasClientes.novosClientes}
+                </p>
+                <p className="text-[10px] text-slate-400">1º contato no período</p>
+              </div>
+
+              <div className="glass-morphism p-3.5 sm:p-4 rounded-xl border border-purple-500/30 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-bold">Recorrentes</span>
+                  <Repeat className="w-4 h-4 text-purple-400" />
+                </div>
+                <p className="text-xl sm:text-2xl font-black text-purple-400 font-['Outfit']">
+                  {metricasClientes.clientesRecorrentes}
+                </p>
+                <p className="text-[10px] text-slate-400">2 ou mais contatos</p>
+              </div>
+
+              <div className="glass-morphism p-3.5 sm:p-4 rounded-xl border border-yellow-500/30 space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-bold">Interações</span>
+                  <MessageSquare className="w-4 h-4 text-yellow-400" />
+                </div>
+                <p className="text-xl sm:text-2xl font-black text-yellow-400 font-['Outfit']">
+                  {metricasClientes.totalInteracoes}
+                </p>
+                <p className="text-[10px] text-slate-400">{metricasClientes.totalPedidos} pedidos gerados</p>
+              </div>
+
+              <div className="glass-morphism p-3.5 sm:p-4 rounded-xl border border-[#76FF03]/40 space-y-1 col-span-2 sm:col-span-1">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] sm:text-xs text-slate-400 uppercase font-bold">Faturamento</span>
+                  <DollarSign className="w-4 h-4 text-[#76FF03]" />
+                </div>
+                <p className="text-lg sm:text-xl font-black text-[#76FF03] font-['Outfit']">
+                  {utils.formatarMoeda(metricasClientes.faturamentoPeriodo)}
+                </p>
+                <p className="text-[10px] text-slate-400">compras no período</p>
+              </div>
+            </div>
+
+            {/* TABELA / RELATÓRIO CONSOLIDADO SEM DUPLICIDADES */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                <span>
+                  Exibindo <strong>{relatorioClientesConsolidado.length}</strong> clientes consolidados (sem duplicidades)
+                </span>
+                <span>
+                  Período: <strong>{new Date(dataInicioCliente + 'T00:00:00').toLocaleDateString('pt-BR')}</strong> até <strong>{new Date(dataFimCliente + 'T23:59:59').toLocaleDateString('pt-BR')}</strong>
+                </span>
+              </div>
+
+              {relatorioClientesConsolidado.length === 0 ? (
+                <div className="p-12 text-center glass-morphism rounded-2xl border border-dashed border-white/10 space-y-3">
+                  <Users className="w-12 h-12 text-slate-600 mx-auto" />
+                  <h3 className="text-base font-bold text-slate-300">Nenhum cliente encontrado para os filtros selecionados</h3>
+                  <p className="text-xs text-slate-400 max-w-md mx-auto">
+                    Tente selecionar um período maior (ex: Todo Histórico) ou clique em "Sincronizar Pedidos Anteriores" para carregar todo o histórico do banco.
+                  </p>
+                  <button
+                    onClick={() => handleAplicarAtalhoPeriodoCliente('tudo')}
+                    className="px-4 py-2 bg-[#76FF03]/20 border border-[#76FF03] text-[#76FF03] rounded-lg text-xs font-bold hover:bg-[#76FF03]/30 transition-all"
+                  >
+                    Ver Todo o Histórico
+                  </button>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3">
+                  {relatorioClientesConsolidado.map((item) => {
+                    const telLimpo = normalizarTelefoneWhatsApp(item.cliente.telefone);
+                    const linkWhatsApp = `https://wa.me/${telLimpo}`;
+                    const temMultiplasInteracoes = item.interacoes_no_periodo > 1 || item.cliente.total_interacoes > 1;
+
+                    return (
+                      <div
+                        key={item.cliente.telefone_normalizado}
+                        className="glass-morphism p-4 sm:p-5 rounded-xl border border-white/10 hover:border-[#76FF03]/50 transition-all duration-300 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4"
+                      >
+                        {/* Identificação do Cliente */}
+                        <div className="flex items-center gap-3.5 min-w-0">
+                          <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#76FF03]/20 to-blue-500/20 border border-[#76FF03]/40 flex items-center justify-center font-bold text-white text-sm shadow-[0_0_15px_rgba(118,255,3,0.15)] flex-shrink-0">
+                            {item.cliente.nome.charAt(0).toUpperCase() || 'C'}
+                          </div>
+
+                          <div className="min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="text-base font-bold text-white font-['Outfit'] truncate">
+                                {item.cliente.nome}
+                              </h3>
+                              {temMultiplasInteracoes ? (
+                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/40 font-bold flex items-center gap-1">
+                                  <Repeat className="w-2.5 h-2.5" /> Recorrente
+                                </span>
+                              ) : (
+                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/40 font-bold">
+                                  Novo Cliente
+                                </span>
+                              )}
+                              {item.cliente.zona_frequente && (
+                                <span className="text-[9px] px-2 py-0.5 rounded-full bg-white/5 text-slate-300 border border-white/10">
+                                  {item.cliente.zona_frequente}
+                                </span>
+                              )}
+                            </div>
+
+                            {/* WhatsApp com Link Direto */}
+                            <div className="flex items-center gap-2 mt-1">
+                              <a
+                                href={linkWhatsApp}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 bg-[#76FF03]/10 hover:bg-[#76FF03]/20 border border-[#76FF03]/40 text-[#76FF03] rounded-md text-xs font-mono font-bold transition-all"
+                                title="Abrir conversa no WhatsApp"
+                              >
+                                <Phone className="w-3 h-3 text-[#76FF03]" />
+                                {formatarTelefoneExibicao(item.cliente.telefone)}
+                              </a>
+                              <span className="text-[10px] text-slate-500 font-mono hidden sm:inline">
+                                ID: {item.cliente.telefone_normalizado}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Informações Consolidadas do Período */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full lg:w-auto text-left py-2 sm:py-0 border-y sm:border-y-0 border-white/5">
+                          {/* Primeiro Contato */}
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold block">1º Contato</span>
+                            <span className="text-xs text-slate-200 font-medium">
+                              {new Date(item.primeiro_contato_periodo).toLocaleDateString('pt-BR')}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block">
+                              {new Date(item.primeiro_contato_periodo).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+
+                          {/* Último Contato */}
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold block">Último Contato</span>
+                            <span className="text-xs text-[#76FF03] font-medium">
+                              {new Date(item.ultimo_contato_periodo).toLocaleDateString('pt-BR')}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block">
+                              {new Date(item.ultimo_contato_periodo).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+
+                          {/* Interações no Período */}
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold block">Interações</span>
+                            <span className="text-xs text-yellow-400 font-bold">
+                              {item.interacoes_no_periodo} {item.interacoes_no_periodo === 1 ? 'registro' : 'registros'}
+                            </span>
+                            <span className="text-[10px] text-slate-500 block">
+                              {item.cliente.total_interacoes} no histórico
+                            </span>
+                          </div>
+
+                          {/* Compras no Período */}
+                          <div>
+                            <span className="text-[10px] text-slate-400 uppercase font-bold block">Compras</span>
+                            <span className="text-xs text-white font-bold">
+                              {item.pedidos_no_periodo} {item.pedidos_no_periodo === 1 ? 'pedido' : 'pedidos'}
+                            </span>
+                            <span className="text-[10px] text-[#76FF03] font-bold block">
+                              {utils.formatarMoeda(item.valor_total_no_periodo)}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Botões de Ação */}
+                        <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
+                          <button
+                            onClick={() => handleAbrirDetalhesCliente(item.cliente)}
+                            className="flex-1 lg:flex-none flex items-center justify-center gap-1.5 px-3.5 py-2 bg-white/5 hover:bg-white/10 border border-white/15 text-slate-200 rounded-lg text-xs font-bold transition-all"
+                          >
+                            <History className="w-3.5 h-3.5 text-[#76FF03]" /> Histórico & Detalhes
+                          </button>
+
+                          <a
+                            href={linkWhatsApp}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center justify-center gap-1.5 px-3 py-2 bg-[#76FF03] hover:bg-[#64dd00] text-black rounded-lg text-xs font-bold shadow-[0_0_12px_rgba(118,255,3,0.3)] transition-all"
+                            title="Conversar no WhatsApp"
+                          >
+                            <Phone className="w-3.5 h-3.5" /> Conversar
+                          </a>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </section>
@@ -5332,6 +6091,391 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                       <Check className="w-4 h-4" /> Confirmar & Registrar Troca
                     </>
                   )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL DE DETALHES DO CLIENTE & LINHA DO TEMPO DE INTERAÇÕES */}
+      {/* ========================================================================= */}
+      {modalClienteDetalhesAberto && clienteSelecionado && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm overflow-y-auto">
+          <div className="glass-morphism p-5 sm:p-6 rounded-2xl max-w-2xl w-full border border-[#76FF03]/40 shadow-[0_0_50px_rgba(118,255,3,0.15)] my-auto max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Header do Modal */}
+            <div className="flex items-start justify-between pb-4 border-b border-white/10 flex-shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#76FF03]/20 to-blue-500/20 border border-[#76FF03]/40 flex items-center justify-center font-bold text-white text-base shadow-[0_0_15px_rgba(118,255,3,0.2)]">
+                  {clienteSelecionado.nome.charAt(0).toUpperCase() || 'C'}
+                </div>
+                <div>
+                  <h3 className="text-lg sm:text-xl font-bold text-white font-['Outfit'] flex items-center gap-2 flex-wrap">
+                    {clienteSelecionado.nome}
+                    <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#76FF03]/20 text-[#76FF03] border border-[#76FF03]/40 font-mono">
+                      Cadastro Único
+                    </span>
+                  </h3>
+                  <a
+                    href={`https://wa.me/${clienteSelecionado.telefone_normalizado}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-xs text-[#76FF03] font-mono hover:underline mt-0.5"
+                  >
+                    <Phone className="w-3 h-3" />
+                    {formatarTelefoneExibicao(clienteSelecionado.telefone)}
+                  </a>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setModalClienteDetalhesAberto(false);
+                  setClienteSelecionado(null);
+                }}
+                className="p-1.5 text-slate-400 hover:text-white rounded-lg hover:bg-white/10"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Conteúdo com Scroll */}
+            <div className="overflow-y-auto py-4 space-y-5 flex-1 pr-1">
+              {/* Card de Informações e Métricas do Cliente */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 bg-black/40 rounded-xl border border-white/10">
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">1º Contato (Fixo)</span>
+                  <span className="text-xs text-slate-200 font-semibold">
+                    {new Date(clienteSelecionado.data_primeiro_contato).toLocaleDateString('pt-BR')}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block">
+                    {new Date(clienteSelecionado.data_primeiro_contato).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Último Contato</span>
+                  <span className="text-xs text-[#76FF03] font-semibold">
+                    {new Date(clienteSelecionado.data_ultimo_contato).toLocaleDateString('pt-BR')}
+                  </span>
+                  <span className="text-[10px] text-slate-500 block">
+                    {new Date(clienteSelecionado.data_ultimo_contato).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Total Interações</span>
+                  <span className="text-xs text-yellow-400 font-bold">
+                    {clienteSelecionado.total_interacoes || 1} registros
+                  </span>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold block">Compras & Gasto</span>
+                  <span className="text-xs text-white font-bold block">
+                    {clienteSelecionado.total_pedidos || 0} pedidos
+                  </span>
+                  <span className="text-[10px] text-[#76FF03] font-bold">
+                    {utils.formatarMoeda(clienteSelecionado.valor_total_gasto || 0)}
+                  </span>
+                </div>
+              </div>
+
+              {/* Formulário Rápido para Registrar Nova Interação */}
+              <form onSubmit={handleSalvarNovaInteracao} className="p-3.5 bg-[#76FF03]/5 border border-[#76FF03]/30 rounded-xl space-y-3">
+                <h4 className="text-xs font-bold text-[#76FF03] uppercase tracking-wider flex items-center gap-1.5">
+                  <Plus className="w-3.5 h-3.5" /> Anotar Nova Conversa / Interação
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-12 gap-2.5">
+                  <div className="sm:col-span-4">
+                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Tipo</label>
+                    <select
+                      value={formNovaInteracao.tipo}
+                      onChange={(e) => setFormNovaInteracao({ ...formNovaInteracao, tipo: e.target.value as any })}
+                      className="w-full bg-black/80 border border-[#76FF03]/40 text-slate-100 px-2.5 py-1.5 rounded-lg text-xs outline-none focus:border-[#76FF03]"
+                    >
+                      <option value="contato_whatsapp">Contato / Conversa WhatsApp</option>
+                      <option value="duvida">Dúvida / Atendimento</option>
+                      <option value="pedido">Pedido / Compra</option>
+                      <option value="troca">Troca / Garantia</option>
+                      <option value="outro">Outro Registro</option>
+                    </select>
+                  </div>
+
+                  <div className="sm:col-span-5">
+                    <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Descrição / Notas</label>
+                    <input
+                      type="text"
+                      placeholder="Ex: Cliente pediu catálogo no WhatsApp, interessado em Ignite..."
+                      value={formNovaInteracao.descricao}
+                      onChange={(e) => setFormNovaInteracao({ ...formNovaInteracao, descricao: e.target.value })}
+                      className="w-full bg-black/80 border border-[#76FF03]/40 text-slate-100 px-2.5 py-1.5 rounded-lg text-xs outline-none focus:border-[#76FF03]"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-3 flex items-end gap-1.5">
+                    <div className="flex-1">
+                      <label className="block text-[10px] text-slate-400 uppercase font-bold mb-1">Valor (R$)</label>
+                      <input
+                        type="text"
+                        placeholder="0,00"
+                        value={formNovaInteracao.valor}
+                        onChange={(e) => setFormNovaInteracao({ ...formNovaInteracao, valor: e.target.value })}
+                        className="w-full bg-black/80 border border-[#76FF03]/40 text-slate-100 px-2 py-1.5 rounded-lg text-xs outline-none focus:border-[#76FF03]"
+                      />
+                    </div>
+                    <button
+                      type="submit"
+                      disabled={salvandoInteracao}
+                      className="cyber-button px-3 py-1.5 text-xs whitespace-nowrap h-[31px]"
+                    >
+                      {salvandoInteracao ? 'Salvando...' : 'Salvar'}
+                    </button>
+                  </div>
+                </div>
+              </form>
+
+              {/* Linha do Tempo Histórica */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-1.5">
+                  <History className="w-3.5 h-3.5 text-[#76FF03]" /> Linha do Tempo & Histórico de Interações
+                </h4>
+
+                {(() => {
+                  const interacoesDoCliente = interacoesCliente
+                    .filter(i => i.cliente_telefone_normalizado === clienteSelecionado.telefone_normalizado)
+                    .sort((a, b) => new Date(b.data_interacao).getTime() - new Date(a.data_interacao).getTime());
+
+                  if (interacoesDoCliente.length === 0) {
+                    return (
+                      <div className="p-6 text-center bg-black/30 rounded-xl border border-white/5 space-y-1">
+                        <MessageSquare className="w-8 h-8 text-slate-600 mx-auto" />
+                        <p className="text-xs text-slate-400">Nenhum evento detalhado registrado ainda.</p>
+                        <p className="text-[11px] text-slate-500">
+                          Clique em "Sincronizar Pedidos Anteriores" no topo para importar todo o histórico de compras.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-2.5">
+                      {interacoesDoCliente.map((int, idx) => {
+                        const isPedido = int.tipo === 'pedido';
+                        const isTroca = int.tipo === 'troca';
+
+                        return (
+                          <div
+                            key={int.id || idx}
+                            className={`p-3 rounded-xl border transition-all ${
+                              isPedido
+                                ? 'bg-black/50 border-[#76FF03]/30'
+                                : isTroca
+                                ? 'bg-red-950/20 border-red-500/30'
+                                : 'bg-black/40 border-white/10'
+                            }`}
+                          >
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="flex items-start gap-2.5">
+                                <div
+                                  className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ${
+                                    isPedido
+                                      ? 'bg-[#76FF03]/20 text-[#76FF03]'
+                                      : isTroca
+                                      ? 'bg-red-500/20 text-red-400'
+                                      : 'bg-blue-500/20 text-blue-400'
+                                  }`}
+                                >
+                                  {isPedido ? (
+                                    <ShoppingBag className="w-3.5 h-3.5" />
+                                  ) : isTroca ? (
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                  ) : (
+                                    <MessageSquare className="w-3.5 h-3.5" />
+                                  )}
+                                </div>
+
+                                <div>
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span
+                                      className={`text-[10px] font-bold uppercase px-1.5 py-0.2 rounded ${
+                                        isPedido
+                                          ? 'bg-[#76FF03]/20 text-[#76FF03]'
+                                          : isTroca
+                                          ? 'bg-red-500/20 text-red-400'
+                                          : 'bg-blue-500/20 text-blue-400'
+                                      }`}
+                                    >
+                                      {int.tipo.replace('_', ' ')}
+                                    </span>
+                                    {int.referencia_id && (
+                                      <span className="text-[10px] text-slate-400 font-mono">
+                                        Ref: #{int.referencia_id}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-xs text-slate-200 mt-1 font-medium">
+                                    {int.descricao}
+                                  </p>
+
+                                  {/* Detalhes de itens do pedido */}
+                                  {int.detalhes?.itens && Array.isArray(int.detalhes.itens) && (
+                                    <div className="mt-1.5 p-2 bg-black/60 rounded-lg text-[11px] text-slate-300 space-y-0.5 border border-white/5">
+                                      <strong className="text-[10px] text-slate-400 uppercase block">Itens Comprados:</strong>
+                                      {int.detalhes.itens.map((it: any, itIdx: number) => (
+                                        <div key={itIdx} className="flex justify-between">
+                                          <span>• {it.quantidade}x {it.nome} ({it.sabor})</span>
+                                          <span className="text-[#76FF03] font-mono">{utils.formatarMoeda(it.preco_unitario * it.quantidade)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              <div className="text-right flex-shrink-0">
+                                <span className="text-[10px] text-slate-400 block">
+                                  {new Date(int.data_interacao).toLocaleDateString('pt-BR')}
+                                </span>
+                                <span className="text-[10px] text-slate-500 block">
+                                  {new Date(int.data_interacao).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                                {Number(int.valor) > 0 && (
+                                  <span className="text-xs font-bold text-[#76FF03] block mt-1">
+                                    {utils.formatarMoeda(int.valor)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
+            {/* Footer do Modal */}
+            <div className="flex justify-between items-center pt-3 border-t border-white/10 flex-shrink-0">
+              <a
+                href={`https://wa.me/${clienteSelecionado.telefone_normalizado}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-4 py-2 bg-[#76FF03] text-black font-bold rounded-lg text-xs hover:shadow-[0_0_15px_rgba(118,255,3,0.4)] transition-all"
+              >
+                <Phone className="w-3.5 h-3.5" /> Chamar no WhatsApp
+              </a>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setModalClienteDetalhesAberto(false);
+                  setClienteSelecionado(null);
+                }}
+                className="px-4 py-2 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs font-bold transition-all border border-white/10"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL DE NOVO CLIENTE MANUAL (CADASTRO ÚNICO) */}
+      {/* ========================================================================= */}
+      {modalNovoClienteAberto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm">
+          <div className="glass-morphism p-5 sm:p-6 rounded-2xl max-w-md w-full border border-[#76FF03]/40 shadow-[0_0_50px_rgba(118,255,3,0.15)] my-auto animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <h3 className="text-lg font-bold text-white font-['Outfit'] flex items-center gap-2">
+                <UserPlus className="w-5 h-5 text-[#76FF03]" /> Novo Cliente
+              </h3>
+              <button
+                onClick={() => setModalNovoClienteAberto(false)}
+                className="p-1 text-slate-400 hover:text-white"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSalvarNovoCliente} className="space-y-4 pt-4">
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                  Nome do Cliente <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formNovoCliente.nome}
+                  onChange={(e) => setFormNovoCliente({ ...formNovoCliente, nome: e.target.value })}
+                  placeholder="Ex: João Silva"
+                  className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3.5 py-2.5 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                  Número do WhatsApp / Telefone <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={formNovoCliente.telefone}
+                  onChange={(e) => setFormNovoCliente({ ...formNovoCliente, telefone: e.target.value })}
+                  placeholder="Ex: 81 99999-9999 ou +55 81 99999-9999"
+                  className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3.5 py-2.5 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                />
+                <span className="text-[10px] text-slate-400 mt-1 block">
+                  O número será normalizado automaticamente para evitar duplicidades no cadastro.
+                </span>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                  Zona / Região Preferida
+                </label>
+                <select
+                  value={formNovoCliente.zona}
+                  onChange={(e) => setFormNovoCliente({ ...formNovoCliente, zona: e.target.value })}
+                  className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3.5 py-2.5 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                >
+                  <option value="Zona Norte">Zona Norte</option>
+                  <option value="Zona Oeste/Sul">Zona Oeste/Sul</option>
+                  <option value="Geral">Geral / Balcão</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                  Observações Iniciais (opcional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={formNovoCliente.observacoes}
+                  onChange={(e) => setFormNovoCliente({ ...formNovoCliente, observacoes: e.target.value })}
+                  placeholder="Anotações sobre a primeira conversa, sabor de preferência, etc..."
+                  className="w-full bg-black/60 border border-white/20 text-slate-100 px-3.5 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03] resize-none"
+                />
+              </div>
+
+              <div className="flex gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setModalNovoClienteAberto(false)}
+                  className="w-1/3 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-lg text-xs font-bold border border-white/10"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={salvandoCliente}
+                  className="cyber-button flex-1 flex items-center justify-center gap-2 text-xs"
+                >
+                  {salvandoCliente ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                  Salvar Cliente
                 </button>
               </div>
             </form>

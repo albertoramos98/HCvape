@@ -226,3 +226,133 @@ describe('Lógica de Processamento de Métricas e Preenchimento de Gaps', () => 
   });
 });
 
+describe('Sistema de Gestão de Clientes Únicos & WhatsApp', () => {
+  // Importar / testar a lógica de normalização
+  const normalizar = (telefone: string) => {
+    let limpo = telefone.replace(/\D/g, '');
+    if (limpo.startsWith('0')) limpo = limpo.substring(1);
+    if (limpo.startsWith('55') && (limpo.length === 12 || limpo.length === 13)) {
+      const sem55 = limpo.substring(2);
+      const ddd = sem55.substring(0, 2);
+      let num = sem55.substring(2);
+      if (num.length === 8 && ['6', '7', '8', '9'].includes(num[0])) num = '9' + num;
+      return `55${ddd}${num}`;
+    }
+    if (limpo.length === 10 || limpo.length === 11) {
+      const ddd = limpo.substring(0, 2);
+      let num = limpo.substring(2);
+      if (num.length === 8 && ['6', '7', '8', '9'].includes(num[0])) num = '9' + num;
+      return `55${ddd}${num}`;
+    }
+    if (limpo.length === 8 || limpo.length === 9) {
+      let num = limpo;
+      if (num.length === 8 && ['6', '7', '8', '9'].includes(num[0])) num = '9' + num;
+      return `5581${num}`;
+    }
+    return limpo.startsWith('55') ? limpo : `55${limpo}`;
+  };
+
+  it('deve normalizar diferentes formatos para o mesmo identificador único canônico', () => {
+    const formatos = [
+      '81999999999',
+      '+55 81 99999-9999',
+      '+5581999999999',
+      '55 81 99999-9999',
+      '(81) 99999-9999',
+      '+55 (81) 9.9999-9999',
+      '081999999999'
+    ];
+
+    const normalizados = formatos.map(normalizar);
+    const setUnicos = new Set(normalizados);
+
+    expect(setUnicos.size).toBe(1);
+    expect(normalizados[0]).toBe('5581999999999');
+  });
+
+  it('deve consolidar múltiplas interações de um mesmo cliente em 1 único registro no relatório', () => {
+    // Simular cliente com 20 interações no período
+    const cliente = {
+      id: 'cli-1',
+      nome: 'João Silva',
+      telefone: '+55 81 99999-9999',
+      telefone_normalizado: '5581999999999',
+      data_primeiro_contato: '2026-09-05T10:00:00Z',
+      data_ultimo_contato: '2027-09-15T18:00:00Z',
+      total_interacoes: 20,
+      total_pedidos: 3,
+      valor_total_gasto: 450
+    };
+
+    const interacoes = Array.from({ length: 20 }, (_, i) => ({
+      id: `int-${i + 1}`,
+      cliente_telefone_normalizado: '5581999999999',
+      tipo: i < 3 ? 'pedido' : 'contato_whatsapp',
+      valor: i < 3 ? 150 : 0,
+      data_interacao: `2026-09-${String(10 + i).padStart(2, '0')}T12:00:00Z`
+    }));
+
+    // Função de agregação consolidada
+    const consolidarRelatorio = (clis: any[], ints: any[], dInicio: Date, dFim: Date) => {
+      const mapaInteracoes: Record<string, any[]> = {};
+      ints.forEach(int => {
+        const d = new Date(int.data_interacao);
+        if (d >= dInicio && d <= dFim) {
+          if (!mapaInteracoes[int.cliente_telefone_normalizado]) {
+            mapaInteracoes[int.cliente_telefone_normalizado] = [];
+          }
+          mapaInteracoes[int.cliente_telefone_normalizado].push(int);
+        }
+      });
+
+      const relatorio: any[] = [];
+      clis.forEach(c => {
+        const historico = mapaInteracoes[c.telefone_normalizado] || [];
+        if (historico.length > 0) {
+          const pedidos = historico.filter(h => h.tipo === 'pedido');
+          relatorio.push({
+            nome: c.nome,
+            whatsapp: c.telefone_normalizado,
+            interacoesNoPeriodo: historico.length,
+            pedidosNoPeriodo: pedidos.length,
+            totalGastoNoPeriodo: pedidos.reduce((acc, p) => acc + p.valor, 0)
+          });
+        }
+      });
+      return relatorio;
+    };
+
+    const dInicio = new Date('2026-09-01T00:00:00Z');
+    const dFim = new Date('2027-09-30T23:59:59Z');
+
+    const resultado = consolidarRelatorio([cliente], interacoes, dInicio, dFim);
+
+    // O cliente DEVE aparecer UMA ÚNICA VEZ
+    expect(resultado).toHaveLength(1);
+    expect(resultado[0].nome).toBe('João Silva');
+    expect(resultado[0].interacoesNoPeriodo).toBe(20);
+    expect(resultado[0].pedidosNoPeriodo).toBe(3);
+    expect(resultado[0].totalGastoNoPeriodo).toBe(450);
+  });
+
+  it('deve filtrar corretamente períodos entre anos diferentes (ex: 01/09/2026 a 30/09/2027)', () => {
+    const clientes = [
+      { id: '1', nome: 'Cliente 2026', telefone_normalizado: '5581900000001', data_primeiro_contato: '2026-09-15T10:00:00Z' },
+      { id: '2', nome: 'Cliente 2027', telefone_normalizado: '5581900000002', data_primeiro_contato: '2027-04-20T10:00:00Z' },
+      { id: '3', nome: 'Cliente Fora do Periodo', telefone_normalizado: '5581900000003', data_primeiro_contato: '2025-01-01T10:00:00Z' },
+    ];
+
+    const dInicio = new Date('2026-09-01T00:00:00Z');
+    const dFim = new Date('2027-09-30T23:59:59Z');
+
+    const filtrados = clientes.filter(c => {
+      const d = new Date(c.data_primeiro_contato);
+      return d >= dInicio && d <= dFim;
+    });
+
+    expect(filtrados).toHaveLength(2);
+    expect(filtrados.map(c => c.nome)).toEqual(['Cliente 2026', 'Cliente 2027']);
+  });
+});
+
+

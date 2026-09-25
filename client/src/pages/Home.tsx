@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff, Phone, User, CheckCircle2, Loader2, Github, Mail, Search, Flame, ArrowRight, Shield, Sparkles, Check, ChevronRight, MapPin, Compass } from 'lucide-react';
-import { produtosService, pedidosService, Produto, utils, PedidoItem, configService, PromoSchedule, HeroBannerConfig, ZonaId, ZONAS_DISPONIVEIS } from '@/lib/supabase';
+import { produtosService, pedidosService, clientesService, Produto, utils, PedidoItem, configService, PromoSchedule, HeroBannerConfig, ZonaId, ZONAS_DISPONIVEIS } from '@/lib/supabase';
 import { useLocation } from "wouter";
 import { HeroBanner } from '@/components/HeroBanner';
 
@@ -366,6 +366,26 @@ export default function Home() {
         status_checklist: false,
         notas: ''
       });
+
+      // REGRA DE OURO: Registrar / Atualizar cadastro único do cliente e histórico de interação
+      try {
+        await clientesService.registrarOuAtualizarCliente({
+          nome: nomeCliente,
+          telefone: telefoneCliente,
+          tipoInteracao: 'pedido',
+          descricaoInteracao: `Pedido #${novoPedido.numero_pedido} - ${itensPedido.length} itens (${utils.formatarMoeda(novoPedido.total_final)})`,
+          valor: novoPedido.total_final,
+          referenciaId: String(novoPedido.numero_pedido),
+          detalhes: {
+            itens: itensPedido,
+            zona: zonaNome,
+            indicacao: indicacao
+          },
+          zona: zonaNome
+        });
+      } catch (errCliente) {
+        console.warn('Erro não bloqueante ao registrar cliente único:', errCliente);
+      }
 
       // Gerar link WhatsApp estilizado com a Zona
       const mensagemItens = carrinho

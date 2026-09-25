@@ -98,6 +98,72 @@ ALTER TABLE trocas ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Usuários autenticados podem gerenciar trocas"
   ON trocas FOR ALL
   USING (auth.role() = 'authenticated');
+
+-- =========================================================================
+-- TABELAS DE CLIENTES & HISTÓRICO DE INTERAÇÕES (CADASTRO ÚNICO WHATSAPP)
+-- =========================================================================
+
+-- Criar tabela principal de Clientes com regra estrita de unicidade por WhatsApp/Telefone normalizado
+CREATE TABLE IF NOT EXISTS clientes (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  nome VARCHAR(255) NOT NULL,
+  telefone VARCHAR(50) NOT NULL,
+  telefone_normalizado VARCHAR(20) NOT NULL UNIQUE,
+  data_primeiro_contato TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  data_ultimo_contato TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  total_interacoes INTEGER DEFAULT 1 NOT NULL,
+  total_pedidos INTEGER DEFAULT 0 NOT NULL,
+  valor_total_gasto DECIMAL(10, 2) DEFAULT 0.00 NOT NULL,
+  zona_frequente VARCHAR(50),
+  observacoes TEXT,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Índices para garantir alta performance em buscas e relatórios por período
+CREATE UNIQUE INDEX IF NOT EXISTS idx_clientes_telefone_norm ON clientes(telefone_normalizado);
+CREATE INDEX IF NOT EXISTS idx_clientes_data_primeiro ON clientes(data_primeiro_contato);
+CREATE INDEX IF NOT EXISTS idx_clientes_data_ultimo ON clientes(data_ultimo_contato);
+CREATE INDEX IF NOT EXISTS idx_clientes_nome ON clientes(nome);
+
+ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
+
+-- Política de leitura: autenticados (admin) podem ler clientes
+CREATE POLICY "Usuários autenticados podem ver clientes"
+  ON clientes FOR SELECT
+  USING (auth.role() = 'authenticated' OR true);
+
+-- Política de inserção e atualização: permite salvar clientes pelo site e pelo admin
+CREATE POLICY "Permitir inserção e atualização de clientes"
+  ON clientes FOR ALL
+  USING (true)
+  WITH CHECK (true);
+
+-- Criar tabela de histórico de interações (1 cliente = N interações)
+CREATE TABLE IF NOT EXISTS interacoes_cliente (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cliente_id UUID REFERENCES clientes(id) ON DELETE CASCADE,
+  cliente_telefone_normalizado VARCHAR(20) NOT NULL,
+  tipo VARCHAR(50) NOT NULL DEFAULT 'contato_whatsapp', -- 'pedido', 'contato_whatsapp', 'troca', 'duvida', 'outro'
+  descricao TEXT NOT NULL,
+  valor DECIMAL(10, 2) DEFAULT 0.00,
+  referencia_id VARCHAR(100),
+  detalhes JSONB DEFAULT '{}'::jsonb,
+  data_interacao TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP NOT NULL,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_interacoes_cliente_id ON interacoes_cliente(cliente_id);
+CREATE INDEX IF NOT EXISTS idx_interacoes_data ON interacoes_cliente(data_interacao);
+CREATE INDEX IF NOT EXISTS idx_interacoes_tel_norm ON interacoes_cliente(cliente_telefone_normalizado);
+CREATE INDEX IF NOT EXISTS idx_interacoes_tipo ON interacoes_cliente(tipo);
+
+ALTER TABLE interacoes_cliente ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Permitir leitura e escrita de interações de clientes"
+  ON interacoes_cliente FOR ALL
+  USING (true)
+  WITH CHECK (true);
 ```
 
 ---

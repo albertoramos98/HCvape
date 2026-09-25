@@ -116,6 +116,45 @@ export interface Troca {
   updated_at?: string;
 }
 
+export interface Cliente {
+  id: string;
+  nome: string;
+  telefone: string;
+  telefone_normalizado: string;
+  data_primeiro_contato: string;
+  data_ultimo_contato: string;
+  total_interacoes: number;
+  total_pedidos: number;
+  valor_total_gasto: number;
+  zona_frequente?: string;
+  observacoes?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface InteracaoCliente {
+  id: string;
+  cliente_id?: string;
+  cliente_telefone_normalizado: string;
+  tipo: 'pedido' | 'contato_whatsapp' | 'troca' | 'duvida' | 'outro';
+  descricao: string;
+  valor?: number;
+  referencia_id?: string;
+  detalhes?: any;
+  data_interacao: string;
+  created_at?: string;
+}
+
+export interface ClienteRelatorio {
+  cliente: Cliente;
+  interacoes_no_periodo: number;
+  pedidos_no_periodo: number;
+  valor_total_no_periodo: number;
+  primeiro_contato_periodo: string;
+  ultimo_contato_periodo: string;
+  interacoes: InteracaoCliente[];
+}
+
 export interface Visita {
   id: string;
   created_at: string;
@@ -662,6 +701,472 @@ export const trocasService = {
   }
 };
 
+// Normalização inteligente de WhatsApp / Telefone brasileiro
+export function normalizarTelefoneWhatsApp(telefone: string, dddPadrao: string = '81'): string {
+  if (!telefone) return '';
+  // Remove caracteres não-numéricos
+  let limpo = telefone.replace(/\D/g, '');
+
+  // Remove zero inicial de DDD (ex: 081999999999 -> 81999999999)
+  if (limpo.startsWith('0')) {
+    limpo = limpo.substring(1);
+  }
+
+  // Se tem prefixo 55 (Brasil) e tamanho 12 ou 13
+  if (limpo.startsWith('55') && (limpo.length === 12 || limpo.length === 13)) {
+    const sem55 = limpo.substring(2);
+    const ddd = sem55.substring(0, 2);
+    let num = sem55.substring(2);
+    // Adiciona o 9° dígito se for celular (8 dígitos começando com 6, 7, 8 ou 9)
+    if (num.length === 8 && ['6', '7', '8', '9'].includes(num[0])) {
+      num = '9' + num;
+    }
+    return `55${ddd}${num}`;
+  }
+
+  // Se tem DDD e número (10 ou 11 dígitos)
+  if (limpo.length === 10 || limpo.length === 11) {
+    const ddd = limpo.substring(0, 2);
+    let num = limpo.substring(2);
+    if (num.length === 8 && ['6', '7', '8', '9'].includes(num[0])) {
+      num = '9' + num;
+    }
+    return `55${ddd}${num}`;
+  }
+
+  // Se tem apenas 8 ou 9 dígitos (sem DDD, assume DDD padrão de Recife/PE 81)
+  if (limpo.length === 8 || limpo.length === 9) {
+    let num = limpo;
+    if (num.length === 8 && ['6', '7', '8', '9'].includes(num[0])) {
+      num = '9' + num;
+    }
+    return `55${dddPadrao}${num}`;
+  }
+
+  // Fallback para outros formatos
+  if (limpo.length >= 8) {
+    if (!limpo.startsWith('55') && limpo.length <= 11) {
+      return `55${limpo}`;
+    }
+    return limpo;
+  }
+
+  return limpo;
+}
+
+// Formatação visual amigável do telefone (ex: (81) 99999-9999)
+export function formatarTelefoneExibicao(telefone: string): string {
+  if (!telefone) return '';
+  const norm = normalizarTelefoneWhatsApp(telefone);
+  if (norm.startsWith('55') && norm.length === 13) {
+    const ddd = norm.substring(2, 4);
+    const parte1 = norm.substring(4, 9);
+    const parte2 = norm.substring(9, 13);
+    return `(${ddd}) ${parte1}-${parte2}`;
+  }
+  if (norm.startsWith('55') && norm.length === 12) {
+    const ddd = norm.substring(2, 4);
+    const parte1 = norm.substring(4, 8);
+    const parte2 = norm.substring(8, 12);
+    return `(${ddd}) ${parte1}-${parte2}`;
+  }
+  return telefone;
+}
+
+// Serviço de Clientes & Histórico de Interações (Cadastro Único por WhatsApp)
+export const clientesService = {
+  // LocalStorage Fallback
+  obterClientesLocalStorage(): Cliente[] {
+    try {
+      const local = localStorage.getItem('hcvape_clientes_cadastros');
+      return local ? JSON.parse(local) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  salvarClientesLocalStorage(clientes: Cliente[]): void {
+    try {
+      localStorage.setItem('hcvape_clientes_cadastros', JSON.stringify(clientes));
+    } catch (e) {
+      console.warn('Erro ao salvar clientes no localStorage:', e);
+    }
+  },
+
+  obterInteracoesLocalStorage(): InteracaoCliente[] {
+    try {
+      const local = localStorage.getItem('hcvape_clientes_interacoes');
+      return local ? JSON.parse(local) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  salvarInteracoesLocalStorage(interacoes: InteracaoCliente[]): void {
+    try {
+      localStorage.setItem('hcvape_clientes_interacoes', JSON.stringify(interacoes));
+    } catch (e) {
+      console.warn('Erro ao salvar interações no localStorage:', e);
+    }
+  },
+
+  // Obter todos os clientes únicos cadastrados
+  async obterTodos(): Promise<{ clientes: Cliente[]; usandoFallback: boolean }> {
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .order('data_ultimo_contato', { ascending: false });
+
+      if (error) throw error;
+      const lista = (data || []) as Cliente[];
+      this.salvarClientesLocalStorage(lista);
+      return { clientes: lista, usandoFallback: false };
+    } catch (err) {
+      console.warn('Tabela clientes não acessível no Supabase, usando armazenamento local/fallback:', err);
+      // Tentar ler de configuracoes
+      try {
+        const { data: configData } = await supabase
+          .from('configuracoes')
+          .select('valor')
+          .eq('chave', 'clientes_cadastros')
+          .single();
+        if (configData?.valor && Array.isArray(configData.valor)) {
+          this.salvarClientesLocalStorage(configData.valor);
+          return { clientes: configData.valor as Cliente[], usandoFallback: true };
+        }
+      } catch {}
+
+      const local = this.obterClientesLocalStorage();
+      return { clientes: local, usandoFallback: true };
+    }
+  },
+
+  // Obter todas as interações
+  async obterInteracoes(clienteTelefoneNorm?: string): Promise<{ interacoes: InteracaoCliente[]; usandoFallback: boolean }> {
+    try {
+      let query = supabase
+        .from('interacoes_cliente')
+        .select('*')
+        .order('data_interacao', { ascending: false });
+
+      if (clienteTelefoneNorm) {
+        query = query.eq('cliente_telefone_normalizado', clienteTelefoneNorm);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      const lista = (data || []) as InteracaoCliente[];
+      if (!clienteTelefoneNorm) {
+        this.salvarInteracoesLocalStorage(lista);
+      }
+      return { interacoes: lista, usandoFallback: false };
+    } catch (err) {
+      console.warn('Tabela interacoes_cliente não acessível no Supabase, usando armazenamento local/fallback:', err);
+      try {
+        const { data: configData } = await supabase
+          .from('configuracoes')
+          .select('valor')
+          .eq('chave', 'clientes_interacoes')
+          .single();
+        if (configData?.valor && Array.isArray(configData.valor)) {
+          let filtrado = configData.valor as InteracaoCliente[];
+          if (clienteTelefoneNorm) {
+            filtrado = filtrado.filter(i => i.cliente_telefone_normalizado === clienteTelefoneNorm);
+          }
+          return { interacoes: filtrado, usandoFallback: true };
+        }
+      } catch {}
+
+      let locais = this.obterInteracoesLocalStorage();
+      if (clienteTelefoneNorm) {
+        locais = locais.filter(i => i.cliente_telefone_normalizado === clienteTelefoneNorm);
+      }
+      return { interacoes: locais, usandoFallback: true };
+    }
+  },
+
+  // REGRA DE OURO: Registrar ou Atualizar cliente único por número de WhatsApp normalizado
+  async registrarOuAtualizarCliente(dados: {
+    nome: string;
+    telefone: string;
+    tipoInteracao?: 'pedido' | 'contato_whatsapp' | 'troca' | 'duvida' | 'outro';
+    descricaoInteracao?: string;
+    valor?: number;
+    referenciaId?: string;
+    detalhes?: any;
+    zona?: string;
+    data?: string;
+  }): Promise<Cliente> {
+    const nomeLimpo = (dados.nome || '').trim() || 'Cliente';
+    const telefoneNorm = normalizarTelefoneWhatsApp(dados.telefone);
+    const telefoneOriginal = dados.telefone.trim();
+    const dataHora = dados.data || new Date().toISOString();
+    const tipo = dados.tipoInteracao || 'contato_whatsapp';
+    const valor = Number(dados.valor) || 0;
+    const isPedido = tipo === 'pedido';
+
+    if (!telefoneNorm) {
+      throw new Error('Telefone do cliente é obrigatório para cadastro único.');
+    }
+
+    // 1. Tentar buscar cliente existente no banco Supabase
+    let clienteExistente: Cliente | null = null;
+    let usandoFallback = false;
+
+    try {
+      const { data, error } = await supabase
+        .from('clientes')
+        .select('*')
+        .eq('telefone_normalizado', telefoneNorm)
+        .maybeSingle();
+
+      if (!error && data) {
+        clienteExistente = data as Cliente;
+      }
+    } catch (err) {
+      usandoFallback = true;
+    }
+
+    if (!clienteExistente) {
+      const locais = this.obterClientesLocalStorage();
+      clienteExistente = locais.find(c => c.telefone_normalizado === telefoneNorm) || null;
+    }
+
+    const clienteId = clienteExistente?.id || (typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `cli_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`);
+
+    let clienteSalvo: Cliente;
+
+    if (clienteExistente) {
+      // CLIENTE JÁ EXISTE: Preserva data_primeiro_contato, atualiza data_ultimo_contato e incrementa totais
+      const updates = {
+        nome: nomeLimpo.length > 2 && !nomeLimpo.toLowerCase().includes('cliente') ? nomeLimpo : clienteExistente.nome,
+        telefone: telefoneOriginal || clienteExistente.telefone,
+        data_ultimo_contato: dataHora,
+        total_interacoes: (clienteExistente.total_interacoes || 0) + 1,
+        total_pedidos: (clienteExistente.total_pedidos || 0) + (isPedido ? 1 : 0),
+        valor_total_gasto: Number((Number(clienteExistente.valor_total_gasto || 0) + valor).toFixed(2)),
+        zona_frequente: dados.zona || clienteExistente.zona_frequente,
+        updated_at: new Date().toISOString()
+      };
+
+      try {
+        const { data, error } = await supabase
+          .from('clientes')
+          .update(updates)
+          .eq('id', clienteExistente.id)
+          .select()
+          .single();
+
+        if (error) throw error;
+        clienteSalvo = data as Cliente;
+      } catch (err) {
+        clienteSalvo = {
+          ...clienteExistente,
+          ...updates
+        };
+      }
+    } else {
+      // NOVO CLIENTE: Primeiro contato!
+      const novoCliente: Cliente = {
+        id: clienteId,
+        nome: nomeLimpo,
+        telefone: telefoneOriginal,
+        telefone_normalizado: telefoneNorm,
+        data_primeiro_contato: dataHora,
+        data_ultimo_contato: dataHora,
+        total_interacoes: 1,
+        total_pedidos: isPedido ? 1 : 0,
+        valor_total_gasto: valor,
+        zona_frequente: dados.zona,
+        created_at: dataHora,
+        updated_at: dataHora
+      };
+
+      try {
+        const { data, error } = await supabase
+          .from('clientes')
+          .insert([novoCliente])
+          .select()
+          .single();
+
+        if (error) throw error;
+        clienteSalvo = data as Cliente;
+      } catch (err) {
+        clienteSalvo = novoCliente;
+      }
+    }
+
+    // Sincronizar no fallback local
+    const locais = this.obterClientesLocalStorage();
+    const outrosClientes = locais.filter(c => c.telefone_normalizado !== telefoneNorm);
+    const atualizados = [clienteSalvo, ...outrosClientes];
+    this.salvarClientesLocalStorage(atualizados);
+
+    try {
+      await supabase.from('configuracoes').upsert({
+        chave: 'clientes_cadastros',
+        valor: atualizados,
+        updated_at: new Date().toISOString()
+      });
+    } catch {}
+
+    // 2. Registrar histórico da Interação
+    const interacaoId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `int_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
+    const descricao = dados.descricaoInteracao || (isPedido ? `Pedido realizado (${dados.referenciaId ? '#' + dados.referenciaId : ''})` : `Contato via WhatsApp`);
+
+    const novaInteracao: InteracaoCliente = {
+      id: interacaoId,
+      cliente_id: clienteSalvo.id,
+      cliente_telefone_normalizado: telefoneNorm,
+      tipo: tipo,
+      descricao: descricao,
+      valor: valor,
+      referencia_id: dados.referenciaId,
+      detalhes: dados.detalhes || {},
+      data_interacao: dataHora,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      await supabase.from('interacoes_cliente').insert([novaInteracao]);
+    } catch (err) {
+      console.warn('Não foi possível salvar interação na tabela interacoes_cliente:', err);
+    }
+
+    const interacoesLocais = this.obterInteracoesLocalStorage();
+    const interacoesAtualizadas = [novaInteracao, ...interacoesLocais];
+    this.salvarInteracoesLocalStorage(interacoesAtualizadas);
+
+    try {
+      await supabase.from('configuracoes').upsert({
+        chave: 'clientes_interacoes',
+        valor: interacoesAtualizadas.slice(0, 500),
+        updated_at: new Date().toISOString()
+      });
+    } catch {}
+
+    return clienteSalvo;
+  },
+
+  // Gerar relatório consolidado por período (SEM DUPLICIDADES!)
+  async obterRelatorioPorPeriodo(dataInicioStr: string, dataFimStr: string): Promise<ClienteRelatorio[]> {
+    const { clientes } = await this.obterTodos();
+    const { interacoes } = await this.obterInteracoes();
+
+    const dataInicio = new Date(dataInicioStr);
+    const dataFim = new Date(dataFimStr);
+
+    // Mapear interações no período por telefone_normalizado
+    const mapaInteracoes: Record<string, InteracaoCliente[]> = {};
+
+    interacoes.forEach(int => {
+      const dataInt = new Date(int.data_interacao || int.created_at || '');
+      if (isNaN(dataInt.getTime())) return;
+
+      if (dataInt >= dataInicio && dataInt <= dataFim) {
+        const norm = int.cliente_telefone_normalizado;
+        if (!mapaInteracoes[norm]) {
+          mapaInteracoes[norm] = [];
+        }
+        mapaInteracoes[norm].push(int);
+      }
+    });
+
+    // Mapear também clientes cuja data_primeiro_contato ou data_ultimo_contato cai no período
+    const clientesRelevantes = new Map<string, Cliente>();
+
+    clientes.forEach(c => {
+      const norm = c.telefone_normalizado;
+      const temInteracao = !!mapaInteracoes[norm] && mapaInteracoes[norm].length > 0;
+      
+      const dPrimeiro = new Date(c.data_primeiro_contato);
+      const dUltimo = new Date(c.data_ultimo_contato);
+      const primeiroNoPeriodo = !isNaN(dPrimeiro.getTime()) && dPrimeiro >= dataInicio && dPrimeiro <= dataFim;
+      const ultimoNoPeriodo = !isNaN(dUltimo.getTime()) && dUltimo >= dataInicio && dUltimo <= dataFim;
+
+      if (temInteracao || primeiroNoPeriodo || ultimoNoPeriodo) {
+        clientesRelevantes.set(norm, c);
+      }
+    });
+
+    // Montar o relatório consolidado: CADA CLIENTE APARECE APENAS UMA VEZ
+    const relatorio: ClienteRelatorio[] = [];
+
+    clientesRelevantes.forEach((cli, norm) => {
+      const ints = (mapaInteracoes[norm] || []).sort((a, b) => new Date(b.data_interacao).getTime() - new Date(a.data_interacao).getTime());
+      
+      const qtdInteracoes = ints.length > 0 ? ints.length : 1;
+      const pedidos = ints.filter(i => i.tipo === 'pedido');
+      const qtdPedidos = pedidos.length;
+      const valorTotal = pedidos.reduce((acc, p) => acc + (Number(p.valor) || 0), 0);
+
+      const ultimoContato = ints.length > 0 ? ints[0].data_interacao : cli.data_ultimo_contato;
+      const primeiroContato = ints.length > 0 ? ints[ints.length - 1].data_interacao : cli.data_primeiro_contato;
+
+      relatorio.push({
+        cliente: cli,
+        interacoes_no_periodo: qtdInteracoes,
+        pedidos_no_periodo: qtdPedidos,
+        valor_total_no_periodo: valorTotal > 0 ? valorTotal : (qtdPedidos > 0 ? cli.valor_total_gasto : 0),
+        primeiro_contato_periodo: primeiroContato,
+        ultimo_contato_periodo: ultimoContato,
+        interacoes: ints
+      });
+    });
+
+    // Ordenar pelo último contato mais recente
+    return relatorio.sort((a, b) => new Date(b.ultimo_contato_periodo).getTime() - new Date(a.ultimo_contato_periodo).getTime());
+  },
+
+  // Sincronizar pedidos e trocas existentes para a base única de clientes
+  async sincronizarHistoricoExistente(pedidos: Pedido[], trocas: Troca[]): Promise<{ clientesCadastrados: number; interacoesCriadas: number }> {
+    let clientesCadastrados = 0;
+    let interacoesCriadas = 0;
+
+    // 1. Processar pedidos (do mais antigo para o mais recente)
+    const pedidosOrdenados = [...pedidos].sort((a, b) => new Date(a.created_at || '').getTime() - new Date(b.created_at || '').getTime());
+
+    for (const ped of pedidosOrdenados) {
+      if (!ped.telefone_cliente) continue;
+      const dataPed = ped.created_at || new Date().toISOString();
+      await this.registrarOuAtualizarCliente({
+        nome: ped.nome_cliente,
+        telefone: ped.telefone_cliente,
+        tipoInteracao: 'pedido',
+        descricaoInteracao: `Pedido #${ped.numero_pedido} - ${ped.itens?.length || 0} itens (${utils.formatarMoeda(ped.total_final)})`,
+        valor: ped.total_final,
+        referenciaId: String(ped.numero_pedido),
+        detalhes: { itens: ped.itens, zona: ped.zona, desconto: ped.desconto },
+        zona: ped.zona,
+        data: dataPed
+      });
+      clientesCadastrados++;
+      interacoesCriadas++;
+    }
+
+    // 2. Processar trocas
+    for (const troca of trocas) {
+      if (!troca.cliente_telefone) continue;
+      const dataTroca = troca.data_troca || troca.created_at || new Date().toISOString();
+      await this.registrarOuAtualizarCliente({
+        nome: troca.cliente_nome,
+        telefone: troca.cliente_telefone,
+        tipoInteracao: 'troca',
+        descricaoInteracao: `Troca/Garantia: ${troca.vape_defeito} (${troca.motivo}) por ${troca.vape_trocado}`,
+        valor: 0,
+        referenciaId: troca.id,
+        detalhes: { defeito: troca.vape_defeito, trocado: troca.vape_trocado, motivo: troca.motivo },
+        zona: troca.zona,
+        data: dataTroca
+      });
+      interacoesCriadas++;
+    }
+
+    return { clientesCadastrados, interacoesCriadas };
+  }
+};
+
 // Serviço de imagens (Supabase Storage)
 export const imagemService = {
   // Fazer upload de imagem e retornar a URL pública
@@ -901,6 +1406,8 @@ export const utils = {
   // Formatar valores monetários em padrão pt-BR (ex: R$ 1.250,00)
   formatarMoeda,
   formatarPreco,
+  normalizarTelefoneWhatsApp,
+  formatarTelefoneExibicao,
 
   // Normalizar texto para buscas resilientes (remover acentos e minúsculas)
   normalizarTexto(texto: string): string {
@@ -1082,8 +1589,8 @@ export const utils = {
     });
   },
 
-  // Ordenar lista de vapes: 1º por Marca (Ignite, Elfbar, Black Sheep, etc.), 2º dentro da marca por Puffs (do MAIOR para o MENOR), 3º desempate por Nome
-  ordenarProdutosPorMarcaEPuffs(produtos: Produto[], direcaoPuffs: 'asc' | 'desc' = 'desc'): Produto[] {
+  // Ordenar lista de vapes: 1º por Marca (Ignite, Elfbar, Black Sheep, etc.), 2º dentro da marca por Puffs (do MENOR para o MAIOR por padrão), 3º desempate por Nome
+  ordenarProdutosPorMarcaEPuffs(produtos: Produto[], direcaoPuffs: 'asc' | 'desc' = 'asc'): Produto[] {
     const prioridadeMarcas = ['ignite', 'elf bar', 'elfbar', 'black sheep', 'waka', 'sex addict'];
 
     return [...produtos].sort((a, b) => {
