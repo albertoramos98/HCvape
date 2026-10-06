@@ -93,7 +93,7 @@ export default function Admin() {
   const [statusPedidoFiltro, setStatusPedidoFiltro] = useState<'todos' | 'concluidos'>('todos');
   const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'relogio_mensal' | 'pedidos' | 'clientes' | 'trocas' | 'metricas' | 'saude' | 'configuracoes' | 'herobanner'>('produtos');
   const [subAbaEstoque, setSubAbaEstoque] = useState<'expressos' | 'promocional' | 'todos'>('expressos');
-  const [filtroZonaEstoqueExpresso, setFiltroZonaEstoqueExpresso] = useState<'todas' | 'norte' | 'sul_oeste'>('todas');
+  const [filtroZonaEstoqueExpresso, setFiltroZonaEstoqueExpresso] = useState<'todas' | 'norte' | 'sul_oeste' | 'gravata'>('todas');
   const [direcaoPuffs, setDirecaoPuffs] = useState<'asc' | 'desc'>('desc');
   const [pesquisa, setPesquisa] = useState('');
   const [filtroZonaProduto, setFiltroZonaProduto] = useState<string>('todas');
@@ -692,7 +692,7 @@ export default function Admin() {
     preco: '',
     estoque: '',
     sabores: '',
-    zonas: ['norte', 'sul_oeste'],
+    zonas: ['norte', 'sul_oeste', 'gravata'],
     is_promo: false,
     preco_promo: '',
   });
@@ -861,7 +861,7 @@ export default function Admin() {
       preco: '',
       estoque: '',
       sabores: '',
-      zonas: ['norte', 'sul_oeste'],
+      zonas: ['norte', 'sul_oeste', 'gravata'],
       is_promo: subAbaEstoque === 'promocional',
       preco_promo: '',
     });
@@ -883,7 +883,7 @@ export default function Admin() {
       preco: produto.preco.toString(),
       estoque: produto.estoque.toString(),
       sabores: produto.sabores.join(', '),
-      zonas: produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul_oeste'],
+      zonas: produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul_oeste', 'gravata'],
       is_promo: produto.is_promo || false,
       preco_promo: produto.preco_promo?.toString() || '',
     });
@@ -920,7 +920,7 @@ export default function Admin() {
       preco: '',
       estoque: '',
       sabores: '',
-      zonas: ['norte', 'sul_oeste'],
+      zonas: ['norte', 'sul_oeste', 'gravata'],
       is_promo: false,
       preco_promo: '',
     });
@@ -2491,7 +2491,7 @@ export default function Admin() {
                         </p>
                       </div>
 
-                      {/* Filtro em Tempo Real: TODOS ///// APENAS ZN ///// APENAS ZS/ZO */}
+                      {/* Filtro em Tempo Real: TODOS ///// APENAS ZN ///// APENAS ZS/ZO ///// APENAS GV */}
                       <div className="flex flex-wrap gap-2 p-1.5 bg-black/80 rounded-xl border border-white/10">
                         <button
                           onClick={() => setFiltroZonaEstoqueExpresso('todas')}
@@ -2522,6 +2522,16 @@ export default function Admin() {
                           }`}
                         >
                           🔵 Apenas ZS/ZO (Zona Oeste/Sul)
+                        </button>
+                        <button
+                          onClick={() => setFiltroZonaEstoqueExpresso('gravata')}
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            filtroZonaEstoqueExpresso === 'gravata'
+                              ? 'bg-[#f59e0b] text-black shadow-[0_0_10px_rgba(245,158,11,0.4)]'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          🟠 Apenas GV (Gravatá)
                         </button>
                       </div>
                     </div>
@@ -2650,10 +2660,16 @@ export default function Admin() {
                                 <td className="py-3 px-4 text-[#76FF03] font-bold">{utils.formatarMoeda(produto.preco)}</td>
                                 <td className="py-3 px-4">
                                   <div className="flex flex-wrap gap-1">
-                                    {(produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul_oeste']).map(z => {
-                                      const isNorte = z.toLowerCase().includes('norte');
-                                      const label = isNorte ? 'ZN' : 'ZS/ZO';
-                                      const colorClass = isNorte ? 'bg-[#76FF03]/15 text-[#76FF03] border-[#76FF03]/40' : 'bg-sky-500/15 text-sky-400 border-sky-500/40';
+                                    {(produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul_oeste', 'gravata']).map(z => {
+                                      const zNorm = utils.normalizarTexto(z);
+                                      const isGravata = zNorm.includes('gravata');
+                                      const isNorte = zNorm.includes('norte');
+                                      const label = isGravata ? 'GV' : isNorte ? 'ZN' : 'ZS/ZO';
+                                      const colorClass = isGravata
+                                        ? 'bg-amber-500/15 text-amber-400 border-amber-500/40'
+                                        : isNorte
+                                        ? 'bg-[#76FF03]/15 text-[#76FF03] border-[#76FF03]/40'
+                                        : 'bg-sky-500/15 text-sky-400 border-sky-500/40';
                                       return (
                                         <span key={z} className={`px-1.5 py-0.2 rounded text-[9px] font-bold border ${colorClass}`}>
                                           {label}
@@ -3021,6 +3037,7 @@ export default function Admin() {
                           <option value="todas">Todas as Regiões</option>
                           <option value="norte">Zona Norte (ZN)</option>
                           <option value="sul_oeste">Zona Oeste/Sul (ZS/ZO)</option>
+                          <option value="gravata">Gravatá (GV)</option>
                         </select>
                       </div>
                     </div>
@@ -3630,6 +3647,7 @@ export default function Admin() {
                     <option value="norte">Zona Norte</option>
                     <option value="sul">Zona Sul</option>
                     <option value="oeste">Zona Oeste</option>
+                    <option value="gravata">Gravatá</option>
                   </select>
                 </div>
 
@@ -4395,7 +4413,7 @@ export default function Admin() {
                           {troca.zona && (
                             <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30 font-bold flex items-center gap-1">
                               <MapPin className="w-3 h-3" />
-                              {troca.zona === 'norte' ? 'Zona Norte' : troca.zona === 'sul_oeste' ? 'Zona Oeste/Sul' : troca.zona}
+                              {troca.zona === 'norte' ? 'Zona Norte' : troca.zona === 'sul_oeste' ? 'Zona Oeste/Sul' : troca.zona === 'gravata' ? 'Gravatá' : troca.zona}
                             </span>
                           )}
 
@@ -5658,26 +5676,29 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                   <button
                     type="button"
                     onClick={() => {
-                      if (formProduto.zonas.length >= 2) {
+                      if (formProduto.zonas.length >= ZONAS_DISPONIVEIS.length) {
                         setFormProduto({ ...formProduto, zonas: [] });
                       } else {
-                        setFormProduto({ ...formProduto, zonas: ['norte', 'sul_oeste'] });
+                        setFormProduto({ ...formProduto, zonas: ZONAS_DISPONIVEIS.map(z => z.id) });
                       }
                     }}
                     className="text-[10px] text-[#76FF03] hover:underline font-bold"
                   >
-                    {formProduto.zonas.length >= 2 ? 'Desmarcar todas' : 'Marcar todas'}
+                    {formProduto.zonas.length >= ZONAS_DISPONIVEIS.length ? 'Desmarcar todas' : 'Marcar todas'}
                   </button>
                 </div>
                 <p className="text-[11px] text-slate-400">
                   Selecione em quais regiões este vape aparecerá disponível no catálogo:
                 </p>
-                <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
                   {ZONAS_DISPONIVEIS.map(z => {
                     const active = formProduto.zonas.some(item => {
                       const norm = utils.normalizarTexto(item);
                       if (z.id === 'sul_oeste') {
                         return norm === 'sul_oeste' || norm.includes('sul') || norm.includes('oeste');
+                      }
+                      if (z.id === 'gravata') {
+                        return norm === 'gravata' || norm.includes('gravata');
                       }
                       return norm === z.id || norm.includes(z.id);
                     });
@@ -5692,6 +5713,9 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                               const norm = utils.normalizarTexto(item);
                               if (z.id === 'sul_oeste') {
                                 return norm !== 'sul_oeste' && !norm.includes('sul') && !norm.includes('oeste');
+                              }
+                              if (z.id === 'gravata') {
+                                return norm !== 'gravata' && !norm.includes('gravata');
                               }
                               return norm !== z.id && !norm.includes(z.id);
                             });
@@ -5813,6 +5837,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                       >
                         <option value="norte">Zona Norte</option>
                         <option value="sul_oeste">Zona Oeste/Sul</option>
+                        <option value="gravata">Gravatá</option>
                         <option value="geral">Geral / Balcão</option>
                       </select>
                     </div>
@@ -6444,6 +6469,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                 >
                   <option value="Zona Norte">Zona Norte</option>
                   <option value="Zona Oeste/Sul">Zona Oeste/Sul</option>
+                  <option value="Gravatá">Gravatá</option>
                   <option value="Geral">Geral / Balcão</option>
                 </select>
               </div>

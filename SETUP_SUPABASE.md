@@ -61,8 +61,8 @@ ALTER TABLE produtos ADD COLUMN IF NOT EXISTS sabores_estoque JSONB DEFAULT '{}'
 ALTER TABLE produtos ADD COLUMN IF NOT EXISTS ativo BOOLEAN DEFAULT true;
 CREATE INDEX IF NOT EXISTS idx_produtos_ativo ON produtos(ativo);
 
--- Adicionar suporte a Zonas de Atendimento no produto (Zona Norte, Zona Oeste/Sul)
-ALTER TABLE produtos ADD COLUMN IF NOT EXISTS zonas TEXT[] DEFAULT ARRAY['norte', 'sul_oeste']::TEXT[];
+-- Adicionar suporte a Zonas / Regiões de Atendimento no produto (Zona Norte, Zona Oeste/Sul, Gravatá)
+ALTER TABLE produtos ADD COLUMN IF NOT EXISTS zonas TEXT[] DEFAULT ARRAY['norte', 'sul_oeste', 'gravata']::TEXT[];
 ALTER TABLE produtos ADD COLUMN IF NOT EXISTS estoque_zonas JSONB DEFAULT '{}'::jsonb;
 
 -- Adicionar registro de Zona na tabela de pedidos

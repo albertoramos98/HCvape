@@ -9,7 +9,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const BUCKET_IMAGENS = 'produto-imagens';
 
 // Tipos de Zonas
-export type ZonaId = 'norte' | 'sul_oeste' | 'sul' | 'oeste';
+export type ZonaId = 'norte' | 'sul_oeste' | 'sul' | 'oeste' | 'gravata';
 
 export interface ZonaInfo {
   id: ZonaId;
@@ -36,6 +36,14 @@ export const ZONAS_DISPONIVEIS: ZonaInfo[] = [
     descricao: 'Disponibilidade e estoque para Zona Oeste e Zona Sul',
     cor: '#38bdf8',
     sigla: 'ZS/ZO'
+  },
+  { 
+    id: 'gravata', 
+    nome: 'Gravatá', 
+    badge: 'Atendimento Gravatá', 
+    descricao: 'Disponibilidade e estoque para a região de Gravatá',
+    cor: '#f59e0b',
+    sigla: 'GV'
   }
 ];
 
@@ -1731,6 +1739,9 @@ export const utils = {
         if (zona === 'sul_oeste') {
           return norm === 'sul_oeste' || norm.includes('oeste') || norm.includes('sul');
         }
+        if (zona === 'gravata') {
+          return norm === 'gravata' || norm.includes('gravata');
+        }
         return norm === zona || norm.includes(zona);
       });
       if (!atende) {
@@ -1768,6 +1779,9 @@ export const utils = {
       let zonaData = produto.estoque_zonas[zona];
       if (!zonaData && zona === 'sul_oeste') {
         zonaData = produto.estoque_zonas['sul_oeste'] || produto.estoque_zonas['oeste'] || produto.estoque_zonas['sul'];
+      }
+      if (!zonaData && zona === 'gravata') {
+        zonaData = produto.estoque_zonas['gravata'] || produto.estoque_zonas['gravatá'];
       }
 
       if (zonaData !== undefined) {

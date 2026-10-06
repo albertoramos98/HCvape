@@ -513,5 +513,74 @@ describe('Sistema de Gestão de Clientes Únicos & WhatsApp', () => {
   });
 });
 
+describe('Gestão de Localidades e Zonas (incluindo Gravatá)', () => {
+  it('deve conter Gravatá na lista oficial de ZONAS_DISPONIVEIS com metadados corretos', async () => {
+    const { ZONAS_DISPONIVEIS } = await import('../lib/supabase');
+    const gravata = ZONAS_DISPONIVEIS.find(z => z.id === 'gravata');
+    
+    expect(gravata).toBeDefined();
+    expect(gravata?.nome).toBe('Gravatá');
+    expect(gravata?.sigla).toBe('GV');
+    expect(gravata?.cor).toBe('#f59e0b');
+    expect(ZONAS_DISPONIVEIS.length).toBeGreaterThanOrEqual(3);
+  });
+
+  it('deve calcular corretamente o estoque para a zona Gravatá em produtos com zonas configuradas', () => {
+    const produtoGravata: any = {
+      id: 'p-gravata-1',
+      marca: 'IGNITE',
+      nome: 'IGNITE V500',
+      preco: 120,
+      estoque: 15,
+      sabores: ['Watermelon Ice', 'Grape Ice'],
+      sabores_estoque: { 'Watermelon Ice': 10, 'Grape Ice': 5 },
+      zonas: ['gravata', 'norte'],
+      estoque_zonas: {
+        gravata: {
+          estoque: 8,
+          sabores_estoque: { 'Watermelon Ice': 5, 'Grape Ice': 3 }
+        },
+        norte: {
+          estoque: 7,
+          sabores_estoque: { 'Watermelon Ice': 5, 'Grape Ice': 2 }
+        }
+      }
+    };
+
+    const estoqueGravata = utils.obterEstoqueProdutoPorZona(produtoGravata, 'gravata');
+    expect(estoqueGravata.possuiEstoqueNaZona).toBe(true);
+    expect(estoqueGravata.estoque).toBe(8);
+    expect(estoqueGravata.saboresEstoque['Watermelon Ice']).toBe(5);
+    expect(estoqueGravata.saboresEstoque['Grape Ice']).toBe(3);
+    expect(estoqueGravata.saboresDisponiveis).toEqual(['Watermelon Ice', 'Grape Ice']);
+
+    // Se consultar uma zona onde o produto não atende (ex: sul_oeste)
+    const estoqueSul = utils.obterEstoqueProdutoPorZona(produtoGravata, 'sul_oeste');
+    expect(estoqueSul.possuiEstoqueNaZona).toBe(false);
+    expect(estoqueSul.estoque).toBe(0);
+  });
+
+  it('deve filtrar produtos por Gravatá quando apenas uma lista de zonas em texto for fornecida', () => {
+    const produtoMultiZona: any = {
+      id: 'p-multi',
+      marca: 'ELF BAR',
+      nome: 'ELF BAR 45K',
+      preco: 130,
+      estoque: 20,
+      sabores: ['Mint Ice'],
+      sabores_estoque: { 'Mint Ice': 20 },
+      zonas: ['Zona Norte', 'Gravatá']
+    };
+
+    const resultadoGravata = utils.obterEstoqueProdutoPorZona(produtoMultiZona, 'gravata');
+    expect(resultadoGravata.possuiEstoqueNaZona).toBe(true);
+    expect(resultadoGravata.estoque).toBe(20);
+
+    const resultadoSul = utils.obterEstoqueProdutoPorZona(produtoMultiZona, 'sul_oeste');
+    expect(resultadoSul.possuiEstoqueNaZona).toBe(false);
+    expect(resultadoSul.estoque).toBe(0);
+  });
+});
+
 
 
