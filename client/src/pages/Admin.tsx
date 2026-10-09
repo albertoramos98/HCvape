@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles, MapPin, Compass, Clock, Target, Flame, Eye, EyeOff, Gauge, Award, ChevronRight, ChevronLeft, Check, Layers, Phone, ArrowRight, ShieldCheck, ShieldAlert, AlertTriangle, MessageSquare, Repeat, UserCheck, UserPlus, CalendarRange, History } from 'lucide-react';
-import { authService, produtosService, pedidosService, imagemService, visitasService, trocasService, clientesService, Produto, Pedido, Troca, Cliente, InteracaoCliente, ClienteRelatorio, utils, configService, PromoSchedule, HeroBannerConfig, HeroSlideConfig, DEFAULT_HERO_BANNER_CONFIG, ZonaId, ZONAS_DISPONIVEIS, normalizarTelefoneWhatsApp, formatarTelefoneExibicao } from '@/lib/supabase';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles, MapPin, Compass, Clock, Target, Flame, Eye, EyeOff, Gauge, Award, ChevronRight, ChevronLeft, Check, Layers, Phone, ArrowRight, ShieldCheck, ShieldAlert, AlertTriangle, MessageSquare, Repeat, UserCheck, UserPlus, CalendarRange, History, Copy } from 'lucide-react';
+import { authService, produtosService, pedidosService, imagemService, visitasService, trocasService, clientesService, Produto, Pedido, Troca, Cliente, InteracaoCliente, ClienteRelatorio, utils, configService, PromoSchedule, HeroBannerConfig, HeroSlideConfig, DEFAULT_HERO_BANNER_CONFIG, ZonaId, ZONAS_DISPONIVEIS, normalizarTelefoneWhatsApp, formatarTelefoneExibicao, EstoqueZonasMap } from '@/lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Legend } from 'recharts';
 import { HeroBanner } from '@/components/HeroBanner';
 
@@ -696,6 +696,18 @@ export default function Admin() {
     is_promo: false,
     preco_promo: '',
   });
+  const [formSabores, setFormSabores] = useState<string[]>(['Menta Ice']);
+  const [formZonasAtivas, setFormZonasAtivas] = useState<Record<string, boolean>>({
+    norte: true,
+    sul_oeste: true,
+    gravata: true,
+  });
+  const [formEstoquePorZona, setFormEstoquePorZona] = useState<Record<string, Record<string, number>>>({
+    norte: { 'Menta Ice': 10 },
+    sul_oeste: { 'Menta Ice': 10 },
+    gravata: { 'Menta Ice': 5 },
+  });
+  const [zonaModalAtiva, setZonaModalAtiva] = useState<ZonaId>('norte');
   const [formSaboresEstoque, setFormSaboresEstoque] = useState<{ sabor: string; estoque: number }[]>([]);
 
   // Estados para imagem
@@ -851,10 +863,88 @@ export default function Admin() {
     }
   };
 
+  // Helpers para gerenciamento de sabores e estoque por zona no modal
+  const adicionarSaborAoForm = () => {
+    const novoSabor = '';
+    const novaLista = [...formSabores, novoSabor];
+    setFormSabores(novaLista);
+    setFormEstoquePorZona(prev => {
+      const next: Record<string, Record<string, number>> = {};
+      ZONAS_DISPONIVEIS.forEach(z => {
+        next[z.id] = { ...(prev[z.id] || {}), [novoSabor]: formProduto.is_promo ? 999 : 10 };
+      });
+      return next;
+    });
+  };
+
+  const removerSaborDoForm = (index: number) => {
+    const saborRemovido = formSabores[index];
+    const novaLista = formSabores.filter((_, idx) => idx !== index);
+    setFormSabores(novaLista.length > 0 ? novaLista : ['']);
+    setFormEstoquePorZona(prev => {
+      const next: Record<string, Record<string, number>> = {};
+      ZONAS_DISPONIVEIS.forEach(z => {
+        const copy = { ...(prev[z.id] || {}) };
+        delete copy[saborRemovido];
+        next[z.id] = copy;
+      });
+      return next;
+    });
+  };
+
+  const alterarNomeSaborNoForm = (index: number, novoNome: string) => {
+    const saborAntigo = formSabores[index];
+    const novaLista = [...formSabores];
+    novaLista[index] = novoNome;
+    setFormSabores(novaLista);
+
+    setFormEstoquePorZona(prev => {
+      const next: Record<string, Record<string, number>> = {};
+      ZONAS_DISPONIVEIS.forEach(z => {
+        const copy = { ...(prev[z.id] || {}) };
+        const val = copy[saborAntigo] !== undefined ? copy[saborAntigo] : (formProduto.is_promo ? 999 : 10);
+        delete copy[saborAntigo];
+        copy[novoNome] = val;
+        next[z.id] = copy;
+      });
+      return next;
+    });
+  };
+
+  const alterarEstoqueSaborZona = (zonaId: string, sabor: string, qtd: number) => {
+    setFormEstoquePorZona(prev => ({
+      ...prev,
+      [zonaId]: {
+        ...(prev[zonaId] || {}),
+        [sabor]: Math.max(0, qtd)
+      }
+    }));
+  };
+
+  const preencherEstoqueZona = (zonaId: string, valor: number) => {
+    setFormEstoquePorZona(prev => {
+      const copy = { ...(prev[zonaId] || {}) };
+      formSabores.forEach(sabor => {
+        if (sabor.trim() !== '') {
+          copy[sabor] = Math.max(0, valor);
+        }
+      });
+      return { ...prev, [zonaId]: copy };
+    });
+  };
+
+  const copiarEstoqueZona = (origemZonaId: string, destinoZonaId: string) => {
+    setFormEstoquePorZona(prev => ({
+      ...prev,
+      [destinoZonaId]: { ...(prev[origemZonaId] || {}) }
+    }));
+  };
+
   // Abrir modal para novo produto
   const abrirModalNovo = () => {
     setEditandoId(null);
     setMarcaCustomizada('');
+    const isPromo = subAbaEstoque === 'promocional';
     setFormProduto({
       marca: '',
       nome: '',
@@ -862,10 +952,21 @@ export default function Admin() {
       estoque: '',
       sabores: '',
       zonas: ['norte', 'sul_oeste', 'gravata'],
-      is_promo: subAbaEstoque === 'promocional',
+      is_promo: isPromo,
       preco_promo: '',
     });
-    setFormSaboresEstoque([{ sabor: '', estoque: 10 }]);
+    setFormSabores(['Menta Ice']);
+    setFormZonasAtivas({
+      norte: true,
+      sul_oeste: true,
+      gravata: true,
+    });
+    setFormEstoquePorZona({
+      norte: { 'Menta Ice': isPromo ? 999 : 10 },
+      sul_oeste: { 'Menta Ice': isPromo ? 999 : 10 },
+      gravata: { 'Menta Ice': isPromo ? 999 : 5 },
+    });
+    setZonaModalAtiva('norte');
     setImagemArquivo(null);
     setImagemPreview(null);
     setImagemUrlAtual(null);
@@ -887,21 +988,58 @@ export default function Admin() {
       is_promo: produto.is_promo || false,
       preco_promo: produto.preco_promo?.toString() || '',
     });
-    
-    if (produto.sabores_estoque) {
-      const items = Object.entries(produto.sabores_estoque).map(([sabor, est]) => ({
-        sabor,
-        estoque: est || 0
-      }));
-      setFormSaboresEstoque(items.length > 0 ? items : [{ sabor: '', estoque: 0 }]);
-    } else {
-      const items = produto.sabores.map((sabor, index) => ({
-        sabor,
-        estoque: index === 0 ? produto.estoque : 0
-      }));
-      setFormSaboresEstoque(items.length > 0 ? items : [{ sabor: '', estoque: 0 }]);
-    }
 
+    const listaSabores = produto.sabores && produto.sabores.length > 0 ? [...produto.sabores] : [''];
+    setFormSabores(listaSabores);
+
+    // Zonas ativas
+    const zonasAtivasInit: Record<string, boolean> = {
+      norte: false,
+      sul_oeste: false,
+      gravata: false
+    };
+
+    const produtoZonasNorm = (produto.zonas || []).map(z => utils.normalizarTexto(z));
+    ZONAS_DISPONIVEIS.forEach(z => {
+      const match = produtoZonasNorm.some(pzn => {
+        if (z.id === 'sul_oeste') return pzn.includes('sul') || pzn.includes('oeste');
+        if (z.id === 'gravata') return pzn.includes('gravata');
+        return pzn === z.id;
+      });
+      const temNoEstoqueZonas = Boolean(produto.estoque_zonas?.[z.id]);
+      zonasAtivasInit[z.id] = match || temNoEstoqueZonas || (produtoZonasNorm.length === 0);
+    });
+    setFormZonasAtivas(zonasAtivasInit);
+
+    // Estoque por zona
+    const estoquePorZonaInit: Record<string, Record<string, number>> = {
+      norte: {},
+      sul_oeste: {},
+      gravata: {}
+    };
+
+    ZONAS_DISPONIVEIS.forEach(z => {
+      let zData = produto.estoque_zonas?.[z.id];
+      if (!zData && z.id === 'sul_oeste') {
+        zData = produto.estoque_zonas?.['sul_oeste'] || produto.estoque_zonas?.['oeste'] || produto.estoque_zonas?.['sul'];
+      }
+      if (!zData && z.id === 'gravata') {
+        zData = produto.estoque_zonas?.['gravata'] || produto.estoque_zonas?.['gravatá'];
+      }
+
+      listaSabores.forEach(sabor => {
+        if (zData?.sabores_estoque && zData.sabores_estoque[sabor] !== undefined) {
+          estoquePorZonaInit[z.id][sabor] = zData.sabores_estoque[sabor] || 0;
+        } else if (produto.sabores_estoque && produto.sabores_estoque[sabor] !== undefined && zonasAtivasInit[z.id]) {
+          estoquePorZonaInit[z.id][sabor] = produto.sabores_estoque[sabor] || 0;
+        } else {
+          estoquePorZonaInit[z.id][sabor] = 0;
+        }
+      });
+    });
+
+    setFormEstoquePorZona(estoquePorZonaInit);
+    setZonaModalAtiva('norte');
     setImagemArquivo(null);
     setImagemPreview(null);
     setImagemUrlAtual(produto.imagem_url || null);
@@ -924,7 +1062,9 @@ export default function Admin() {
       is_promo: false,
       preco_promo: '',
     });
-    setFormSaboresEstoque([]);
+    setFormSabores([]);
+    setFormZonasAtivas({ norte: true, sul_oeste: true, gravata: true });
+    setFormEstoquePorZona({ norte: {}, sul_oeste: {}, gravata: {} });
     setImagemArquivo(null);
     setImagemPreview(null);
     setImagemUrlAtual(null);
@@ -985,27 +1125,70 @@ export default function Admin() {
       return;
     }
 
-    const saboresFiltrados = formSaboresEstoque.filter(item => item.sabor.trim() !== '');
-    if (saboresFiltrados.length === 0) {
-      setErro('Adicione pelo menos um sabor com estoque');
+    const saboresLimpos = formSabores.map(s => s.trim()).filter(s => s !== '');
+    if (saboresLimpos.length === 0) {
+      setErro('Adicione pelo menos um sabor válido para o produto');
       return;
     }
 
-    const saboresUnicos = new Set(saboresFiltrados.map(item => item.sabor.toLowerCase().trim()));
-    if (saboresUnicos.size !== saboresFiltrados.length) {
-      setErro('Existem sabores duplicados');
+    const saboresUnicos = new Set(saboresLimpos.map(s => s.toLowerCase()));
+    if (saboresUnicos.size !== saboresLimpos.length) {
+      setErro('Existem sabores com nomes duplicados');
       return;
     }
 
-    const saboresEstoqueObj: { [sabor: string]: number } = {};
-    saboresFiltrados.forEach(item => {
-      saboresEstoqueObj[item.sabor.trim()] = formProduto.is_promo ? 999 : Math.max(0, item.estoque);
+    // Identificar zonas ativas
+    const zonasSelecionadas = Object.entries(formZonasAtivas)
+      .filter(([_, ativo]) => ativo)
+      .map(([zId]) => zId);
+
+    if (zonasSelecionadas.length === 0) {
+      setErro('Selecione pelo menos uma região/zona de atendimento ativa');
+      return;
+    }
+
+    // Montar estoque_zonas e consolidar estoque geral
+    const estoqueZonasFinal: EstoqueZonasMap = {};
+    let estoqueTotalConsolidado = 0;
+    const saboresEstoqueConsolidado: { [sabor: string]: number } = {};
+
+    saboresLimpos.forEach(s => {
+      saboresEstoqueConsolidado[s] = 0;
     });
 
-    const estoque = formProduto.is_promo
-      ? 999
-      : Object.values(saboresEstoqueObj).reduce((a, b) => a + b, 0);
-    const sabores = Object.keys(saboresEstoqueObj);
+    if (formProduto.is_promo) {
+      estoqueTotalConsolidado = 999;
+      saboresLimpos.forEach(s => {
+        saboresEstoqueConsolidado[s] = 999;
+      });
+      zonasSelecionadas.forEach(zId => {
+        const zObj: { [sabor: string]: number } = {};
+        saboresLimpos.forEach(s => { zObj[s] = 999; });
+        estoqueZonasFinal[zId] = {
+          estoque: 999,
+          sabores_estoque: zObj
+        };
+      });
+    } else {
+      zonasSelecionadas.forEach(zId => {
+        const zSaboresMap = formEstoquePorZona[zId] || {};
+        const zSaboresObj: { [sabor: string]: number } = {};
+        let zTotal = 0;
+
+        saboresLimpos.forEach(s => {
+          const qtd = Math.max(0, Number(zSaboresMap[s]) || 0);
+          zSaboresObj[s] = qtd;
+          zTotal += qtd;
+          saboresEstoqueConsolidado[s] = (saboresEstoqueConsolidado[s] || 0) + qtd;
+        });
+
+        estoqueZonasFinal[zId] = {
+          estoque: zTotal,
+          sabores_estoque: zSaboresObj
+        };
+        estoqueTotalConsolidado += zTotal;
+      });
+    }
 
     let precoPromo: number | null = null;
     if (formProduto.is_promo) {
@@ -1023,10 +1206,6 @@ export default function Admin() {
         return;
       }
     }
-
-    const zonasSelecionadas = formProduto.zonas && formProduto.zonas.length > 0
-      ? formProduto.zonas
-      : ['norte', 'sul', 'oeste'];
 
     try {
       setSalvando(true);
@@ -1055,10 +1234,11 @@ export default function Admin() {
           marca: marcaFinal,
           nome: formProduto.nome,
           preco,
-          estoque,
-          sabores,
-          sabores_estoque: saboresEstoqueObj,
+          estoque: estoqueTotalConsolidado,
+          sabores: saboresLimpos,
+          sabores_estoque: saboresEstoqueConsolidado,
           zonas: zonasSelecionadas,
+          estoque_zonas: estoqueZonasFinal,
           is_promo: formProduto.is_promo,
           preco_promo: precoPromo || null,
         };
@@ -1075,10 +1255,11 @@ export default function Admin() {
           marca: marcaFinal,
           nome: formProduto.nome,
           preco,
-          estoque,
-          sabores,
-          sabores_estoque: saboresEstoqueObj,
+          estoque: estoqueTotalConsolidado,
+          sabores: saboresLimpos,
+          sabores_estoque: saboresEstoqueConsolidado,
           zonas: zonasSelecionadas,
+          estoque_zonas: estoqueZonasFinal,
           is_promo: formProduto.is_promo,
           preco_promo: precoPromo || undefined,
           imagem_url: null,
@@ -2679,16 +2860,16 @@ export default function Admin() {
                                   </div>
                                 </td>
                                 <td className="py-3 px-4">
-                                  {produto.sabores_estoque && Object.keys(produto.sabores_estoque).length > 0 ? (
+                                  {estoqueInfo.saboresEstoque && Object.keys(estoqueInfo.saboresEstoque).length > 0 ? (
                                     <div className="flex flex-col gap-1 text-xs">
-                                      {Object.entries(produto.sabores_estoque).map(([sabor, est]) => (
+                                      {Object.entries(estoqueInfo.saboresEstoque).map(([sabor, est]) => (
                                         <div key={sabor} className="flex justify-between gap-3">
                                           <span className="text-slate-400">{sabor}:</span>
                                           <span className={est > 0 ? 'text-[#76FF03] font-bold' : 'text-red-400 font-bold'}>{est}</span>
                                         </div>
                                       ))}
                                       <div className="border-t border-[#76FF03]/20 mt-1 pt-1 flex justify-between font-bold text-[10px]">
-                                        <span className="text-slate-300">TOTAL:</span>
+                                        <span className="text-slate-300">TOTAL {filtroZonaEstoqueExpresso !== 'todas' ? 'NA REGIAO' : ''}:</span>
                                         <span className={estoqueInfo.estoque > 0 ? 'text-[#76FF03]' : 'text-red-400'}>{estoqueInfo.estoque} un</span>
                                       </div>
                                     </div>
@@ -5562,192 +5743,436 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
 
       {/* Modal Produto */}
       {modalAberto && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="w-full max-w-lg glass-morphism p-6 rounded-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-2xl font-bold neon-glow font-['Outfit'] font-bold">{editandoId ? 'Editar Produto' : 'Novo Produto'}</h3>
-              <button onClick={fecharModal} className="p-2 hover:bg-[#76FF03]/20 rounded-lg"><X className="w-6 h-6 text-[#76FF03]" /></button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl glass-morphism p-5 sm:p-6 rounded-2xl max-h-[92vh] overflow-y-auto border border-[#76FF03]/30 shadow-[0_0_40px_rgba(0,0,0,0.8)]">
+            <div className="flex items-center justify-between mb-5 border-b border-[#76FF03]/20 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-[#76FF03]/20 border border-[#76FF03]/40 text-[#76FF03]">
+                  <Box className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold neon-glow font-['Outfit']">
+                    {editandoId ? 'Editar Produto e Estoque Regional' : 'Novo Produto'}
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Cadastre o modelo e distribua os sabores e quantidades por cidade/região
+                  </p>
+                </div>
+              </div>
+              <button onClick={fecharModal} className="p-1.5 text-slate-400 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+                <X className="w-5 h-5" />
+              </button>
             </div>
-            <form onSubmit={handleSalvarProduto} className="space-y-4">
-              <div className="border border-[#76FF03]/30 rounded-xl p-4 bg-black/30">
-                <label className="flex items-center gap-2 text-sm font-bold text-slate-300 mb-3 font-semibold"><ImagePlus className="w-4 h-4 text-[#76FF03]" /> Imagem</label>
-                {(imagemPreview || (imagemUrlAtual && !removerImagem)) ? (
-                  <div className="relative mb-3"><img src={imagemPreview || imagemUrlAtual || ''} alt="Preview" className="w-full h-48 object-cover rounded-lg border border-[#76FF03]/50" /><button type="button" onClick={handleRemoverImagem} className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full"><X className="w-4 h-4" /></button></div>
-                ) : (
-                  <div onClick={() => inputImagemRef.current?.click()} className="w-full h-32 border-2 border-dashed border-[#76FF03]/40 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-[#76FF03] transition-all"><ImagePlus className="w-8 h-8 text-[#76FF03]/50 mb-2" /><p className="text-slate-400 text-xs">Clique para selecionar</p></div>
-                )}
-                <input ref={inputImagemRef} type="file" accept="image/*" onChange={handleSelecionarImagem} className="hidden" />
-              </div>
-              <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Marca</label>
-                <select value={marcaCustomizada ? '' : formProduto.marca} onChange={(e) => { setFormProduto({ ...formProduto, marca: e.target.value }); setMarcaCustomizada(''); }} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none">
-                  <option value="">Selecione uma marca</option>
-                  {marcas.map(marca => <option key={marca} value={marca}>{marca}</option>)}
-                  <option value="">─ Outra marca ─</option>
-                </select>
-                {formProduto.marca === '' && <input type="text" value={marcaCustomizada} onChange={(e) => setMarcaCustomizada(e.target.value)} placeholder="Digite a marca" className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none" />}
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Nome</label>
-                <input type="text" value={formProduto.nome} onChange={(e) => setFormProduto({ ...formProduto, nome: e.target.value })} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none" placeholder="ex: IGNITE 8.000" />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">Preço (R$)</label>
-                <input type="number" step="0.01" value={formProduto.preco} onChange={(e) => setFormProduto({ ...formProduto, preco: e.target.value })} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-2 rounded-lg outline-none" placeholder="115.00" />
-              </div>
-              
-              <div className="border border-[#76FF03]/30 rounded-xl p-4 bg-black/30 space-y-3">
-                <div className="flex justify-between items-center">
-                  <label className="block text-xs font-bold text-slate-300 uppercase font-semibold">
-                    {formProduto.is_promo ? 'Sabores Disponíveis (Promoção)' : 'Sabores e Estoques (Expresso)'}
+
+            <form onSubmit={handleSalvarProduto} className="space-y-5">
+              {/* 1. Imagem e Dados Básicos */}
+              <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-3">
+                <h4 className="text-xs font-bold text-[#76FF03] uppercase tracking-wider flex items-center gap-1.5">
+                  <Sparkles className="w-3.5 h-3.5" /> 1. Informações Básicas do Modelo
+                </h4>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="flex items-center gap-2 text-xs font-bold text-slate-300 uppercase mb-2">
+                      <ImagePlus className="w-3.5 h-3.5 text-[#76FF03]" /> Imagem do Vape
+                    </label>
+                    {(imagemPreview || (imagemUrlAtual && !removerImagem)) ? (
+                      <div className="relative">
+                        <img 
+                          src={imagemPreview || imagemUrlAtual || ''} 
+                          alt="Preview" 
+                          className="w-full h-32 object-contain bg-black/60 rounded-lg border border-[#76FF03]/50 p-2" 
+                        />
+                        <button 
+                          type="button" 
+                          onClick={handleRemoverImagem} 
+                          className="absolute top-2 right-2 p-1 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors"
+                          title="Remover imagem"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ) : (
+                      <div 
+                        onClick={() => inputImagemRef.current?.click()} 
+                        className="w-full h-32 border-2 border-dashed border-[#76FF03]/40 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-[#76FF03] transition-all bg-black/30"
+                      >
+                        <ImagePlus className="w-6 h-6 text-[#76FF03]/60 mb-1" />
+                        <p className="text-slate-400 text-xs font-semibold">Selecionar Imagem</p>
+                        <p className="text-slate-500 text-[10px]">PNG, JPG, WebP (máx 5MB)</p>
+                      </div>
+                    )}
+                    <input ref={inputImagemRef} type="file" accept="image/*" onChange={handleSelecionarImagem} className="hidden" />
+                  </div>
+
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Marca *</label>
+                      <select 
+                        value={marcaCustomizada ? '' : formProduto.marca} 
+                        onChange={(e) => { setFormProduto({ ...formProduto, marca: e.target.value }); setMarcaCustomizada(''); }} 
+                        className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                      >
+                        <option value="">Selecione uma marca...</option>
+                        {marcas.map(marca => <option key={marca} value={marca}>{marca}</option>)}
+                        <option value="">─ Outra marca ─</option>
+                      </select>
+                      {formProduto.marca === '' && (
+                        <input 
+                          type="text" 
+                          value={marcaCustomizada} 
+                          onChange={(e) => setMarcaCustomizada(e.target.value)} 
+                          placeholder="Digite a nova marca..." 
+                          className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3 py-2 rounded-lg outline-none text-xs mt-1.5 focus:border-[#76FF03]" 
+                        />
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Nome / Modelo *</label>
+                      <input 
+                        type="text" 
+                        required 
+                        value={formProduto.nome} 
+                        onChange={(e) => setFormProduto({ ...formProduto, nome: e.target.value })} 
+                        className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03]" 
+                        placeholder="Ex: IGNITE V150 15.000 Puffs" 
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">Preço (R$) *</label>
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        required 
+                        value={formProduto.preco} 
+                        onChange={(e) => setFormProduto({ ...formProduto, preco: e.target.value })} 
+                        className="w-full bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3 py-2 rounded-lg outline-none text-xs focus:border-[#76FF03]" 
+                        placeholder="115.00" 
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Promoção Checkbox */}
+                <div className="pt-2 border-t border-white/10 flex items-center justify-between">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input 
+                      type="checkbox" 
+                      checked={formProduto.is_promo} 
+                      onChange={(e) => setFormProduto({ ...formProduto, is_promo: e.target.checked })} 
+                      className="accent-[#FF3366] w-4 h-4 rounded" 
+                    />
+                    <span className="text-xs font-bold text-slate-200 uppercase">Produto Promocional (Oferta)</span>
                   </label>
+                  {formProduto.is_promo && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-400 font-bold">Preço Promo: R$</span>
+                      <input 
+                        type="number" 
+                        step="0.01" 
+                        required 
+                        value={formProduto.preco_promo} 
+                        onChange={(e) => setFormProduto({ ...formProduto, preco_promo: e.target.value })} 
+                        className="w-24 bg-black/60 border border-red-500/60 text-white px-2 py-1 rounded-lg text-xs outline-none focus:border-red-400 font-bold" 
+                        placeholder="95.00" 
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 2. Lista Geral de Sabores do Modelo */}
+              <div className="p-4 rounded-xl bg-black/40 border border-white/10 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-[#76FF03] uppercase tracking-wider flex items-center gap-1.5">
+                      <Layers className="w-3.5 h-3.5" /> 2. Sabores Cadastrados no Modelo
+                    </h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Adicione todos os sabores que existem neste vape (a quantidade em cada cidade é definida na etapa 3)
+                    </p>
+                  </div>
                   <button
                     type="button"
-                    onClick={() => setFormSaboresEstoque([...formSaboresEstoque, { sabor: '', estoque: formProduto.is_promo ? 999 : 10 }])}
-                    className="flex items-center gap-1 text-xs font-bold text-[#76FF03] hover:text-[#76FF03]/80 transition-colors"
+                    onClick={adicionarSaborAoForm}
+                    className="flex items-center gap-1 text-xs font-bold text-[#76FF03] hover:text-[#76FF03]/80 bg-[#76FF03]/10 px-2.5 py-1.5 rounded-lg border border-[#76FF03]/30 transition-all"
                   >
                     <Plus className="w-3.5 h-3.5" /> Adicionar Sabor
                   </button>
                 </div>
-                
-                <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
-                  {formSaboresEstoque.map((item, index) => (
+
+                <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                  {formSabores.map((sabor, index) => (
                     <div key={index} className="flex gap-2 items-center">
+                      <span className="text-[11px] font-bold text-slate-400 w-5 text-right">{index + 1}.</span>
                       <input
                         type="text"
-                        value={item.sabor}
-                        onChange={(e) => {
-                          const newItems = [...formSaboresEstoque];
-                          newItems[index].sabor = e.target.value;
-                          setFormSaboresEstoque(newItems);
-                        }}
-                        className="flex-1 bg-black/60 border border-[#76FF03]/50 text-slate-100 px-3 py-1.5 rounded-lg outline-none text-sm"
-                        placeholder="ex: Menta Ice"
+                        value={sabor}
+                        onChange={(e) => alterarNomeSaborNoForm(index, e.target.value)}
+                        className="flex-1 bg-black/60 border border-[#76FF03]/40 text-slate-100 px-3 py-1.5 rounded-lg outline-none text-xs focus:border-[#76FF03]"
+                        placeholder="Ex: Menta Ice, Uva Ice, Melancia..."
                         required
                       />
-                      {!formProduto.is_promo && (
-                        <input
-                          type="number"
-                          min="0"
-                          value={item.estoque}
-                          onChange={(e) => {
-                            const newItems = [...formSaboresEstoque];
-                            newItems[index].estoque = parseInt(e.target.value) || 0;
-                            setFormSaboresEstoque(newItems);
-                          }}
-                          className="w-24 bg-black/60 border border-[#76FF03]/50 text-slate-100 px-3 py-1.5 rounded-lg outline-none text-sm"
-                          placeholder="Estoque"
-                          required
-                        />
-                      )}
                       <button
                         type="button"
-                        onClick={() => {
-                          if (formSaboresEstoque.length > 1) {
-                            setFormSaboresEstoque(formSaboresEstoque.filter((_, idx) => idx !== index));
-                          } else {
-                            setFormSaboresEstoque([{ sabor: '', estoque: formProduto.is_promo ? 999 : 0 }]);
-                          }
-                        }}
-                        className="p-1.5 text-red-500 hover:bg-red-500/20 rounded transition-all"
+                        onClick={() => removerSaborDoForm(index)}
+                        className="p-1.5 text-red-400 hover:bg-red-500/20 rounded transition-all"
+                        title="Remover sabor"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
                   ))}
                 </div>
-                
-                <div className="text-[10px] text-slate-400 flex justify-between border-t border-[#76FF03]/20 pt-2 mt-2 font-bold uppercase">
-                  <span>Sabores: {formSaboresEstoque.filter(i => i.sabor.trim() !== '').length}</span>
-                  {formProduto.is_promo ? (
-                    <span className="text-[#76FF03]">Estoque Livre (Controle por Ativo/Inativo)</span>
-                  ) : (
-                    <span>Estoque Total: {formSaboresEstoque.reduce((sum, item) => sum + (item.sabor.trim() !== '' ? item.estoque : 0), 0)}</span>
-                  )}
-                </div>
               </div>
 
-              {/* Seletor de Regiões / Zonas */}
-              <div className="border border-[#76FF03]/30 rounded-xl p-4 bg-black/30 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="flex items-center gap-1.5 text-xs font-bold text-slate-300 uppercase font-semibold">
-                    <MapPin className="w-4 h-4 text-[#76FF03]" /> Regiões / Zonas de Atendimento
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (formProduto.zonas.length >= ZONAS_DISPONIVEIS.length) {
-                        setFormProduto({ ...formProduto, zonas: [] });
-                      } else {
-                        setFormProduto({ ...formProduto, zonas: ZONAS_DISPONIVEIS.map(z => z.id) });
-                      }
-                    }}
-                    className="text-[10px] text-[#76FF03] hover:underline font-bold"
-                  >
-                    {formProduto.zonas.length >= ZONAS_DISPONIVEIS.length ? 'Desmarcar todas' : 'Marcar todas'}
-                  </button>
+              {/* 3. Gestão de Estoque e Sabores por Região / Cidade */}
+              <div className="p-4 rounded-xl bg-black/40 border border-[#76FF03]/30 space-y-4">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div>
+                    <h4 className="text-xs font-bold text-[#76FF03] uppercase tracking-wider flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5" /> 3. Estoque e Sabores por Região / Cidade
+                    </h4>
+                    <p className="text-[11px] text-slate-400 mt-0.5">
+                      Selecione a cidade abaixo para ativar ou definir exatamente quais sabores estão disponíveis nela:
+                    </p>
+                  </div>
                 </div>
-                <p className="text-[11px] text-slate-400">
-                  Selecione em quais regiões este vape aparecerá disponível no catálogo:
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+
+                {/* Abas das Zonas */}
+                <div className="grid grid-cols-3 gap-2">
                   {ZONAS_DISPONIVEIS.map(z => {
-                    const active = formProduto.zonas.some(item => {
-                      const norm = utils.normalizarTexto(item);
-                      if (z.id === 'sul_oeste') {
-                        return norm === 'sul_oeste' || norm.includes('sul') || norm.includes('oeste');
-                      }
-                      if (z.id === 'gravata') {
-                        return norm === 'gravata' || norm.includes('gravata');
-                      }
-                      return norm === z.id || norm.includes(z.id);
-                    });
+                    const isAtiva = formZonasAtivas[z.id] ?? false;
+                    const isTabSelecionada = zonaModalAtiva === z.id;
+                    const zData = formEstoquePorZona[z.id] || {};
+                    const totalZona = formProduto.is_promo 
+                      ? (isAtiva ? 'Livre' : 'Inativo') 
+                      : Object.values(zData).reduce((a, b) => a + (Number(b) || 0), 0);
+
                     return (
                       <button
                         key={z.id}
                         type="button"
-                        onClick={() => {
-                          let novasZonas = [...formProduto.zonas];
-                          if (active) {
-                            novasZonas = novasZonas.filter(item => {
-                              const norm = utils.normalizarTexto(item);
-                              if (z.id === 'sul_oeste') {
-                                return norm !== 'sul_oeste' && !norm.includes('sul') && !norm.includes('oeste');
-                              }
-                              if (z.id === 'gravata') {
-                                return norm !== 'gravata' && !norm.includes('gravata');
-                              }
-                              return norm !== z.id && !norm.includes(z.id);
-                            });
-                          } else {
-                            novasZonas.push(z.id);
-                          }
-                          setFormProduto({ ...formProduto, zonas: novasZonas });
-                        }}
-                        className={`py-2.5 px-3 rounded-lg text-xs font-bold border transition-all flex items-center justify-center gap-1.5 ${
-                          active
-                            ? 'bg-[#76FF03]/20 border-[#76FF03] text-[#76FF03] shadow-[0_0_10px_rgba(118,255,3,0.2)]'
-                            : 'bg-black/50 border-white/10 text-slate-400 hover:border-white/30'
+                        onClick={() => setZonaModalAtiva(z.id)}
+                        className={`py-2.5 px-2 rounded-xl text-left border transition-all relative ${
+                          isTabSelecionada
+                            ? 'bg-[#76FF03]/15 border-[#76FF03] text-white shadow-[0_0_15px_rgba(118,255,3,0.2)]'
+                            : 'bg-black/60 border-white/10 text-slate-400 hover:border-white/30'
                         }`}
                       >
-                        <span>{active ? '✓' : '+'}</span>
-                        <span>{z.nome}</span>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-black">{z.nome}</span>
+                          <span 
+                            className={`w-2.5 h-2.5 rounded-full ${isAtiva ? 'bg-[#76FF03]' : 'bg-slate-600'}`} 
+                            title={isAtiva ? 'Região Ativa' : 'Região Desativada'}
+                          />
+                        </div>
+                        <div className="text-[10px] flex justify-between items-center">
+                          <span className="text-slate-400">{z.sigla}</span>
+                          <span className={isAtiva && Number(totalZona) > 0 ? 'text-[#76FF03] font-bold' : 'text-slate-500'}>
+                            {formProduto.is_promo ? totalZona : `${totalZona} un`}
+                          </span>
+                        </div>
                       </button>
                     );
                   })}
                 </div>
+
+                {/* Conteúdo da Região Selecionada */}
+                {(() => {
+                  const zonaInfo = ZONAS_DISPONIVEIS.find(z => z.id === zonaModalAtiva) || ZONAS_DISPONIVEIS[0];
+                  const isAtiva = formZonasAtivas[zonaModalAtiva] ?? false;
+                  const zEstoqueMap = formEstoquePorZona[zonaModalAtiva] || {};
+
+                  return (
+                    <div className="p-3.5 rounded-xl bg-black/60 border border-white/10 space-y-3">
+                      {/* Switch de Ativação na Região */}
+                      <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                        <label className="flex items-center gap-2.5 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={isAtiva}
+                            onChange={(e) => {
+                              const checked = e.target.checked;
+                              setFormZonasAtivas({ ...formZonasAtivas, [zonaModalAtiva]: checked });
+                            }}
+                            className="accent-[#76FF03] w-4 h-4 rounded"
+                          />
+                          <div>
+                            <span className="text-xs font-bold text-slate-100 block">
+                              Vender este vape em {zonaInfo.nome} ({zonaInfo.sigla})
+                            </span>
+                            <span className="text-[10px] text-slate-400">
+                              {isAtiva ? 'Disponível no catálogo dos clientes desta cidade' : 'Oculto e indisponível para esta cidade'}
+                            </span>
+                          </div>
+                        </label>
+
+                        {isAtiva && !formProduto.is_promo && (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <button
+                              type="button"
+                              onClick={() => preencherEstoqueZona(zonaModalAtiva, 5)}
+                              className="px-2 py-1 bg-white/5 hover:bg-white/15 text-[10px] font-bold rounded text-slate-300 border border-white/10"
+                              title="Colocar 5 em todos os sabores desta cidade"
+                            >
+                              Todos = 5
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => preencherEstoqueZona(zonaModalAtiva, 10)}
+                              className="px-2 py-1 bg-white/5 hover:bg-white/15 text-[10px] font-bold rounded text-slate-300 border border-white/10"
+                              title="Colocar 10 em todos os sabores desta cidade"
+                            >
+                              Todos = 10
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => preencherEstoqueZona(zonaModalAtiva, 0)}
+                              className="px-2 py-1 bg-red-500/10 hover:bg-red-500/20 text-[10px] font-bold rounded text-red-400 border border-red-500/30"
+                              title="Zerar todos os sabores desta cidade"
+                            >
+                              Zerar
+                            </button>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Lista de Sabores e Quantidades para a Região */}
+                      {isAtiva ? (
+                        <div className="space-y-2">
+                          <p className="text-[11px] text-slate-300">
+                            Quantidades em estoque para <strong>{zonaInfo.nome}</strong>:
+                            <span className="text-slate-400 text-[10px] block mt-0.5">
+                              (Sabores com quantidade 0 não aparecerão para clientes em {zonaInfo.nome})
+                            </span>
+                          </p>
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-48 overflow-y-auto pr-1">
+                            {formSabores.filter(s => s.trim() !== '').map((sabor) => {
+                              const qtd = zEstoqueMap[sabor] ?? 0;
+                              const temEstoque = qtd > 0;
+
+                              return (
+                                <div 
+                                  key={sabor} 
+                                  className={`p-2.5 rounded-lg border flex items-center justify-between gap-2 transition-all ${
+                                    temEstoque 
+                                      ? 'bg-[#76FF03]/5 border-[#76FF03]/30' 
+                                      : 'bg-black/40 border-white/5 opacity-60'
+                                  }`}
+                                >
+                                  <div className="flex-1 min-w-0">
+                                    <span className="text-xs font-bold text-slate-100 truncate block">
+                                      {sabor}
+                                    </span>
+                                    <span className={`text-[9px] font-bold uppercase ${temEstoque ? 'text-[#76FF03]' : 'text-red-400'}`}>
+                                      {temEstoque ? `Ativo (${qtd} un)` : 'Esgotado nesta cidade'}
+                                    </span>
+                                  </div>
+
+                                  {!formProduto.is_promo && (
+                                    <div className="flex items-center gap-1">
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        value={qtd}
+                                        onChange={(e) => {
+                                          const val = parseInt(e.target.value) || 0;
+                                          alterarEstoqueSaborZona(zonaModalAtiva, sabor, val);
+                                        }}
+                                        className="w-16 bg-black border border-[#76FF03]/50 text-slate-100 px-2 py-1 rounded text-xs text-center font-bold outline-none focus:border-[#76FF03]"
+                                        placeholder="0"
+                                      />
+                                      <span className="text-[10px] text-slate-400">un</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="p-4 text-center rounded-lg bg-white/[0.02] border border-dashed border-white/10">
+                          <p className="text-xs text-slate-400">
+                            Este produto está marcado como <strong>desativado</strong> em {zonaInfo.nome}.
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => setFormZonasAtivas({ ...formZonasAtivas, [zonaModalAtiva]: true })}
+                            className="mt-2 text-xs font-bold text-[#76FF03] hover:underline"
+                          >
+                            Clique aqui para ativar em {zonaInfo.nome}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {/* Resumo Total Consolidado */}
+                <div className="p-3 bg-black/80 rounded-xl border border-white/10 flex flex-wrap items-center justify-between text-xs font-bold">
+                  <span className="text-slate-400 uppercase text-[10px]">Resumo de Estoque Consolidado:</span>
+                  <div className="flex items-center gap-3 text-[11px]">
+                    {ZONAS_DISPONIVEIS.map(z => {
+                      const isAtiva = formZonasAtivas[z.id];
+                      const totalZ = isAtiva 
+                        ? Object.values(formEstoquePorZona[z.id] || {}).reduce((a, b) => a + (Number(b) || 0), 0)
+                        : 0;
+                      return (
+                        <span key={z.id} className={isAtiva && totalZ > 0 ? 'text-slate-200' : 'text-slate-500'}>
+                          {z.sigla}: <strong className={isAtiva && totalZ > 0 ? 'text-[#76FF03]' : ''}>{formProduto.is_promo ? (isAtiva ? 'Ativo' : '0') : totalZ}</strong>
+                        </span>
+                      );
+                    })}
+                    <span className="text-[#76FF03] pl-2 border-l border-white/20">
+                      Total Global: {formProduto.is_promo 
+                        ? 'Livre' 
+                        : Object.entries(formZonasAtivas)
+                            .filter(([_, ativa]) => ativa)
+                            .reduce((sum, [zId]) => {
+                              const zMap = formEstoquePorZona[zId] || {};
+                              return sum + Object.values(zMap).reduce((a, b) => a + (Number(b) || 0), 0);
+                            }, 0)} un
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <input type="checkbox" checked={formProduto.is_promo} onChange={(e) => setFormProduto({ ...formProduto, is_promo: e.target.checked })} className="accent-[#76FF03]" />
-                <label className="text-xs font-bold text-slate-300 uppercase font-semibold">Promoção?</label>
+              {/* Botões de Ação */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={fecharModal}
+                  className="w-1/3 py-3 px-4 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-xs font-bold transition-all border border-white/10"
+                >
+                  Cancelar
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={salvando || uploadandoImagem} 
+                  className="flex-1 py-3 px-4 cyber-button rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-lg"
+                >
+                  {salvando ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Salvando Produto...</span>
+                    </>
+                  ) : editandoId ? (
+                    <>
+                      <Save className="w-4 h-4" />
+                      <span>Atualizar Produto e Estoque</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4" />
+                      <span>Criar Produto</span>
+                    </>
+                  )}
+                </button>
               </div>
-              {formProduto.is_promo && (
-                <input type="number" step="0.01" value={formProduto.preco_promo} onChange={(e) => setFormProduto({ ...formProduto, preco_promo: e.target.value })} className="w-full bg-black/60 border border-red-500/50 text-slate-100 px-4 py-2 rounded-lg outline-none" placeholder="Preço Promo" />
-              )}
-              <button type="submit" disabled={salvando || uploadandoImagem} className="cyber-button w-full flex items-center justify-center gap-2">
-                {salvando ? <Loader2 className="w-4 h-4 animate-spin" /> : editandoId ? 'Atualizar' : 'Criar'}
-              </button>
             </form>
           </div>
         </div>

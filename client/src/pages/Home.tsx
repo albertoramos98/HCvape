@@ -972,23 +972,29 @@ export default function Home() {
                                 : 'border-white/10 focus:border-[#76FF03]'
                             }`}
                           >
-                            <option value="">Selecione uma opção...</option>
-                            {produto.sabores.map((sabor) => {
-                              if (isPromo) {
+                            <option value="">
+                              {isPromo 
+                                ? 'Selecione um sabor...' 
+                                : estoqueInfo.saboresDisponiveis.length > 0 
+                                  ? `Selecione um sabor (${estoqueInfo.saboresDisponiveis.length} disponível${estoqueInfo.saboresDisponiveis.length === 1 ? '' : 'is'})...` 
+                                  : 'Nenhum sabor disponível nesta região'}
+                            </option>
+                            {isPromo ? (
+                              produto.sabores.map((sabor) => (
+                                <option key={sabor} value={sabor} className="bg-black text-slate-200">
+                                  {sabor}
+                                </option>
+                              ))
+                            ) : (
+                              estoqueInfo.saboresDisponiveis.map((sabor) => {
+                                const sEstoque = estoqueInfo.saboresEstoque[sabor] ?? estoqueInfo.estoque;
                                 return (
                                   <option key={sabor} value={sabor} className="bg-black text-slate-200">
-                                    {sabor}
+                                    {sabor} ({sEstoque} {sEstoque === 1 ? 'un' : 'un'})
                                   </option>
                                 );
-                              }
-                              const sEstoque = estoqueInfo.saboresEstoque[sabor] ?? (Object.keys(estoqueInfo.saboresEstoque).length > 0 ? 0 : estoqueInfo.estoque);
-                              const esgotado = sEstoque <= 0;
-                              return (
-                                <option key={sabor} value={sabor} disabled={esgotado} className="bg-black text-slate-200">
-                                  {sabor} {esgotado ? '— (Esgotado)' : `(${sEstoque} un)`}
-                                </option>
-                              );
-                            })}
+                              })
+                            )}
                           </select>
                         </div>
 

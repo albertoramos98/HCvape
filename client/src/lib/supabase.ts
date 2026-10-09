@@ -1754,7 +1754,7 @@ export const utils = {
       }
     }
 
-    // Se nenhuma zona foi especificada, usar estoque geral
+    // Se nenhuma zona foi especificada, usar estoque geral consolidado
     if (!zona) {
       const saboresEstoque = produto.sabores_estoque || {};
       const temControleSabores = Object.keys(saboresEstoque).length > 0;
@@ -1774,7 +1774,7 @@ export const utils = {
     }
 
     // Se o produto possui configuração de estoque_zonas
-    if (produto.estoque_zonas) {
+    if (produto.estoque_zonas && typeof produto.estoque_zonas === 'object' && Object.keys(produto.estoque_zonas).length > 0) {
       // Para sul_oeste, verificar sul_oeste, oeste ou sul
       let zonaData = produto.estoque_zonas[zona];
       if (!zonaData && zona === 'sul_oeste') {
@@ -1784,23 +1784,34 @@ export const utils = {
         zonaData = produto.estoque_zonas['gravata'] || produto.estoque_zonas['gravatá'];
       }
 
-      if (zonaData !== undefined) {
-        const estoqueZona = zonaData?.estoque ?? 0;
-        const saboresEstoque = zonaData?.sabores_estoque || {};
+      if (zonaData !== undefined && zonaData !== null) {
+        const saboresEstoque = zonaData.sabores_estoque || {};
         const temControleSabores = Object.keys(saboresEstoque).length > 0;
 
         const saboresDisponiveis = produto.sabores.filter(sabor => {
           if (temControleSabores) {
             return (saboresEstoque[sabor] ?? 0) > 0;
           }
-          return estoqueZona > 0;
+          return (zonaData?.estoque ?? 0) > 0;
         });
+
+        const estoqueZona = temControleSabores
+          ? Object.values(saboresEstoque).reduce((acc, v) => acc + (Number(v) || 0), 0)
+          : (zonaData.estoque ?? 0);
 
         return {
           estoque: estoqueZona,
           saboresEstoque,
           saboresDisponiveis,
-          possuiEstoqueNaZona: estoqueZona > 0 && saboresDisponiveis.length > 0
+          possuiEstoqueNaZona: estoqueZona > 0 && (produto.sabores.length === 0 || saboresDisponiveis.length > 0)
+        };
+      } else {
+        // Se tem estoque_zonas configurado para o produto mas NÃO para esta zona em específico, a zona está zerada
+        return {
+          estoque: 0,
+          saboresEstoque: {},
+          saboresDisponiveis: [],
+          possuiEstoqueNaZona: false
         };
       }
     }
@@ -1819,7 +1830,7 @@ export const utils = {
       estoque: produto.estoque,
       saboresEstoque,
       saboresDisponiveis,
-      possuiEstoqueNaZona: produto.estoque > 0 && saboresDisponiveis.length > 0
+      possuiEstoqueNaZona: produto.estoque > 0 && (produto.sabores.length === 0 || saboresDisponiveis.length > 0)
     };
   }
 };

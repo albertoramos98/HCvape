@@ -580,6 +580,47 @@ describe('Gestão de Localidades e Zonas (incluindo Gravatá)', () => {
     expect(resultadoSul.possuiEstoqueNaZona).toBe(false);
     expect(resultadoSul.estoque).toBe(0);
   });
+
+  it('deve retornar apenas os sabores específicos com estoque > 0 na cidade selecionada (ex: Gravatá apenas Menta e Uva)', () => {
+    const produtoExemploAudio: any = {
+      id: 'p-v150',
+      marca: 'IGNITE',
+      nome: 'IGNITE V150',
+      preco: 115,
+      estoque: 38,
+      sabores: ['Menta Ice', 'Uva Ice', 'Manga Ice', 'Melancia Ice'],
+      zonas: ['norte', 'sul_oeste', 'gravata'],
+      sabores_estoque: { 'Menta Ice': 15, 'Uva Ice': 13, 'Manga Ice': 5, 'Melancia Ice': 5 },
+      estoque_zonas: {
+        norte: {
+          estoque: 20,
+          sabores_estoque: { 'Menta Ice': 10, 'Uva Ice': 10, 'Manga Ice': 0, 'Melancia Ice': 0 }
+        },
+        sul_oeste: {
+          estoque: 10,
+          sabores_estoque: { 'Menta Ice': 0, 'Uva Ice': 0, 'Manga Ice': 5, 'Melancia Ice': 5 }
+        },
+        gravata: {
+          estoque: 8,
+          sabores_estoque: { 'Menta Ice': 5, 'Uva Ice': 3, 'Manga Ice': 0, 'Melancia Ice': 0 }
+        }
+      }
+    };
+
+    // Consulta para Gravatá: deve retornar APENAS Menta e Uva
+    const resultadoGravata = utils.obterEstoqueProdutoPorZona(produtoExemploAudio, 'gravata');
+    expect(resultadoGravata.possuiEstoqueNaZona).toBe(true);
+    expect(resultadoGravata.estoque).toBe(8);
+    expect(resultadoGravata.saboresDisponiveis).toEqual(['Menta Ice', 'Uva Ice']);
+    expect(resultadoGravata.saboresDisponiveis).not.toContain('Manga Ice');
+    expect(resultadoGravata.saboresDisponiveis).not.toContain('Melancia Ice');
+
+    // Consulta para Zona Oeste/Sul: deve retornar apenas Manga e Melancia
+    const resultadoSul = utils.obterEstoqueProdutoPorZona(produtoExemploAudio, 'sul_oeste');
+    expect(resultadoSul.possuiEstoqueNaZona).toBe(true);
+    expect(resultadoSul.estoque).toBe(10);
+    expect(resultadoSul.saboresDisponiveis).toEqual(['Manga Ice', 'Melancia Ice']);
+  });
 });
 
 
