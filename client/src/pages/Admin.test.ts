@@ -630,11 +630,16 @@ describe('Auditoria de Segurança & Whitelist de Administradores', () => {
     return whitelist.map(e => e.trim().toLowerCase()).includes(emailLimpo);
   };
 
-  const adminWhitelistOficial = ['albertinhorss@gmail.com'];
+  const adminWhitelistOficial = [
+    'albertinhorss@gmail.com',
+    'pedrohenrique12345a@gmail.com'
+  ];
 
-  it('deve permitir acesso para o e-mail oficial do administrador', () => {
+  it('deve permitir acesso para os e-mails oficiais de administradores', () => {
     expect(verificarPermissaoAdmin('albertinhorss@gmail.com', adminWhitelistOficial)).toBe(true);
     expect(verificarPermissaoAdmin('  ALBERTINHORSS@GMAIL.COM ', adminWhitelistOficial)).toBe(true);
+    expect(verificarPermissaoAdmin('pedrohenrique12345a@gmail.com', adminWhitelistOficial)).toBe(true);
+    expect(verificarPermissaoAdmin('  PEDROHENRIQUE12345A@GMAIL.COM ', adminWhitelistOficial)).toBe(true);
   });
 
   it('deve BLOQUEAR sumariamente qualquer usuário terceiro ou invasor não cadastrado na whitelist', () => {

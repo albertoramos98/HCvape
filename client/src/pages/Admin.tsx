@@ -746,8 +746,11 @@ export default function Admin() {
   // Lista de e-mails autorizados para acesso ao Painel Admin
   const adminEmailsPermitidos = useMemo(() => {
     const envEmails = import.meta.env.VITE_ADMIN_EMAILS ? import.meta.env.VITE_ADMIN_EMAILS.split(',').map((e: string) => e.trim().toLowerCase()) : [];
-    // E-mail padrão do administrador (owner) + e-mails definidos no .env
-    const defaults = ['albertinhorss@gmail.com'];
+    // E-mail padrão do administrador (owner) + administradores autorizados + e-mails definidos no .env
+    const defaults = [
+      'albertinhorss@gmail.com',
+      'pedrohenrique12345a@gmail.com'
+    ];
     return Array.from(new Set([...defaults, ...envEmails])).filter(Boolean);
   }, []);
 
