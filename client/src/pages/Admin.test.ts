@@ -623,5 +623,29 @@ describe('Gestão de Localidades e Zonas (incluindo Gravatá)', () => {
   });
 });
 
+describe('Auditoria de Segurança & Whitelist de Administradores', () => {
+  const verificarPermissaoAdmin = (email: string | null | undefined, whitelist: string[]): boolean => {
+    if (!email) return false;
+    const emailLimpo = email.trim().toLowerCase();
+    return whitelist.map(e => e.trim().toLowerCase()).includes(emailLimpo);
+  };
+
+  const adminWhitelistOficial = ['albertinhorss@gmail.com'];
+
+  it('deve permitir acesso para o e-mail oficial do administrador', () => {
+    expect(verificarPermissaoAdmin('albertinhorss@gmail.com', adminWhitelistOficial)).toBe(true);
+    expect(verificarPermissaoAdmin('  ALBERTINHORSS@GMAIL.COM ', adminWhitelistOficial)).toBe(true);
+  });
+
+  it('deve BLOQUEAR sumariamente qualquer usuário terceiro ou invasor não cadastrado na whitelist', () => {
+    expect(verificarPermissaoAdmin('hacker@invasao.com', adminWhitelistOficial)).toBe(false);
+    expect(verificarPermissaoAdmin('alberto@outrodominio.com', adminWhitelistOficial)).toBe(false);
+    expect(verificarPermissaoAdmin('admin@hcvape.com', adminWhitelistOficial)).toBe(false);
+    expect(verificarPermissaoAdmin('', adminWhitelistOficial)).toBe(false);
+    expect(verificarPermissaoAdmin(null, adminWhitelistOficial)).toBe(false);
+    expect(verificarPermissaoAdmin(undefined, adminWhitelistOficial)).toBe(false);
+  });
+});
+
 
 

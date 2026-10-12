@@ -14,6 +14,12 @@ build/
 .env.test.local
 .env.production.local
 
+# Sensitive files & Backups
+*.xlsx
+*.csv
+*.xls
+alberto.xlsx
+
 # IDE and editor files
 .vscode/
 .idea/

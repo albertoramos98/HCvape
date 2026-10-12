@@ -128,16 +128,21 @@ CREATE INDEX IF NOT EXISTS idx_clientes_nome ON clientes(nome);
 
 ALTER TABLE clientes ENABLE ROW LEVEL SECURITY;
 
--- Política de leitura: autenticados (admin) podem ler clientes
-CREATE POLICY "Usuários autenticados podem ver clientes"
-  ON clientes FOR SELECT
-  USING (auth.role() = 'authenticated' OR true);
+-- Remover políticas inseguras antigas (se existirem)
+DROP POLICY IF EXISTS "Usuários autenticados podem ver clientes" ON clientes;
+DROP POLICY IF EXISTS "Permitir inserção e atualização de clientes" ON clientes;
+DROP POLICY IF EXISTS "Apenas administradores podem ver clientes" ON clientes;
 
--- Política de inserção e atualização: permite salvar clientes pelo site e pelo admin
-CREATE POLICY "Permitir inserção e atualização de clientes"
+-- Política de leitura: EXCLUSIVA para administradores autenticados (NUNCA pública!)
+CREATE POLICY "Apenas administradores podem ver clientes"
+  ON clientes FOR SELECT
+  USING (auth.role() = 'authenticated');
+
+-- Política de modificação: EXCLUSIVA para administradores autenticados
+CREATE POLICY "Apenas administradores podem gerenciar clientes"
   ON clientes FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
 
 -- Criar tabela de histórico de interações (1 cliente = N interações)
 CREATE TABLE IF NOT EXISTS interacoes_cliente (
@@ -160,10 +165,15 @@ CREATE INDEX IF NOT EXISTS idx_interacoes_tipo ON interacoes_cliente(tipo);
 
 ALTER TABLE interacoes_cliente ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY "Permitir leitura e escrita de interações de clientes"
+-- Remover políticas inseguras antigas
+DROP POLICY IF EXISTS "Permitir leitura e escrita de interações de clientes" ON interacoes_cliente;
+DROP POLICY IF EXISTS "Apenas administradores gerenciam interacoes" ON interacoes_cliente;
+
+-- Apenas administradores autenticados podem visualizar e gerenciar histórico de interações
+CREATE POLICY "Apenas administradores gerenciam interacoes"
   ON interacoes_cliente FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
 ```
 
 ---
@@ -245,8 +255,8 @@ INSERT INTO produtos (marca, nome, preco, estoque, sabores) VALUES
 No arquivo `.env` na raiz do projeto:
 
 ```env
-VITE_SUPABASE_URL=https://lmhtptakvzpzftcygxmo.supabase.co
-VITE_SUPABASE_ANON_KEY=sb_publishable_4Y7jeM4fEfLH4UMMYNR5Bw_dzUAuK0J
+VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
+VITE_SUPABASE_ANON_KEY=SUA_ANON_KEY_PUBLICA_AQUI
 ```
 
 ---

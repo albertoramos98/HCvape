@@ -24,15 +24,27 @@ ON CONFLICT (chave) DO NOTHING;
 -- Habilitar RLS (Row Level Security)
 ALTER TABLE configuracoes ENABLE ROW LEVEL SECURITY;
 
--- Política de leitura pública (qualquer um pode ler as configurações)
-CREATE POLICY "Configurações são públicas para leitura"
-  ON configuracoes FOR SELECT
-  USING (true);
+-- Limpeza imediata de chaves confidenciais que possam ter sido gravadas
+DELETE FROM configuracoes WHERE chave IN ('clientes_cadastros', 'clientes_interacoes', 'trocas_registros');
 
--- Política de escrita/modificação apenas para usuários autenticados
+-- Remover políticas antigas
+DROP POLICY IF EXISTS "Configurações são públicas para leitura" ON configuracoes;
+DROP POLICY IF EXISTS "Apenas usuários autenticados podem modificar configurações" ON configuracoes;
+DROP POLICY IF EXISTS "Leitura de configurações públicas" ON configuracoes;
+
+-- Política de leitura: público só pode ler chaves públicas estritamente necessárias ao catálogo
+CREATE POLICY "Leitura de configurações públicas"
+  ON configuracoes FOR SELECT
+  USING (
+    chave IN ('promo_schedule', 'hero_banner_config', 'produtos_inativos')
+    OR auth.role() = 'authenticated'
+  );
+
+-- Política de escrita/modificação: APENAS usuários autenticados
 CREATE POLICY "Apenas usuários autenticados podem modificar configurações"
   ON configuracoes FOR ALL
-  USING (auth.role() = 'authenticated');
+  USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
 ```
 
 ## Passos:

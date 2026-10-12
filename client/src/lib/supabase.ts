@@ -491,8 +491,19 @@ export const pedidosService = {
     return data || [];
   },
 
-  // Criar novo pedido
+  // Criar novo pedido (utiliza RPC seguro para evitar exposição de leitura de pedidos)
   async criar(pedido: Omit<Pedido, 'id' | 'numero_pedido' | 'created_at' | 'excluido'>): Promise<Pedido> {
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('criar_pedido_catalogo', {
+        dados: { ...pedido, excluido: false }
+      });
+      if (!rpcError && rpcData) {
+        return rpcData as Pedido;
+      }
+    } catch {
+      // Fallback para inserção direta se a RPC ainda não tiver sido criada no Supabase
+    }
+
     const { data, error } = await supabase
       .from('pedidos')
       .insert([{ ...pedido, excluido: false }])
@@ -577,20 +588,7 @@ export const trocasService = {
       this.salvarNoLocalStorage(lista);
       return { trocas: lista, usandoFallback: false };
     } catch (err: any) {
-      console.warn('Tabela trocas não acessível no Supabase, usando armazenamento local/fallback:', err);
-      // Tenta ler de configuracoes como segundo fallback
-      try {
-        const { data: configData } = await supabase
-          .from('configuracoes')
-          .select('valor')
-          .eq('chave', 'trocas_registros')
-          .single();
-        if (configData?.valor && Array.isArray(configData.valor)) {
-          this.salvarNoLocalStorage(configData.valor);
-          return { trocas: configData.valor as Troca[], usandoFallback: true };
-        }
-      } catch {}
-
+      console.warn('Tabela trocas não acessível no Supabase, usando armazenamento local:', err);
       const local = this.obterDoLocalStorage();
       return { trocas: local, usandoFallback: true };
     }
@@ -628,14 +626,6 @@ export const trocasService = {
       const atualizados = [trocaCompleta, ...locais];
       this.salvarNoLocalStorage(atualizados);
       
-      try {
-        await supabase.from('configuracoes').upsert({
-          chave: 'trocas_registros',
-          valor: atualizados,
-          updated_at: new Date().toISOString()
-        });
-      } catch {}
-
       return trocaCompleta;
     }
   },
@@ -664,14 +654,6 @@ export const trocasService = {
       const atualizados = locais.map(t => t.id === id ? { ...t, ...updates, updated_at: new Date().toISOString() } : t);
       this.salvarNoLocalStorage(atualizados);
 
-      try {
-        await supabase.from('configuracoes').upsert({
-          chave: 'trocas_registros',
-          valor: atualizados,
-          updated_at: new Date().toISOString()
-        });
-      } catch {}
-
       const editada = atualizados.find(t => t.id === id);
       if (!editada) throw new Error('Troca não encontrada');
       return editada;
@@ -695,13 +677,7 @@ export const trocasService = {
     const filtrados = locais.filter(t => t.id !== id);
     this.salvarNoLocalStorage(filtrados);
 
-    try {
-      await supabase.from('configuracoes').upsert({
-        chave: 'trocas_registros',
-        valor: filtrados,
-        updated_at: new Date().toISOString()
-      });
-    } catch {}
+    // Troca removida do cache local
   }
 };
 
@@ -827,20 +803,7 @@ export const clientesService = {
       this.salvarClientesLocalStorage(lista);
       return { clientes: lista, usandoFallback: false };
     } catch (err) {
-      console.warn('Tabela clientes não acessível no Supabase, usando armazenamento local/fallback:', err);
-      // Tentar ler de configuracoes
-      try {
-        const { data: configData } = await supabase
-          .from('configuracoes')
-          .select('valor')
-          .eq('chave', 'clientes_cadastros')
-          .single();
-        if (configData?.valor && Array.isArray(configData.valor)) {
-          this.salvarClientesLocalStorage(configData.valor);
-          return { clientes: configData.valor as Cliente[], usandoFallback: true };
-        }
-      } catch {}
-
+      console.warn('Tabela clientes não acessível no Supabase, usando armazenamento local:', err);
       const local = this.obterClientesLocalStorage();
       return { clientes: local, usandoFallback: true };
     }
@@ -866,22 +829,7 @@ export const clientesService = {
       }
       return { interacoes: lista, usandoFallback: false };
     } catch (err) {
-      console.warn('Tabela interacoes_cliente não acessível no Supabase, usando armazenamento local/fallback:', err);
-      try {
-        const { data: configData } = await supabase
-          .from('configuracoes')
-          .select('valor')
-          .eq('chave', 'clientes_interacoes')
-          .single();
-        if (configData?.valor && Array.isArray(configData.valor)) {
-          let filtrado = configData.valor as InteracaoCliente[];
-          if (clienteTelefoneNorm) {
-            filtrado = filtrado.filter(i => i.cliente_telefone_normalizado === clienteTelefoneNorm);
-          }
-          return { interacoes: filtrado, usandoFallback: true };
-        }
-      } catch {}
-
+      console.warn('Tabela interacoes_cliente não acessível no Supabase, usando armazenamento local:', err);
       let locais = this.obterInteracoesLocalStorage();
       if (clienteTelefoneNorm) {
         locais = locais.filter(i => i.cliente_telefone_normalizado === clienteTelefoneNorm);
@@ -1007,13 +955,7 @@ export const clientesService = {
     const atualizados = [clienteSalvo, ...outrosClientes];
     this.salvarClientesLocalStorage(atualizados);
 
-    try {
-      await supabase.from('configuracoes').upsert({
-        chave: 'clientes_cadastros',
-        valor: atualizados,
-        updated_at: new Date().toISOString()
-      });
-    } catch {}
+    // Sincronizado apenas na tabela protegida clientes e cache local seguro
 
     // 2. Registrar histórico da Interação
     const interacaoId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `int_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
@@ -1042,13 +984,7 @@ export const clientesService = {
     const interacoesAtualizadas = [novaInteracao, ...interacoesLocais];
     this.salvarInteracoesLocalStorage(interacoesAtualizadas);
 
-    try {
-      await supabase.from('configuracoes').upsert({
-        chave: 'clientes_interacoes',
-        valor: interacoesAtualizadas.slice(0, 500),
-        updated_at: new Date().toISOString()
-      });
-    } catch {}
+    // Interação salva na tabela protegida interacoes_cliente e cache local seguro
 
     return clienteSalvo;
   },

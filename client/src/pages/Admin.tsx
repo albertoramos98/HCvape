@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles, MapPin, Compass, Clock, Target, Flame, Eye, EyeOff, Gauge, Award, ChevronRight, ChevronLeft, Check, Layers, Phone, ArrowRight, ShieldCheck, ShieldAlert, AlertTriangle, MessageSquare, Repeat, UserCheck, UserPlus, CalendarRange, History, Copy } from 'lucide-react';
+import { LogOut, Save, AlertCircle, Loader2, Plus, Trash2, Edit2, X, Zap, ImagePlus, ImageOff, ShoppingBag, Box, CheckCircle2, Circle, Download, Calendar, Filter, Github, Mail, BarChart3, TrendingUp, Users, Settings, DollarSign, Percent, RefreshCw, Search, LayoutTemplate, ArrowUp, ArrowDown, Sparkles, MapPin, Compass, Clock, Target, Flame, Eye, EyeOff, Gauge, Award, ChevronRight, ChevronLeft, Check, Layers, Phone, ArrowRight, ShieldCheck, ShieldAlert, AlertTriangle, MessageSquare, Repeat, UserCheck, UserPlus, CalendarRange, History, Copy, Volume2, VolumeX } from 'lucide-react';
 import { authService, produtosService, pedidosService, imagemService, visitasService, trocasService, clientesService, Produto, Pedido, Troca, Cliente, InteracaoCliente, ClienteRelatorio, utils, configService, PromoSchedule, HeroBannerConfig, HeroSlideConfig, DEFAULT_HERO_BANNER_CONFIG, ZonaId, ZONAS_DISPONIVEIS, normalizarTelefoneWhatsApp, formatarTelefoneExibicao, EstoqueZonasMap } from '@/lib/supabase';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, AreaChart, Area, BarChart, Bar, Cell, PieChart, Pie, Legend } from 'recharts';
 import { HeroBanner } from '@/components/HeroBanner';
@@ -170,6 +170,23 @@ export default function Admin() {
   // Estados para configuração do Hero Banner
   const [heroConfig, setHeroConfig] = useState<HeroBannerConfig>(DEFAULT_HERO_BANNER_CONFIG);
   const [salvandoHero, setSalvandoHero] = useState(false);
+
+  // Estados para Pegadinha Anti-Invasor (Bloqueio após 2 tentativas falhas de senha)
+  const [tentativasFalhas, setTentativasFalhas] = useState<number>(() => {
+    return Number(sessionStorage.getItem('hcvape_admin_failed_attempts') || '0');
+  });
+  const [pegadinhaAtiva, setPegadinhaAtiva] = useState<boolean>(() => {
+    return Number(sessionStorage.getItem('hcvape_admin_failed_attempts') || '0') >= 2;
+  });
+  const [segundosBloqueio, setSegundosBloqueio] = useState<number>(30);
+  const [gifPegadinhaUrl, setGifPegadinhaUrl] = useState<string>(() => {
+    return localStorage.getItem('hcvape_prank_gif_url') || import.meta.env.VITE_ADMIN_PRANK_GIF_URL || '/pegadinha.jpg';
+  });
+  const [customGifInput, setCustomGifInput] = useState<string>(() => {
+    return localStorage.getItem('hcvape_prank_gif_url') || import.meta.env.VITE_ADMIN_PRANK_GIF_URL || '/pegadinha.jpg';
+  });
+  const [somSilenciado, setSomSilenciado] = useState<boolean>(false);
+  const [salvandoGifConfig, setSalvandoGifConfig] = useState(false);
 
   // Separar e ordenar produtos: Marca (A-Z) e Puffs/modelo (crescente ou decrescente)
   const { produtosExpressosOrdenados, produtosPromocionaisOrdenados, produtosTodosOrdenados } = useMemo(() => {
@@ -718,14 +735,37 @@ export default function Admin() {
   const [uploadandoImagem, setUploadandoImagem] = useState(false);
   const inputImagemRef = useRef<HTMLInputElement>(null);
 
+  // Lista de e-mails autorizados para acesso ao Painel Admin
+  const adminEmailsPermitidos = useMemo(() => {
+    const envEmails = import.meta.env.VITE_ADMIN_EMAILS ? import.meta.env.VITE_ADMIN_EMAILS.split(',').map((e: string) => e.trim().toLowerCase()) : [];
+    // E-mail padrão do administrador (owner) + e-mails definidos no .env
+    const defaults = ['albertinhorss@gmail.com'];
+    return Array.from(new Set([...defaults, ...envEmails])).filter(Boolean);
+  }, []);
+
+  const isEmailAutorizado = (emailStr?: string | null): boolean => {
+    if (!emailStr) return false;
+    const limpo = emailStr.trim().toLowerCase();
+    return adminEmailsPermitidos.includes(limpo);
+  };
+
   // Verificar autenticação ao carregar
   useEffect(() => {
     const verificarAuth = async () => {
       try {
         const user = await authService.obterUsuarioAtual();
         if (user) {
+          const userEmail = (user.email || '').toLowerCase().trim();
+          if (!isEmailAutorizado(userEmail)) {
+            console.error(`Tentativa de acesso não autorizado bloqueada: ${userEmail}`);
+            await authService.logout();
+            setAutenticado(false);
+            setUsuarioEmail('');
+            setErro(`ACESSO BLOQUEADO: A conta "${userEmail}" não possui privilégios de administrador.`);
+            return;
+          }
           setAutenticado(true);
-          setUsuarioEmail(user.email || '');
+          setUsuarioEmail(userEmail);
           await carregarTudo();
         }
       } catch (err) {
@@ -736,7 +776,7 @@ export default function Admin() {
     };
 
     verificarAuth();
-  }, []);
+  }, [adminEmailsPermitidos]);
 
   // Carregar todos os dados
   const carregarTudo = async () => {
@@ -813,28 +853,119 @@ export default function Admin() {
     }
   };
 
+  // Efeito sonoro de sirene/alarme de emergência usando Web Audio API nativa
+  const tocarSireneAlarme = () => {
+    if (somSilenciado) return;
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioCtx) return;
+      const ctx = new AudioCtx();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sawtooth';
+      gain.gain.setValueAtTime(0.15, ctx.currentTime);
+      const now = ctx.currentTime;
+      for (let i = 0; i < 6; i++) {
+        osc.frequency.setValueAtTime(800, now + i * 0.4);
+        osc.frequency.linearRampToValueAtTime(500, now + i * 0.4 + 0.2);
+      }
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 2.5);
+    } catch (e) {
+      // Audio autoplay policy pode falhar silenciosamente sem quebrar o app
+    }
+  };
+
+  // Timer de contagem regressiva para desbloqueio da pegadinha
+  useEffect(() => {
+    let intervalo: any;
+    if (pegadinhaAtiva && segundosBloqueio > 0) {
+      intervalo = setInterval(() => {
+        setSegundosBloqueio(prev => Math.max(0, prev - 1));
+      }, 1000);
+    }
+    return () => clearInterval(intervalo);
+  }, [pegadinhaAtiva, segundosBloqueio]);
+
+  // Registrar tentativa falha de login (no 2º erro aciona a pegadinha com GIF)
+  const registrarTentativaFalha = () => {
+    const novas = tentativasFalhas + 1;
+    setTentativasFalhas(novas);
+    sessionStorage.setItem('hcvape_admin_failed_attempts', String(novas));
+    if (novas >= 2) {
+      setPegadinhaAtiva(true);
+      setSegundosBloqueio(30);
+      tocarSireneAlarme();
+    }
+  };
+
+  // Resetar estado da pegadinha
+  const resetarPegadinha = () => {
+    setPegadinhaAtiva(false);
+    setTentativasFalhas(0);
+    sessionStorage.removeItem('hcvape_admin_failed_attempts');
+    setErro(null);
+  };
+
+  // Salvar novo GIF personalizado para a pegadinha
+  const salvarNovoGifPegadinha = (url: string) => {
+    const limpo = url.trim();
+    if (!limpo) return;
+    setGifPegadinhaUrl(limpo);
+    setCustomGifInput(limpo);
+    localStorage.setItem('hcvape_prank_gif_url', limpo);
+    setSucesso('GIF da pegadinha atualizado com sucesso!');
+    setTimeout(() => setSucesso(null), 3000);
+  };
+
   // Login
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro(null);
     setSucesso(null);
 
-    if (!email || !senha) {
+    const emailNorm = email.trim().toLowerCase();
+    if (!emailNorm || !senha) {
       setErro('Preencha email e senha');
+      return;
+    }
+
+    if (!isEmailAutorizado(emailNorm)) {
+      console.error(`Tentativa de login de usuário não autorizado: ${emailNorm}`);
+      registrarTentativaFalha();
+      setErro('ACESSO BLOQUEADO: Este e-mail não possui permissão de administrador.');
       return;
     }
 
     try {
       setSalvando(true);
-      await authService.login(email, senha);
+      await authService.login(emailNorm, senha);
+      const user = await authService.obterUsuarioAtual();
+      const userEmail = (user?.email || emailNorm).toLowerCase().trim();
+      
+      if (!isEmailAutorizado(userEmail)) {
+        await authService.logout();
+        setAutenticado(false);
+        setUsuarioEmail('');
+        registrarTentativaFalha();
+        setErro('ACESSO BLOQUEADO: Conta não autorizada como administrador.');
+        return;
+      }
+
+      // Login bem sucedido: zera contador de falhas
+      setTentativasFalhas(0);
+      sessionStorage.removeItem('hcvape_admin_failed_attempts');
       setAutenticado(true);
-      setUsuarioEmail(email);
+      setUsuarioEmail(userEmail);
       setEmail('');
       setSenha('');
       await carregarTudo();
       setSucesso('Login realizado com sucesso!');
     } catch (err: any) {
       console.error('Erro ao fazer login:', err);
+      registrarTentativaFalha();
       setErro(err.message || 'Erro ao fazer login. Verifique suas credenciais.');
     } finally {
       setSalvando(false);
@@ -2459,8 +2590,76 @@ export default function Admin() {
 
   if (!autenticado) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center p-4">
-        <div className="w-full max-w-md glass-morphism p-8 rounded-2xl text-center">
+      <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
+        {/* OVERLAY DA PEGADINHA / HONEYPOT TROLL */}
+        {pegadinhaAtiva && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/95 backdrop-blur-2xl animate-in fade-in duration-300 overflow-y-auto">
+            <div className="relative w-full max-w-lg sm:max-w-xl max-h-[92vh] overflow-y-auto p-5 sm:p-7 rounded-2xl bg-gradient-to-b from-red-950/90 via-black to-zinc-950 border-2 border-red-500 shadow-[0_0_80px_rgba(239,68,68,0.5)] text-center space-y-4">
+              {/* Efeito estroboscópico de alerta */}
+              <div className="flex justify-center items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-red-500/20 border border-red-500/60 text-red-400 text-xs font-bold uppercase tracking-widest">
+                  <ShieldAlert className="w-4 h-4 text-red-500 animate-bounce" />
+                  PEGADINHA DO INVASOR • ALERTA DE SEGURANÇA
+                </div>
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-ping" />
+              </div>
+
+              <div className="space-y-1">
+                <h2 className="text-xl sm:text-2xl font-black text-red-500 font-['Outfit'] tracking-tight">
+                  VOCÊ FOI PEGO NO FLAGRA! 😂🚔
+                </h2>
+                <p className="text-slate-300 text-xs sm:text-sm">
+                  Errou a senha <strong className="text-red-400">2 vezes</strong> seguidas! Tentativa de intrusão registrada e bloqueada!
+                </p>
+              </div>
+
+              {/* IMAGEM DA PEGADINHA SELECIONADA PELO ALBERTO */}
+              <div className="relative rounded-xl overflow-hidden border-2 border-red-500/60 bg-black shadow-[0_0_30px_rgba(239,68,68,0.3)] flex items-center justify-center">
+                <img
+                  src={gifPegadinhaUrl}
+                  alt="Pegadinha Invasor"
+                  className="w-full max-h-[460px] sm:max-h-[520px] object-contain mx-auto"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = '/pegadinha.jpg';
+                  }}
+                />
+              </div>
+
+              <p className="text-[11px] sm:text-xs text-slate-400 italic font-semibold">
+                "Achou que ia invadir o catálogo da HC Vape tão fácil assim? Aqui o sistema é blindado! 🔒💨"
+              </p>
+
+              {/* Countdown de bloqueio temporário */}
+              <div className="p-3 bg-red-500/15 border border-red-500/40 rounded-xl text-xs">
+                {segundosBloqueio > 0 ? (
+                  <div className="text-yellow-400 font-mono font-bold flex items-center justify-center gap-2">
+                    <Clock className="w-4 h-4 animate-spin text-yellow-400 flex-shrink-0" />
+                    Bloqueio temporário ativo: aguarde <span className="text-yellow-300 text-sm">{segundosBloqueio}s</span> para tentar de novo...
+                  </div>
+                ) : (
+                  <div className="text-emerald-400 font-bold flex items-center justify-center gap-1.5">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    Tempo de bloqueio expirado. Se for o administrador real, pode tentar de novo!
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col sm:flex-row gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={resetarPegadinha}
+                  disabled={segundosBloqueio > 0}
+                  className="cyber-button w-full disabled:opacity-40 disabled:cursor-not-allowed bg-red-600 hover:bg-red-700 border-red-500 text-white font-bold"
+                >
+                  {segundosBloqueio > 0 ? `Aguarde o Bloqueio (${segundosBloqueio}s)` : 'Eu me rendo! Tentar Novamente'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="w-full max-w-md glass-morphism p-8 rounded-2xl text-center relative z-10">
           <div className="flex justify-center mb-4">
             <img
               src="/logo.png"
@@ -2469,7 +2668,22 @@ export default function Admin() {
             />
           </div>
           <h1 className="text-3xl font-bold neon-glow font-['Outfit'] font-bold mb-1">ADMIN</h1>
-          <p className="text-slate-300 text-xs mb-6">HC Vape • Não fume, vaporize! (Desde 2020)</p>
+          <p className="text-slate-300 text-xs mb-4">HC Vape • Não fume, vaporize! (Desde 2020)</p>
+
+          <div className="mb-5 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#76FF03]/10 border border-[#76FF03]/30 text-[#76FF03] text-[10px] font-bold uppercase tracking-wider">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#76FF03]" />
+            Acesso Restrito • Zero-Trust Ativo
+          </div>
+
+          {/* Aviso se já tiver 1 erro */}
+          {tentativasFalhas === 1 && !pegadinhaAtiva && (
+            <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/60 rounded-xl text-yellow-300 text-xs flex items-center gap-2.5 text-left animate-pulse">
+              <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
+              <div>
+                <strong>Atenção:</strong> 1 tentativa incorreta detectada. Se errar mais 1 vez, a pegadinha com bloqueio será acionada!
+              </div>
+            </div>
+          )}
 
           {erro && (
             <div className="mb-4 p-3 bg-red-500/20 border border-red-500 rounded-lg flex items-center gap-2 text-left">
@@ -2480,17 +2694,27 @@ export default function Admin() {
 
           <form onSubmit={handleLogin} className="space-y-4 text-left">
             <div>
-              <label className="block text-xs font-bold text-slate-300 mb-2 font-semibold">Email</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-3 rounded-lg focus:border-[#76FF03] focus:outline-none transition-all duration-300" placeholder="admin@exemplo.com" />
+              <label className="block text-xs font-bold text-slate-300 mb-2 font-semibold">Email do Administrador</label>
+              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-3 rounded-lg focus:border-[#76FF03] focus:outline-none transition-all duration-300 text-sm" placeholder="albertinhorss@gmail.com" />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-2 font-semibold">Senha</label>
-              <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-3 rounded-lg focus:border-[#76FF03] focus:outline-none transition-all duration-300" placeholder="••••••••" />
+              <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-3 rounded-lg focus:border-[#76FF03] focus:outline-none transition-all duration-300 text-sm" placeholder="••••••••" />
             </div>
             <button type="submit" disabled={salvando} className="cyber-button w-full disabled:opacity-50 disabled:cursor-not-allowed">
-              {salvando ? 'Entrando...' : 'Entrar no Painel'}
+              {salvando ? 'Verificando...' : 'Entrar no Painel'}
             </button>
           </form>
+
+          <button
+            type="button"
+            onClick={() => setSomSilenciado(!somSilenciado)}
+            className="text-[11px] text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 mx-auto mt-4 transition-colors"
+            title="Alternar áudio da sirene do alarme"
+          >
+            {somSilenciado ? <VolumeX className="w-3.5 h-3.5 text-red-400" /> : <Volume2 className="w-3.5 h-3.5 text-emerald-400" />}
+            <span>Sirene de alarme: {somSilenciado ? 'Silenciada' : 'Ativada'}</span>
+          </button>
         </div>
       </div>
     );
@@ -5419,6 +5643,107 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                 </button>
               </div>
             </form>
+
+            {/* CARD DE CONFIGURAÇÃO DA PEGADINHA ANTI-INVASOR */}
+            <div className="glass-morphism p-8 rounded-xl border border-red-500/30 bg-black/40 space-y-6 shadow-[0_0_25px_rgba(239,68,68,0.15)]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-red-500/20 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-red-500/20 border border-red-500/50 flex items-center justify-center text-red-400">
+                    <ShieldAlert className="w-5 h-5 text-red-500" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-red-400 font-['Outfit']">Pegadinha do Invasor (Anti-Brute Force)</h3>
+                    <p className="text-slate-400 text-xs">Exibe um GIF em tela cheia com alarme se alguém errar a senha 2 vezes.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPegadinhaAtiva(true);
+                    setSegundosBloqueio(10);
+                    tocarSireneAlarme();
+                  }}
+                  className="px-3.5 py-1.5 rounded-lg bg-red-500/20 border border-red-500/60 text-red-400 text-xs font-bold hover:bg-red-500/30 transition-all flex items-center gap-1.5 self-start sm:self-auto cursor-pointer"
+                >
+                  <Eye className="w-3.5 h-3.5" /> Testar Pegadinha
+                </button>
+              </div>
+
+              {/* Preview atual do GIF */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  GIF Selecionado Atualmente
+                </label>
+                <div className="relative rounded-xl overflow-hidden border border-red-500/30 bg-black/80 max-h-56 flex items-center justify-center p-2">
+                  <img
+                    src={customGifInput || gifPegadinhaUrl}
+                    alt="Preview GIF Pegadinha"
+                    className="max-h-52 object-contain rounded-lg"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = 'https://media1.giphy.com/media/uOAXDA7ZeJJzW/giphy.gif';
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Input para URL do GIF customizado */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-300 uppercase tracking-wider">
+                  URL do GIF Personalizado
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={customGifInput}
+                    onChange={(e) => setCustomGifInput(e.target.value)}
+                    placeholder="Cole aqui o link do GIF (Giphy, Tenor, Imgur, ou /pegadinha.gif)"
+                    className="flex-1 bg-black/60 border border-zinc-700 text-slate-100 px-4 py-2.5 rounded-lg text-xs focus:border-red-500 focus:outline-none transition-all"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => salvarNovoGifPegadinha(customGifInput)}
+                    className="px-4 py-2.5 bg-red-500/20 border border-red-500 text-red-400 rounded-lg text-xs font-bold hover:bg-red-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Save className="w-3.5 h-3.5" /> Salvar
+                  </button>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Dica: Você pode colar qualquer link de GIF (Giphy, Tenor) ou colocar um arquivo na pasta <code className="text-[#76FF03]">client/public</code> e digitar <code className="text-[#76FF03]">/pegadinha.gif</code>!
+                </p>
+              </div>
+
+              {/* Botões de sugestões rápidas de GIFs clássicos */}
+              <div className="space-y-2 pt-1">
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                  Sugestões Rápidas:
+                </span>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {[
+                    { nome: "🔥 Betinha C# (Oficial)", url: "/pegadinha.jpg" },
+                    { nome: "Jurassic Park (Dennis)", url: "https://media1.giphy.com/media/uOAXDA7ZeJJzW/giphy.gif" },
+                    { nome: "FBI Open Up!", url: "https://media.giphy.com/media/jmSjQC83gpmt2/giphy.gif" },
+                    { nome: "Rickroll (Troll)", url: "https://media.giphy.com/media/Vuw9m5wXviFIQ/giphy.gif" },
+                    { nome: "Hacker Cat", url: "https://media.giphy.com/media/ule4akeXnY9fb434Gu/giphy.gif" }
+                  ].map((preset) => (
+                    <button
+                      key={preset.nome}
+                      type="button"
+                      onClick={() => {
+                        setCustomGifInput(preset.url);
+                        salvarNovoGifPegadinha(preset.url);
+                      }}
+                      className={`p-2 rounded-lg border text-[11px] font-bold text-center transition-all cursor-pointer ${
+                        gifPegadinhaUrl === preset.url
+                          ? 'bg-red-500/20 border-red-500 text-red-300 shadow-[0_0_10px_rgba(239,68,68,0.2)]'
+                          : 'bg-black/50 border-zinc-800 text-slate-400 hover:border-zinc-700 hover:text-slate-300'
+                      }`}
+                    >
+                      {preset.nome}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
           </section>
         ) : (
           /* SEÇÃO DE PERSONALIZAÇÃO DO HERO BANNER */

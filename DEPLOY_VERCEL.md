@@ -34,9 +34,9 @@ git push -u origin main
 
 Na tela de configuração do Vercel, adicione as variáveis:
 
-```
-VITE_SUPABASE_URL=https://lmhtptakvzpzftcygxmo.supabase.co
-VITE_SUPABASE_ANON_KEY=sb_publishable_4Y7jeM4fEfLH4UMMYNR5Bw_dzUAuK0J
+```env
+VITE_SUPABASE_URL=https://SEU-PROJETO.supabase.co
+VITE_SUPABASE_ANON_KEY=SUA_ANON_KEY_PUBLICA_AQUI
 ```
 
 ### 4. Configurar Build
