@@ -647,5 +647,83 @@ describe('Auditoria de Segurança & Whitelist de Administradores', () => {
   });
 });
 
+describe('Pegadinha Anti-Invasor & Bloqueio Estrito de 18 Horas', () => {
+  const DEZOITO_HORAS_SEGUNDOS = 18 * 60 * 60; // 64.800 segundos
+  const DEZOITO_HORAS_MS = 18 * 60 * 60 * 1000; // 64.800.000 ms
+
+  const formatarTempoBloqueio = (totalSegundos: number): string => {
+    if (totalSegundos <= 0) return '0s';
+    const horas = Math.floor(totalSegundos / 3600);
+    const minutos = Math.floor((totalSegundos % 3600) / 60);
+    const segs = totalSegundos % 60;
+    
+    const partes: string[] = [];
+    if (horas > 0) partes.push(`${horas}h`);
+    if (minutos > 0 || horas > 0) partes.push(`${String(minutos).padStart(2, '0')}m`);
+    partes.push(`${String(segs).padStart(2, '0')}s`);
+    
+    return partes.join(' ');
+  };
+
+  const calcularBloqueioAoErrar = (tentativasAtuais: number, agora: number) => {
+    const novasTentativas = tentativasAtuais + 1;
+    if (novasTentativas >= 2) {
+      return {
+        acionarPegadinha: true,
+        bloqueado: true,
+        lockoutUntil: agora + DEZOITO_HORAS_MS,
+        segundosRestantes: DEZOITO_HORAS_SEGUNDOS
+      };
+    }
+    return {
+      acionarPegadinha: false,
+      bloqueado: false,
+      lockoutUntil: 0,
+      segundosRestantes: 0
+    };
+  };
+
+  it('deve formatar o tempo de 18 horas perfeitamente (18h 00m 00s)', () => {
+    expect(formatarTempoBloqueio(64800)).toBe('18h 00m 00s');
+  });
+
+  it('deve formatar tempos parciais corretamente (ex: 17h 59m 45s, 45m 12s, 30s)', () => {
+    expect(formatarTempoBloqueio(17 * 3600 + 59 * 60 + 45)).toBe('17h 59m 45s');
+    expect(formatarTempoBloqueio(45 * 60 + 12)).toBe('45m 12s');
+    expect(formatarTempoBloqueio(30)).toBe('30s');
+    expect(formatarTempoBloqueio(0)).toBe('0s');
+    expect(formatarTempoBloqueio(-5)).toBe('0s');
+  });
+
+  it('não deve acionar bloqueio nem pegadinha na 1ª falha de senha', () => {
+    const agora = 1700000000000;
+    const resultado = calcularBloqueioAoErrar(0, agora);
+    expect(resultado.acionarPegadinha).toBe(false);
+    expect(resultado.bloqueado).toBe(false);
+  });
+
+  it('deve acionar a pegadinha e aplicar bloqueio ESTRITO de EXATAMENTE 18 horas ao atingir 2 falhas de senha', () => {
+    const agora = 1700000000000;
+    const resultado = calcularBloqueioAoErrar(1, agora);
+    expect(resultado.acionarPegadinha).toBe(true);
+    expect(resultado.bloqueado).toBe(true);
+    expect(resultado.segundosRestantes).toBe(64800); // 18 * 3600
+    expect(resultado.lockoutUntil).toBe(agora + 18 * 60 * 60 * 1000);
+  });
+
+  it('mecanismo de emergência do proprietário deve validar email da whitelist', () => {
+    const whitelist = ['albertinhorss@gmail.com'];
+    const validarDesbloqueioEmergencia = (emailDigitado: string | null) => {
+      if (!emailDigitado) return false;
+      return whitelist.includes(emailDigitado.trim().toLowerCase());
+    };
+
+    expect(validarDesbloqueioEmergencia('albertinhorss@gmail.com')).toBe(true);
+    expect(validarDesbloqueioEmergencia(' ALBERTINHORSS@GMAIL.COM ')).toBe(true);
+    expect(validarDesbloqueioEmergencia('invasor@qualquer.com')).toBe(false);
+    expect(validarDesbloqueioEmergencia(null)).toBe(false);
+  });
+});
+
 
 

@@ -171,14 +171,21 @@ export default function Admin() {
   const [heroConfig, setHeroConfig] = useState<HeroBannerConfig>(DEFAULT_HERO_BANNER_CONFIG);
   const [salvandoHero, setSalvandoHero] = useState(false);
 
-  // Estados para Pegadinha Anti-Invasor (Bloqueio após 2 tentativas falhas de senha)
+  // Estados para Pegadinha Anti-Invasor (Bloqueio estrito de 18 horas após 2 erros de senha)
   const [tentativasFalhas, setTentativasFalhas] = useState<number>(() => {
-    return Number(sessionStorage.getItem('hcvape_admin_failed_attempts') || '0');
+    return Number(localStorage.getItem('hcvape_admin_failed_attempts') || sessionStorage.getItem('hcvape_admin_failed_attempts') || '0');
+  });
+  const [segundosBloqueio, setSegundosBloqueio] = useState<number>(() => {
+    const salvo = Number(localStorage.getItem('hcvape_admin_lockout_until') || '0');
+    const agora = Date.now();
+    return salvo > agora ? Math.ceil((salvo - agora) / 1000) : 0;
   });
   const [pegadinhaAtiva, setPegadinhaAtiva] = useState<boolean>(() => {
-    return Number(sessionStorage.getItem('hcvape_admin_failed_attempts') || '0') >= 2;
+    const salvo = Number(localStorage.getItem('hcvape_admin_lockout_until') || '0');
+    const agora = Date.now();
+    const tentativas = Number(localStorage.getItem('hcvape_admin_failed_attempts') || sessionStorage.getItem('hcvape_admin_failed_attempts') || '0');
+    return (salvo > agora) || (tentativas >= 2);
   });
-  const [segundosBloqueio, setSegundosBloqueio] = useState<number>(30);
   const [gifPegadinhaUrl, setGifPegadinhaUrl] = useState<string>(() => {
     return localStorage.getItem('hcvape_prank_gif_url') || import.meta.env.VITE_ADMIN_PRANK_GIF_URL || '/pegadinha.jpg';
   });
@@ -187,6 +194,7 @@ export default function Admin() {
   });
   const [somSilenciado, setSomSilenciado] = useState<boolean>(false);
   const [salvandoGifConfig, setSalvandoGifConfig] = useState(false);
+  const [cliquesEmergencia, setCliquesEmergencia] = useState<number>(0);
 
   // Separar e ordenar produtos: Marca (A-Z) e Puffs/modelo (crescente ou decrescente)
   const { produtosExpressosOrdenados, produtosPromocionaisOrdenados, produtosTodosOrdenados } = useMemo(() => {
@@ -878,25 +886,57 @@ export default function Admin() {
     }
   };
 
-  // Timer de contagem regressiva para desbloqueio da pegadinha
-  useEffect(() => {
-    let intervalo: any;
-    if (pegadinhaAtiva && segundosBloqueio > 0) {
-      intervalo = setInterval(() => {
-        setSegundosBloqueio(prev => Math.max(0, prev - 1));
-      }, 1000);
-    }
-    return () => clearInterval(intervalo);
-  }, [pegadinhaAtiva, segundosBloqueio]);
+  // Função para formatar o tempo de bloqueio (ex: 17h 59m 45s)
+  const formatarTempoBloqueio = (totalSegundos: number): string => {
+    if (totalSegundos <= 0) return '0s';
+    const horas = Math.floor(totalSegundos / 3600);
+    const minutos = Math.floor((totalSegundos % 3600) / 60);
+    const segs = totalSegundos % 60;
+    
+    const partes: string[] = [];
+    if (horas > 0) partes.push(`${horas}h`);
+    if (minutos > 0 || horas > 0) partes.push(`${String(minutos).padStart(2, '0')}m`);
+    partes.push(`${String(segs).padStart(2, '0')}s`);
+    
+    return partes.join(' ');
+  };
 
-  // Registrar tentativa falha de login (no 2º erro aciona a pegadinha com GIF)
+  // Timer de contagem regressiva para desbloqueio da pegadinha (18 horas estritas)
+  useEffect(() => {
+    const checarBloqueio = () => {
+      const salvo = Number(localStorage.getItem('hcvape_admin_lockout_until') || '0');
+      const agora = Date.now();
+      const restante = salvo > agora ? Math.ceil((salvo - agora) / 1000) : 0;
+      setSegundosBloqueio(restante);
+      
+      if (restante <= 0 && salvo > 0) {
+        localStorage.removeItem('hcvape_admin_lockout_until');
+        localStorage.removeItem('hcvape_admin_failed_attempts');
+        sessionStorage.removeItem('hcvape_admin_failed_attempts');
+        setTentativasFalhas(0);
+        setPegadinhaAtiva(false);
+      }
+    };
+
+    checarBloqueio();
+    const intervalo = setInterval(checarBloqueio, 1000);
+    return () => clearInterval(intervalo);
+  }, []);
+
+  // Registrar tentativa falha de login (no 2º erro aciona bloqueio de 18 HORAS)
   const registrarTentativaFalha = () => {
     const novas = tentativasFalhas + 1;
     setTentativasFalhas(novas);
+    localStorage.setItem('hcvape_admin_failed_attempts', String(novas));
     sessionStorage.setItem('hcvape_admin_failed_attempts', String(novas));
+    
     if (novas >= 2) {
+      // Bloqueio rigoroso de 18 horas
+      const DEZOITO_HORAS_MS = 18 * 60 * 60 * 1000;
+      const dataFimBloqueio = Date.now() + DEZOITO_HORAS_MS;
+      localStorage.setItem('hcvape_admin_lockout_until', String(dataFimBloqueio));
+      setSegundosBloqueio(18 * 60 * 60);
       setPegadinhaAtiva(true);
-      setSegundosBloqueio(30);
       tocarSireneAlarme();
     }
   };
@@ -905,7 +945,11 @@ export default function Admin() {
   const resetarPegadinha = () => {
     setPegadinhaAtiva(false);
     setTentativasFalhas(0);
+    setSegundosBloqueio(0);
+    localStorage.removeItem('hcvape_admin_lockout_until');
+    localStorage.removeItem('hcvape_admin_failed_attempts');
     sessionStorage.removeItem('hcvape_admin_failed_attempts');
+    setCliquesEmergencia(0);
     setErro(null);
   };
 
@@ -925,6 +969,17 @@ export default function Admin() {
     e.preventDefault();
     setErro(null);
     setSucesso(null);
+
+    // Se estiver no período de bloqueio estrito de 18 horas, impede qualquer tentativa
+    const salvoLock = Number(localStorage.getItem('hcvape_admin_lockout_until') || '0');
+    const agora = Date.now();
+    if (salvoLock > agora) {
+      setPegadinhaAtiva(true);
+      const restantes = Math.ceil((salvoLock - agora) / 1000);
+      setSegundosBloqueio(restantes);
+      setErro(`ACESSO BLOQUEADO POR 18 HORAS: Aguarde ${formatarTempoBloqueio(restantes)} para tentar novamente.`);
+      return;
+    }
 
     const emailNorm = email.trim().toLowerCase();
     if (!emailNorm || !senha) {
@@ -954,9 +1009,12 @@ export default function Admin() {
         return;
       }
 
-      // Login bem sucedido: zera contador de falhas
+      // Login bem sucedido: zera contador de falhas e bloqueios
       setTentativasFalhas(0);
+      setSegundosBloqueio(0);
       sessionStorage.removeItem('hcvape_admin_failed_attempts');
+      localStorage.removeItem('hcvape_admin_failed_attempts');
+      localStorage.removeItem('hcvape_admin_lockout_until');
       setAutenticado(true);
       setUsuarioEmail(userEmail);
       setEmail('');
@@ -2610,7 +2668,7 @@ export default function Admin() {
                   VOCÊ FOI PEGO NO FLAGRA! 😂🚔
                 </h2>
                 <p className="text-slate-300 text-xs sm:text-sm">
-                  Errou a senha <strong className="text-red-400">2 vezes</strong> seguidas! Tentativa de intrusão registrada e bloqueada!
+                  Errou a senha <strong className="text-red-400">2 vezes</strong> seguidas! Tentativa de intrusão bloqueada por <strong className="text-yellow-400">18 horas</strong>!
                 </p>
               </div>
 
@@ -2630,17 +2688,22 @@ export default function Admin() {
                 "Achou que ia invadir o catálogo da HC Vape tão fácil assim? Aqui o sistema é blindado! 🔒💨"
               </p>
 
-              {/* Countdown de bloqueio temporário */}
-              <div className="p-3 bg-red-500/15 border border-red-500/40 rounded-xl text-xs">
+              {/* Countdown de bloqueio estrito de 18 horas */}
+              <div className="p-3.5 bg-red-500/15 border border-red-500/40 rounded-xl text-xs space-y-1">
                 {segundosBloqueio > 0 ? (
-                  <div className="text-yellow-400 font-mono font-bold flex items-center justify-center gap-2">
-                    <Clock className="w-4 h-4 animate-spin text-yellow-400 flex-shrink-0" />
-                    Bloqueio temporário ativo: aguarde <span className="text-yellow-300 text-sm">{segundosBloqueio}s</span> para tentar de novo...
-                  </div>
+                  <>
+                    <div className="text-yellow-400 font-mono font-bold flex items-center justify-center gap-2">
+                      <Clock className="w-4 h-4 animate-spin text-yellow-400 flex-shrink-0" />
+                      <span>Bloqueio estrito de 18 horas ativo</span>
+                    </div>
+                    <div className="text-sm font-black font-mono text-yellow-300">
+                      Tempo restante: <span className="px-2 py-0.5 rounded bg-black/60 border border-yellow-500/50 shadow-inner">{formatarTempoBloqueio(segundosBloqueio)}</span>
+                    </div>
+                  </>
                 ) : (
                   <div className="text-emerald-400 font-bold flex items-center justify-center gap-1.5">
                     <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                    Tempo de bloqueio expirado. Se for o administrador real, pode tentar de novo!
+                    Tempo de 18 horas expirado. Se for o administrador oficial, pode tentar de novo!
                   </div>
                 )}
               </div>
@@ -2652,7 +2715,32 @@ export default function Admin() {
                   disabled={segundosBloqueio > 0}
                   className="cyber-button w-full disabled:opacity-40 disabled:cursor-not-allowed bg-red-600 hover:bg-red-700 border-red-500 text-white font-bold"
                 >
-                  {segundosBloqueio > 0 ? `Aguarde o Bloqueio (${segundosBloqueio}s)` : 'Eu me rendo! Tentar Novamente'}
+                  {segundosBloqueio > 0 ? `Bloqueado por 18h (${formatarTempoBloqueio(segundosBloqueio)})` : 'Tempo Esgotado • Tentar Novamente'}
+                </button>
+              </div>
+
+              {/* Rodapé discreto com mecanismo de emergência do proprietário */}
+              <div className="pt-2 border-t border-red-950/60 flex items-center justify-center">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const novo = cliquesEmergencia + 1;
+                    setCliquesEmergencia(novo);
+                    if (novo >= 5) {
+                      const emailAuth = window.prompt("Desbloqueio de Emergência do Proprietário:\nDigite o email oficial do administrador para desbloquear:");
+                      if (emailAuth && isEmailAutorizado(emailAuth)) {
+                        resetarPegadinha();
+                        alert("Desbloqueio de emergência efetuado com sucesso!");
+                      } else if (emailAuth) {
+                        alert("Email não autorizado. Bloqueio mantido.");
+                        setCliquesEmergencia(0);
+                      }
+                    }
+                  }}
+                  className="text-[10px] text-zinc-500 hover:text-zinc-400 select-none cursor-default transition-colors tracking-widest font-mono"
+                  title="HC Vape Security Protocol"
+                >
+                  HC VAPE GATEWAY • ZERO TRUST #HC-18H
                 </button>
               </div>
             </div>
@@ -2680,7 +2768,7 @@ export default function Admin() {
             <div className="mb-4 p-3 bg-yellow-500/20 border border-yellow-500/60 rounded-xl text-yellow-300 text-xs flex items-center gap-2.5 text-left animate-pulse">
               <AlertTriangle className="w-5 h-5 text-yellow-400 flex-shrink-0" />
               <div>
-                <strong>Atenção:</strong> 1 tentativa incorreta detectada. Se errar mais 1 vez, a pegadinha com bloqueio será acionada!
+                <strong>Atenção:</strong> 1 tentativa incorreta detectada. Se errar mais 1 vez, a pegadinha com bloqueio de 18 horas será acionada!
               </div>
             </div>
           )}
@@ -2695,14 +2783,32 @@ export default function Admin() {
           <form onSubmit={handleLogin} className="space-y-4 text-left">
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-2 font-semibold">Email do Administrador</label>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-3 rounded-lg focus:border-[#76FF03] focus:outline-none transition-all duration-300 text-sm" placeholder="albertinhorss@gmail.com" />
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                disabled={segundosBloqueio > 0}
+                className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-3 rounded-lg focus:border-[#76FF03] focus:outline-none transition-all duration-300 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                placeholder="albertinhorss@gmail.com"
+              />
             </div>
             <div>
               <label className="block text-xs font-bold text-slate-300 mb-2 font-semibold">Senha</label>
-              <input type="password" value={senha} onChange={(e) => setSenha(e.target.value)} className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-3 rounded-lg focus:border-[#76FF03] focus:outline-none transition-all duration-300 text-sm" placeholder="••••••••" />
+              <input
+                type="password"
+                value={senha}
+                onChange={(e) => setSenha(e.target.value)}
+                disabled={segundosBloqueio > 0}
+                className="w-full bg-black/60 border border-[#76FF03]/50 text-slate-100 px-4 py-3 rounded-lg focus:border-[#76FF03] focus:outline-none transition-all duration-300 text-sm disabled:opacity-40 disabled:cursor-not-allowed"
+                placeholder="••••••••"
+              />
             </div>
-            <button type="submit" disabled={salvando} className="cyber-button w-full disabled:opacity-50 disabled:cursor-not-allowed">
-              {salvando ? 'Verificando...' : 'Entrar no Painel'}
+            <button
+              type="submit"
+              disabled={salvando || segundosBloqueio > 0}
+              className="cyber-button w-full disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {segundosBloqueio > 0 ? `Bloqueado por 18h (${formatarTempoBloqueio(segundosBloqueio)})` : salvando ? 'Verificando...' : 'Entrar no Painel'}
             </button>
           </form>
 
@@ -5653,7 +5759,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-red-400 font-['Outfit']">Pegadinha do Invasor (Anti-Brute Force)</h3>
-                    <p className="text-slate-400 text-xs">Exibe um GIF em tela cheia com alarme se alguém errar a senha 2 vezes.</p>
+                    <p className="text-slate-400 text-xs">Exibe a imagem troll em tela cheia com alarme e bloqueia por 18 horas se alguém errar a senha 2 vezes.</p>
                   </div>
                 </div>
                 <button
