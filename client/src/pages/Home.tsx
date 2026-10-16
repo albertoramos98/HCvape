@@ -976,7 +976,7 @@ export default function Home() {
                               {isPromo 
                                 ? 'Selecione um sabor...' 
                                 : estoqueInfo.saboresDisponiveis.length > 0 
-                                  ? `Selecione um sabor (${estoqueInfo.saboresDisponiveis.length} disponível${estoqueInfo.saboresDisponiveis.length === 1 ? '' : 'is'})...` 
+                                  ? `Selecione um sabor (${estoqueInfo.saboresDisponiveis.length} ${estoqueInfo.saboresDisponiveis.length === 1 ? 'disponível' : 'disponíveis'})...` 
                                   : 'Nenhum sabor disponível nesta região'}
                             </option>
                             {isPromo ? (
