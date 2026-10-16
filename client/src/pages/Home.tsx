@@ -67,8 +67,8 @@ export default function Home() {
   const [popupAviso, setPopupAviso] = useState(true);
   const [zonaSelecionada, setZonaSelecionada] = useState<ZonaId | null>(() => {
     const salva = localStorage.getItem('hcvape_zona_selecionada');
-    if (salva === 'norte') return 'norte';
-    if (salva === 'sul' || salva === 'oeste' || salva === 'sul_oeste') return 'sul_oeste';
+    if (salva === 'recife') return 'recife';
+    if (salva === 'norte' || salva === 'sul' || salva === 'oeste' || salva === 'sul_oeste') return 'recife';
     if (salva === 'gravata' || salva === 'gravatá') return 'gravata';
     return null;
   });
@@ -554,7 +554,7 @@ export default function Home() {
               Selecione a sua zona para visualizarmos o estoque em tempo real e garantirmos agilidade na sua entrega:
             </p>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {ZONAS_DISPONIVEIS.map((zona) => {
                 const isSelected = zonaSelecionada === zona.id;
                 return (

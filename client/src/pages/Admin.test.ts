@@ -513,16 +513,22 @@ describe('Sistema de Gestão de Clientes Únicos & WhatsApp', () => {
   });
 });
 
-describe('Gestão de Localidades e Zonas (incluindo Gravatá)', () => {
-  it('deve conter Gravatá na lista oficial de ZONAS_DISPONIVEIS com metadados corretos', async () => {
+describe('Gestão de Localidades e Regiões (Recife e Gravatá)', () => {
+  it('deve conter Recife e Gravatá na lista oficial de ZONAS_DISPONIVEIS com metadados corretos', async () => {
     const { ZONAS_DISPONIVEIS } = await import('../lib/supabase');
+    const recife = ZONAS_DISPONIVEIS.find(z => z.id === 'recife');
     const gravata = ZONAS_DISPONIVEIS.find(z => z.id === 'gravata');
     
+    expect(recife).toBeDefined();
+    expect(recife?.nome).toBe('Recife');
+    expect(recife?.sigla).toBe('REC');
+    expect(recife?.cor).toBe('#76FF03');
+
     expect(gravata).toBeDefined();
     expect(gravata?.nome).toBe('Gravatá');
     expect(gravata?.sigla).toBe('GV');
     expect(gravata?.cor).toBe('#f59e0b');
-    expect(ZONAS_DISPONIVEIS.length).toBeGreaterThanOrEqual(3);
+    expect(ZONAS_DISPONIVEIS.length).toBe(2);
   });
 
   it('deve calcular corretamente o estoque para a zona Gravatá em produtos com zonas configuradas', () => {
@@ -632,7 +638,8 @@ describe('Auditoria de Segurança & Whitelist de Administradores', () => {
 
   const adminWhitelistOficial = [
     'albertinhorss@gmail.com',
-    'pedrohenrique12345a@gmail.com'
+    'pedrohenrique12345a@gmail.com',
+    'costamarciok@gmail.com'
   ];
 
   it('deve permitir acesso para os e-mails oficiais de administradores', () => {
@@ -640,6 +647,8 @@ describe('Auditoria de Segurança & Whitelist de Administradores', () => {
     expect(verificarPermissaoAdmin('  ALBERTINHORSS@GMAIL.COM ', adminWhitelistOficial)).toBe(true);
     expect(verificarPermissaoAdmin('pedrohenrique12345a@gmail.com', adminWhitelistOficial)).toBe(true);
     expect(verificarPermissaoAdmin('  PEDROHENRIQUE12345A@GMAIL.COM ', adminWhitelistOficial)).toBe(true);
+    expect(verificarPermissaoAdmin('costamarciok@gmail.com', adminWhitelistOficial)).toBe(true);
+    expect(verificarPermissaoAdmin('  COSTAMARCIOK@GMAIL.COM ', adminWhitelistOficial)).toBe(true);
   });
 
   it('deve BLOQUEAR sumariamente qualquer usuário terceiro ou invasor não cadastrado na whitelist', () => {

@@ -93,7 +93,7 @@ export default function Admin() {
   const [statusPedidoFiltro, setStatusPedidoFiltro] = useState<'todos' | 'concluidos'>('todos');
   const [abaAtiva, setAbaAtiva] = useState<'produtos' | 'relogio_mensal' | 'pedidos' | 'clientes' | 'trocas' | 'metricas' | 'saude' | 'configuracoes' | 'herobanner'>('produtos');
   const [subAbaEstoque, setSubAbaEstoque] = useState<'expressos' | 'promocional' | 'todos'>('expressos');
-  const [filtroZonaEstoqueExpresso, setFiltroZonaEstoqueExpresso] = useState<'todas' | 'norte' | 'sul_oeste' | 'gravata'>('todas');
+  const [filtroZonaEstoqueExpresso, setFiltroZonaEstoqueExpresso] = useState<'todas' | ZonaId>('todas');
   const [direcaoPuffs, setDirecaoPuffs] = useState<'asc' | 'desc'>('desc');
   const [pesquisa, setPesquisa] = useState('');
   const [filtroZonaProduto, setFiltroZonaProduto] = useState<string>('todas');
@@ -717,22 +717,20 @@ export default function Admin() {
     preco: '',
     estoque: '',
     sabores: '',
-    zonas: ['norte', 'sul_oeste', 'gravata'],
+    zonas: ['recife', 'gravata'],
     is_promo: false,
     preco_promo: '',
   });
   const [formSabores, setFormSabores] = useState<string[]>(['Menta Ice']);
   const [formZonasAtivas, setFormZonasAtivas] = useState<Record<string, boolean>>({
-    norte: true,
-    sul_oeste: true,
+    recife: true,
     gravata: true,
   });
   const [formEstoquePorZona, setFormEstoquePorZona] = useState<Record<string, Record<string, number>>>({
-    norte: { 'Menta Ice': 10 },
-    sul_oeste: { 'Menta Ice': 10 },
+    recife: { 'Menta Ice': 10 },
     gravata: { 'Menta Ice': 5 },
   });
-  const [zonaModalAtiva, setZonaModalAtiva] = useState<ZonaId>('norte');
+  const [zonaModalAtiva, setZonaModalAtiva] = useState<ZonaId>('recife');
   const [formSaboresEstoque, setFormSaboresEstoque] = useState<{ sabor: string; estoque: number }[]>([]);
 
   // Estados para imagem
@@ -749,7 +747,8 @@ export default function Admin() {
     // E-mail padrão do administrador (owner) + administradores autorizados + e-mails definidos no .env
     const defaults = [
       'albertinhorss@gmail.com',
-      'pedrohenrique12345a@gmail.com'
+      'pedrohenrique12345a@gmail.com',
+      'costamarciok@gmail.com'
     ];
     return Array.from(new Set([...defaults, ...envEmails])).filter(Boolean);
   }, []);
@@ -1143,22 +1142,20 @@ export default function Admin() {
       preco: '',
       estoque: '',
       sabores: '',
-      zonas: ['norte', 'sul_oeste', 'gravata'],
+      zonas: ['recife', 'gravata'],
       is_promo: isPromo,
       preco_promo: '',
     });
     setFormSabores(['Menta Ice']);
     setFormZonasAtivas({
-      norte: true,
-      sul_oeste: true,
+      recife: true,
       gravata: true,
     });
     setFormEstoquePorZona({
-      norte: { 'Menta Ice': isPromo ? 999 : 10 },
-      sul_oeste: { 'Menta Ice': isPromo ? 999 : 10 },
+      recife: { 'Menta Ice': isPromo ? 999 : 10 },
       gravata: { 'Menta Ice': isPromo ? 999 : 5 },
     });
-    setZonaModalAtiva('norte');
+    setZonaModalAtiva('recife');
     setImagemArquivo(null);
     setImagemPreview(null);
     setImagemUrlAtual(null);
@@ -1176,7 +1173,7 @@ export default function Admin() {
       preco: produto.preco.toString(),
       estoque: produto.estoque.toString(),
       sabores: produto.sabores.join(', '),
-      zonas: produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul_oeste', 'gravata'],
+      zonas: produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['recife', 'gravata'],
       is_promo: produto.is_promo || false,
       preco_promo: produto.preco_promo?.toString() || '',
     });
@@ -1186,15 +1183,14 @@ export default function Admin() {
 
     // Zonas ativas
     const zonasAtivasInit: Record<string, boolean> = {
-      norte: false,
-      sul_oeste: false,
+      recife: false,
       gravata: false
     };
 
     const produtoZonasNorm = (produto.zonas || []).map(z => utils.normalizarTexto(z));
     ZONAS_DISPONIVEIS.forEach(z => {
       const match = produtoZonasNorm.some(pzn => {
-        if (z.id === 'sul_oeste') return pzn.includes('sul') || pzn.includes('oeste');
+        if (z.id === 'recife') return pzn.includes('recife') || pzn.includes('norte') || pzn.includes('sul') || pzn.includes('oeste');
         if (z.id === 'gravata') return pzn.includes('gravata');
         return pzn === z.id;
       });
@@ -1205,15 +1201,14 @@ export default function Admin() {
 
     // Estoque por zona
     const estoquePorZonaInit: Record<string, Record<string, number>> = {
-      norte: {},
-      sul_oeste: {},
+      recife: {},
       gravata: {}
     };
 
     ZONAS_DISPONIVEIS.forEach(z => {
       let zData = produto.estoque_zonas?.[z.id];
-      if (!zData && z.id === 'sul_oeste') {
-        zData = produto.estoque_zonas?.['sul_oeste'] || produto.estoque_zonas?.['oeste'] || produto.estoque_zonas?.['sul'];
+      if (!zData && z.id === 'recife') {
+        zData = produto.estoque_zonas?.['recife'] || produto.estoque_zonas?.['norte'] || produto.estoque_zonas?.['sul_oeste'] || produto.estoque_zonas?.['sul'] || produto.estoque_zonas?.['oeste'];
       }
       if (!zData && z.id === 'gravata') {
         zData = produto.estoque_zonas?.['gravata'] || produto.estoque_zonas?.['gravatá'];
@@ -1231,7 +1226,7 @@ export default function Admin() {
     });
 
     setFormEstoquePorZona(estoquePorZonaInit);
-    setZonaModalAtiva('norte');
+    setZonaModalAtiva('recife');
     setImagemArquivo(null);
     setImagemPreview(null);
     setImagemUrlAtual(produto.imagem_url || null);
@@ -1250,13 +1245,13 @@ export default function Admin() {
       preco: '',
       estoque: '',
       sabores: '',
-      zonas: ['norte', 'sul_oeste', 'gravata'],
+      zonas: ['recife', 'gravata'],
       is_promo: false,
       preco_promo: '',
     });
     setFormSabores([]);
-    setFormZonasAtivas({ norte: true, sul_oeste: true, gravata: true });
-    setFormEstoquePorZona({ norte: {}, sul_oeste: {}, gravata: {} });
+    setFormZonasAtivas({ recife: true, gravata: true });
+    setFormEstoquePorZona({ recife: {}, gravata: {} });
     setImagemArquivo(null);
     setImagemPreview(null);
     setImagemUrlAtual(null);
@@ -3018,24 +3013,14 @@ export default function Admin() {
                           🌐 Todos ({produtosExpressosOrdenados.length})
                         </button>
                         <button
-                          onClick={() => setFiltroZonaEstoqueExpresso('norte')}
+                          onClick={() => setFiltroZonaEstoqueExpresso('recife')}
                           className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            filtroZonaEstoqueExpresso === 'norte'
+                            filtroZonaEstoqueExpresso === 'recife'
                               ? 'bg-[#76FF03] text-black shadow-[0_0_10px_rgba(118,255,3,0.4)]'
                               : 'text-slate-400 hover:text-white'
                           }`}
                         >
-                          🟢 Apenas ZN (Zona Norte)
-                        </button>
-                        <button
-                          onClick={() => setFiltroZonaEstoqueExpresso('sul_oeste')}
-                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            filtroZonaEstoqueExpresso === 'sul_oeste'
-                              ? 'bg-[#38bdf8] text-black shadow-[0_0_10px_rgba(56,189,248,0.4)]'
-                              : 'text-slate-400 hover:text-white'
-                          }`}
-                        >
-                          🔵 Apenas ZS/ZO (Zona Oeste/Sul)
+                          🟢 Apenas Recife (REC)
                         </button>
                         <button
                           onClick={() => setFiltroZonaEstoqueExpresso('gravata')}
@@ -3045,7 +3030,7 @@ export default function Admin() {
                               : 'text-slate-400 hover:text-white'
                           }`}
                         >
-                          🟠 Apenas GV (Gravatá)
+                          🟠 Apenas Gravatá (GV)
                         </button>
                       </div>
                     </div>
@@ -3174,7 +3159,7 @@ export default function Admin() {
                                 <td className="py-3 px-4 text-[#76FF03] font-bold">{utils.formatarMoeda(produto.preco)}</td>
                                 <td className="py-3 px-4">
                                   <div className="flex flex-wrap gap-1">
-                                    {(produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['norte', 'sul_oeste', 'gravata']).map(z => {
+                                    {(produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['recife', 'gravata']).map(z => {
                                       const zNorm = utils.normalizarTexto(z);
                                       const isGravata = zNorm.includes('gravata');
                                       const isNorte = zNorm.includes('norte');
@@ -4927,7 +4912,7 @@ export default function Admin() {
                           {troca.zona && (
                             <span className="text-[10px] px-2 py-0.5 rounded bg-blue-500/10 text-blue-400 border border-blue-500/30 font-bold flex items-center gap-1">
                               <MapPin className="w-3 h-3" />
-                              {troca.zona === 'norte' ? 'Zona Norte' : troca.zona === 'sul_oeste' ? 'Zona Oeste/Sul' : troca.zona === 'gravata' ? 'Gravatá' : troca.zona}
+                              {troca.zona === 'recife' ? 'Recife' : troca.zona === 'norte' ? 'Recife (ZN)' : troca.zona === 'sul_oeste' ? 'Recife (ZS/ZO)' : troca.zona === 'gravata' ? 'Gravatá' : troca.zona}
                             </span>
                           )}
 
@@ -6376,7 +6361,7 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                 </div>
 
                 {/* Abas das Zonas */}
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {ZONAS_DISPONIVEIS.map(z => {
                     const isAtiva = formZonasAtivas[z.id] ?? false;
                     const isTabSelecionada = zonaModalAtiva === z.id;

@@ -9,7 +9,7 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const BUCKET_IMAGENS = 'produto-imagens';
 
 // Tipos de Zonas
-export type ZonaId = 'norte' | 'sul_oeste' | 'sul' | 'oeste' | 'gravata';
+export type ZonaId = 'recife' | 'gravata' | 'norte' | 'sul_oeste' | 'sul' | 'oeste';
 
 export interface ZonaInfo {
   id: ZonaId;
@@ -22,20 +22,12 @@ export interface ZonaInfo {
 
 export const ZONAS_DISPONIVEIS: ZonaInfo[] = [
   { 
-    id: 'norte', 
-    nome: 'Zona Norte', 
+    id: 'recife', 
+    nome: 'Recife', 
     badge: 'Atendimento Rápido', 
-    descricao: 'Disponibilidade e estoque para Zona Norte',
+    descricao: 'Disponibilidade e estoque para toda a região de Recife',
     cor: '#76FF03',
-    sigla: 'ZN'
-  },
-  { 
-    id: 'sul_oeste', 
-    nome: 'Zona Oeste/Sul', 
-    badge: 'Atendimento Rápido', 
-    descricao: 'Disponibilidade e estoque para Zona Oeste e Zona Sul',
-    cor: '#38bdf8',
-    sigla: 'ZS/ZO'
+    sigla: 'REC'
   },
   { 
     id: 'gravata', 
@@ -1672,8 +1664,11 @@ export const utils = {
     if (zona && produto.zonas && Array.isArray(produto.zonas) && produto.zonas.length > 0) {
       const atende = produto.zonas.some(z => {
         const norm = utils.normalizarTexto(z);
+        if (zona === 'recife') {
+          return norm === 'recife' || norm.includes('recife') || norm === 'norte' || norm.includes('sul') || norm.includes('oeste');
+        }
         if (zona === 'sul_oeste') {
-          return norm === 'sul_oeste' || norm.includes('oeste') || norm.includes('sul');
+          return norm === 'sul_oeste' || norm.includes('oeste') || norm.includes('sul') || norm === 'recife';
         }
         if (zona === 'gravata') {
           return norm === 'gravata' || norm.includes('gravata');
@@ -1711,10 +1706,12 @@ export const utils = {
 
     // Se o produto possui configuração de estoque_zonas
     if (produto.estoque_zonas && typeof produto.estoque_zonas === 'object' && Object.keys(produto.estoque_zonas).length > 0) {
-      // Para sul_oeste, verificar sul_oeste, oeste ou sul
       let zonaData = produto.estoque_zonas[zona];
+      if (!zonaData && zona === 'recife') {
+        zonaData = produto.estoque_zonas['recife'] || produto.estoque_zonas['norte'] || produto.estoque_zonas['sul_oeste'] || produto.estoque_zonas['sul'] || produto.estoque_zonas['oeste'];
+      }
       if (!zonaData && zona === 'sul_oeste') {
-        zonaData = produto.estoque_zonas['sul_oeste'] || produto.estoque_zonas['oeste'] || produto.estoque_zonas['sul'];
+        zonaData = produto.estoque_zonas['recife'] || produto.estoque_zonas['sul_oeste'] || produto.estoque_zonas['oeste'] || produto.estoque_zonas['sul'];
       }
       if (!zonaData && zona === 'gravata') {
         zonaData = produto.estoque_zonas['gravata'] || produto.estoque_zonas['gravatá'];
