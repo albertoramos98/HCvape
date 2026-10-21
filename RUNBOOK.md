@@ -76,8 +76,8 @@ Acesse o **SQL Editor** do Supabase e execute os arquivos na ordem rigorosa abai
 ### Passo 7: Validação Automática em Transação Reversível
 **Arquivo:** [`supabase/tests/estoque_tests.sql`](file:///c:/Users/alberto/Desktop/HCvape/supabase/tests/estoque_tests.sql)
 - Cole o arquivo inteiro no SQL Editor e execute.
-- Executa dentro de `BEGIN ... ROLLBACK` testando 9 cenários (JWT autenticado, recálculo seguro, multi-sabores, recálculo financeiro, idempotência e bloqueio de `anon`).
-- *Resultado esperado:* `=== TODOS OS CENÁRIOS SQL PASSARAM COM 100% DE SUCESSO! ===`.
+- Executa dentro de `BEGIN ... ROLLBACK` testando **15 cenários completos** (compra, checkout com recálculo financeiro seguro no servidor, baixa atômica de pedidos, estorno simétrico por saldo líquido, idempotência da baixa e do estorno, troca com abatimento de estoque, cancelamento e estorno de troca, produtos com estoque ilimitado, bloqueio sem clamp de compras sem saldo suficiente, edição cadastral sem corrupção de estoque, compatibilidade universal de 1 e 2 parâmetros e privilégios estritos de segurança).
+- *Resultado esperado:* `=== TODOS OS 15 CENÁRIOS SQL PASSARAM COM 100% DE SUCESSO! ===`.
 
 ---
 

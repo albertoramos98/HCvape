@@ -183,7 +183,31 @@ END;
 $$;
 
 -- Permissões: liberar para clientes anônimos e autenticados
-GRANT EXECUTE ON FUNCTION criar_pedido_catalogo TO anon, authenticated;
+GRANT EXECUTE ON FUNCTION criar_pedido_catalogo(TEXT, TEXT, TEXT, TEXT, JSONB, NUMERIC, NUMERIC, NUMERIC, TEXT) TO anon, authenticated;
+
+-- Sobrecarga de compatibilidade retroativa para payloads no formato { dados: { ... } }
+CREATE OR REPLACE FUNCTION criar_pedido_catalogo(dados JSONB)
+RETURNS JSONB
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public, extensions
+AS $$
+BEGIN
+  RETURN criar_pedido_catalogo(
+    p_nome_cliente => (dados->>'nome_cliente'),
+    p_telefone_cliente => (dados->>'telefone_cliente'),
+    p_indicacao => (dados->>'indicacao'),
+    p_zona => (dados->>'zona'),
+    p_itens => (dados->'itens'),
+    p_total => COALESCE((dados->>'total')::numeric, 0),
+    p_desconto => COALESCE((dados->>'desconto')::numeric, 0),
+    p_total_final => COALESCE((dados->>'total_final')::numeric, 0),
+    p_notas => COALESCE((dados->>'notas'), '')
+  );
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION criar_pedido_catalogo(JSONB) TO anon, authenticated;
 
 -- Recarregar cache de schema do PostgREST imediatamente
 NOTIFY pgrst, 'reload schema';

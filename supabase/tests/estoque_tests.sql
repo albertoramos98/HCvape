@@ -17,8 +17,12 @@ DO $$
 DECLARE
   v_prod_id UUID := gen_random_uuid();
   v_prod_legado_id UUID := gen_random_uuid();
+  v_prod_ilim_id UUID := gen_random_uuid();
   v_pedido_res JSONB;
   v_pedido_id UUID;
+  v_pedido_insuficiente_id UUID;
+  v_troca_res JSONB;
+  v_troca_id UUID;
   v_res JSONB;
   v_estoque_final INT;
   v_deu_erro BOOLEAN := false;
@@ -207,7 +211,134 @@ BEGIN
 
   RAISE NOTICE 'CENÁRIO 10 [PASSOU]: Compatibilidade total de 1 e 2 parâmetros validada para baixa e estorno.';
 
-  RAISE NOTICE '=== TODOS OS CENÁRIOS SQL PASSARAM COM 100%% DE SUCESSO! ===';
+  -- -----------------------------------------------------------------------
+  -- CENÁRIO 11: Troca com Abatimento Atômico de Estoque (registrar_troca)
+  -- -----------------------------------------------------------------------
+  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Menta Ice')::int INTO v_saldo_menta 
+  FROM public.produtos WHERE id = v_prod_id;
+
+  v_troca_res := registrar_troca(
+    p_cliente_nome => 'Cliente Teste Troca',
+    p_cliente_telefone => '81999998888',
+    p_vape_defeito => 'POD ANTIGO COM DEFEITO',
+    p_sabor_defeito => 'Menta Ice',
+    p_motivo => 'Gosto de Queimado',
+    p_motivo_detalhes => 'Parou de vaporizar',
+    p_vape_trocado => 'POD MULTI SABORES',
+    p_sabor_trocado => 'Menta Ice',
+    p_produto_trocado_id => v_prod_id,
+    p_zona => 'recife',
+    p_abater_estoque => true
+  );
+
+  v_troca_id := (v_troca_res->>'troca_id')::UUID;
+  ASSERT (v_troca_res->>'success')::boolean = true, 'FALHA: registrar_troca falhou';
+
+  -- Saldo de Menta Ice deve ter caído exatamente em 1
+  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Menta Ice')::int INTO v_saldo_uva 
+  FROM public.produtos WHERE id = v_prod_id;
+  ASSERT v_saldo_uva = v_saldo_menta - 1, 'FALHA: estoque de Menta Ice não foi abatido pela troca';
+  RAISE NOTICE 'CENÁRIO 11 [PASSOU]: Troca com abatimento atômico executada com sucesso.';
+
+  -- -----------------------------------------------------------------------
+  -- CENÁRIO 12: Cancelamento e Estorno de Troca (estornar_troca)
+  -- -----------------------------------------------------------------------
+  v_res := estornar_troca(v_troca_id);
+  ASSERT (v_res->>'success')::boolean = true, 'FALHA: estornar_troca falhou';
+  ASSERT (v_res->>'status') = 'cancelada', 'FALHA: status da troca não ficou cancelada';
+
+  -- Saldo de Menta Ice deve ter sido reposto
+  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Menta Ice')::int INTO v_saldo_uva 
+  FROM public.produtos WHERE id = v_prod_id;
+  ASSERT v_saldo_uva = v_saldo_menta, 'FALHA: estoque não foi restaurado após cancelamento da troca';
+
+  -- Idempotência: segundo cancelamento DEVE falhar
+  BEGIN
+    PERFORM estornar_troca(v_troca_id);
+    v_deu_erro := false;
+  EXCEPTION WHEN OTHERS THEN
+    v_deu_erro := true;
+    RAISE NOTICE 'CENÁRIO 12 [PASSOU]: Cancelamento e estorno de troca e idempotência validados.';
+  END;
+
+  IF NOT v_deu_erro THEN
+    RAISE EXCEPTION 'FALHA NO CENÁRIO 12: Segundo estorno de troca deveria ter sido recusado!';
+  END IF;
+
+  -- -----------------------------------------------------------------------
+  -- CENÁRIO 13: Produto com Estoque Ilimitado (estoque_ilimitado = true)
+  -- -----------------------------------------------------------------------
+  INSERT INTO public.produtos (
+    id, marca, nome, preco, estoque, sabores, sabores_estoque, zonas, estoque_zonas, estoque_ilimitado, ativo
+  ) VALUES (
+    v_prod_ilim_id, 'TESTE_ILIMITADO', 'POD PROMOCIONAL LIVRE', 80.00, 999,
+    ARRAY['Sabor Livre'], '{"Sabor Livre": 999}'::jsonb,
+    ARRAY['recife'],
+    '{"recife": {"estoque": 999, "sabores_estoque": {"Sabor Livre": 999}}}'::jsonb,
+    true, true
+  );
+
+  v_pedido_res := criar_pedido_catalogo(
+    'Cliente Ilimitado',
+    '81999990000',
+    '',
+    'recife',
+    jsonb_build_array(
+      jsonb_build_object('id', v_prod_ilim_id, 'nome', 'POD PROMOCIONAL LIVRE', 'sabor', 'Sabor Livre', 'quantidade', 5)
+    )
+  );
+
+  v_res := baixar_estoque_pedido((v_pedido_res->>'id')::UUID);
+  ASSERT (v_res->>'success')::boolean = true, 'FALHA: baixa em produto ilimitado falhou';
+
+  -- Saldo NÃO deve ter sido reduzido
+  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Sabor Livre')::int INTO v_saldo_uva 
+  FROM public.produtos WHERE id = v_prod_ilim_id;
+  ASSERT v_saldo_uva = 999, 'FALHA: produto com estoque ilimitado não deveria ter saldo debitado';
+  RAISE NOTICE 'CENÁRIO 13 [PASSOU]: Pedido com estoque ilimitado validado sem restrição.';
+
+  -- -----------------------------------------------------------------------
+  -- CENÁRIO 14: Tentativa de Compra com Saldo Insuficiente
+  -- -----------------------------------------------------------------------
+  v_pedido_res := criar_pedido_catalogo(
+    'Cliente Sem Saldo',
+    '81999991111',
+    '',
+    'recife',
+    jsonb_build_array(
+      jsonb_build_object('id', v_prod_id, 'nome', 'POD MULTI SABORES', 'sabor', 'Uva Ice', 'quantidade', 500)
+    )
+  );
+  v_pedido_insuficiente_id := (v_pedido_res->>'id')::UUID;
+
+  BEGIN
+    PERFORM baixar_estoque_pedido(v_pedido_insuficiente_id);
+    v_deu_erro := false;
+  EXCEPTION WHEN OTHERS THEN
+    v_deu_erro := true;
+    RAISE NOTICE 'CENÁRIO 14 [PASSOU]: Baixa com saldo insuficiente rejeitada pelo banco: %', SQLERRM;
+  END;
+
+  IF NOT v_deu_erro THEN
+    RAISE EXCEPTION 'FALHA NO CENÁRIO 14: Baixa com saldo insuficiente deveria ter sido recusada!';
+  END IF;
+
+  -- -----------------------------------------------------------------------
+  -- CENÁRIO 15: Edição de Produto e Não-Interferência no Estoque
+  -- -----------------------------------------------------------------------
+  UPDATE public.produtos 
+  SET nome = 'POD MULTI SABORES RENOMEADO', preco = 150.00
+  WHERE id = v_prod_id;
+
+  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Menta Ice')::int INTO v_saldo_menta 
+  FROM public.produtos WHERE id = v_prod_id;
+  SELECT estoque INTO v_estoque_final FROM public.produtos WHERE id = v_prod_id;
+
+  ASSERT v_saldo_menta = 15, 'FALHA: estoque_zonas corrompido após edição cadastral do produto';
+  ASSERT v_estoque_final = 23, 'FALHA: estoque total corrompido após edição cadastral do produto';
+  RAISE NOTICE 'CENÁRIO 15 [PASSOU]: Edição cadastral preservou integralmente o estoque e sabores_estoque.';
+
+  RAISE NOTICE '=== TODOS OS 15 CENÁRIOS SQL PASSARAM COM 100%% DE SUCESSO! ===';
 END;
 $$;
 

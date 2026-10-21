@@ -230,19 +230,26 @@ export const produtosService = {
         .eq('chave', 'produtos_inativos')
         .single();
       if (!error && data?.valor && Array.isArray(data.valor)) {
-        localStorage.setItem('hcvape_produtos_inativos', JSON.stringify(data.valor));
+        if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+          localStorage.setItem('hcvape_produtos_inativos', JSON.stringify(data.valor));
+        }
         return data.valor as string[];
       }
     } catch {
       // Falha silenciosa se a tabela configuracoes não existir
     }
-    const local = localStorage.getItem('hcvape_produtos_inativos');
-    return local ? JSON.parse(local) : [];
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      const local = localStorage.getItem('hcvape_produtos_inativos');
+      return local ? JSON.parse(local) : [];
+    }
+    return [];
   },
 
   // Salvar lista de IDs desativados
   async salvarIdsInativos(ids: string[]): Promise<void> {
-    localStorage.setItem('hcvape_produtos_inativos', JSON.stringify(ids));
+    if (typeof window !== 'undefined' && typeof localStorage !== 'undefined') {
+      localStorage.setItem('hcvape_produtos_inativos', JSON.stringify(ids));
+    }
     try {
       await supabase.from('configuracoes').upsert({
         chave: 'produtos_inativos',
@@ -481,14 +488,34 @@ export const pedidosService = {
     return data || [];
   },
 
-  // Criar novo pedido (utiliza RPC seguro para evitar exposição de leitura de pedidos)
+  // Criar novo pedido (utiliza RPC atômica criar_pedido_catalogo com validação de saldo e recálculo financeiro)
   async criar(pedido: Omit<Pedido, 'id' | 'numero_pedido' | 'created_at' | 'excluido'>): Promise<Pedido> {
     try {
+      // 1. Tentar chamada nomeada canônica (migração 005)
       const { data: rpcData, error: rpcError } = await supabase.rpc('criar_pedido_catalogo', {
-        dados: { ...pedido, excluido: false }
+        p_nome_cliente: pedido.nome_cliente,
+        p_telefone_cliente: pedido.telefone_cliente,
+        p_indicacao: pedido.indicacao || '',
+        p_zona: pedido.zona || 'recife',
+        p_itens: pedido.itens,
+        p_total: pedido.total || 0,
+        p_desconto: pedido.desconto || 0,
+        p_total_final: pedido.total_final || pedido.total || 0,
+        p_notas: pedido.notas || ''
       });
+
       if (!rpcError && rpcData) {
         return rpcData as Pedido;
+      }
+
+      // 2. Se falhar por incompatibilidade de formato, tentar payload legado { dados }
+      if (rpcError && (rpcError.message?.includes('schema cache') || rpcError.message?.includes('dados'))) {
+        const { data: legacyData, error: legacyError } = await supabase.rpc('criar_pedido_catalogo', {
+          dados: { ...pedido, excluido: false }
+        });
+        if (!legacyError && legacyData) {
+          return legacyData as Pedido;
+        }
       }
     } catch {
       // Fallback para inserção direta se a RPC ainda não tiver sido criada no Supabase
@@ -604,6 +631,7 @@ export const trocasService = {
   // Obter trocas do fallback local caso a tabela ainda não exista no Supabase
   obterDoLocalStorage(): Troca[] {
     try {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
       const local = localStorage.getItem('hcvape_trocas_registros');
       return local ? JSON.parse(local) : [];
     } catch {
@@ -613,6 +641,7 @@ export const trocasService = {
 
   salvarNoLocalStorage(trocas: Troca[]): void {
     try {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
       localStorage.setItem('hcvape_trocas_registros', JSON.stringify(trocas));
     } catch (e) {
       console.warn('Erro ao salvar trocas no localStorage:', e);
@@ -783,6 +812,7 @@ export const clientesService = {
   // LocalStorage Fallback
   obterClientesLocalStorage(): Cliente[] {
     try {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
       const local = localStorage.getItem('hcvape_clientes_cadastros');
       return local ? JSON.parse(local) : [];
     } catch {
@@ -792,6 +822,7 @@ export const clientesService = {
 
   salvarClientesLocalStorage(clientes: Cliente[]): void {
     try {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
       localStorage.setItem('hcvape_clientes_cadastros', JSON.stringify(clientes));
     } catch (e) {
       console.warn('Erro ao salvar clientes no localStorage:', e);
@@ -800,6 +831,7 @@ export const clientesService = {
 
   obterInteracoesLocalStorage(): InteracaoCliente[] {
     try {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') return [];
       const local = localStorage.getItem('hcvape_clientes_interacoes');
       return local ? JSON.parse(local) : [];
     } catch {
@@ -809,6 +841,7 @@ export const clientesService = {
 
   salvarInteracoesLocalStorage(interacoes: InteracaoCliente[]): void {
     try {
+      if (typeof window === 'undefined' || typeof localStorage === 'undefined') return;
       localStorage.setItem('hcvape_clientes_interacoes', JSON.stringify(interacoes));
     } catch (e) {
       console.warn('Erro ao salvar interações no localStorage:', e);
