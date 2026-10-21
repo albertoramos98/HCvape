@@ -6,25 +6,151 @@
 --           garantindo compatibilidade com abas antigas e novas, e recarregando o cache.
 -- =========================================================================
 
--- 0. Garantir extensão de normalização de texto sem acentos
-CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA extensions;
+-- 0. Garantir tabela de auditoria, colunas e extensão unaccent
+DO $$
+BEGIN
+  CREATE EXTENSION IF NOT EXISTS unaccent WITH SCHEMA extensions;
+EXCEPTION WHEN OTHERS THEN
+  BEGIN
+    CREATE EXTENSION IF NOT EXISTS unaccent;
+  EXCEPTION WHEN OTHERS THEN
+    NULL;
+  END;
+END $$;
 
--- 1. Função auxiliar de normalização de sabor via unaccent
-CREATE OR REPLACE FUNCTION normalizar_sabor(p_texto TEXT)
+ALTER TABLE public.produtos ADD COLUMN IF NOT EXISTS estoque_ilimitado BOOLEAN DEFAULT false;
+
+CREATE TABLE IF NOT EXISTS public.movimentos_estoque (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  produto_id UUID NOT NULL REFERENCES public.produtos(id) ON DELETE CASCADE,
+  zona VARCHAR(50) NOT NULL,
+  sabor TEXT NOT NULL,
+  delta INT NOT NULL,
+  saldo_antes INT NOT NULL,
+  saldo_depois INT NOT NULL,
+  tipo VARCHAR(50) NOT NULL,
+  pedido_id UUID REFERENCES public.pedidos(id) ON DELETE SET NULL,
+  troca_id UUID,
+  usuario TEXT,
+  motivo TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+ALTER TABLE public.movimentos_estoque ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Apenas authenticated le movimentos" ON public.movimentos_estoque;
+CREATE POLICY "Apenas authenticated le movimentos" ON public.movimentos_estoque FOR SELECT TO authenticated USING (true);
+
+-- 0.1 Migração idempotente de produtos legados com estoque_zonas vazio ou nulo
+DO $$
+DECLARE
+  v_prod RECORD;
+  v_zona_alvo VARCHAR(50);
+  v_novas_zonas TEXT[];
+  v_zona_item TEXT;
+  v_estoque_zonas_novo JSONB;
+BEGIN
+  FOR v_prod IN 
+    SELECT id, nome, estoque, sabores_estoque, zonas, estoque_zonas
+    FROM public.produtos
+    WHERE estoque_zonas IS NULL 
+       OR estoque_zonas = '{}'::jsonb
+  LOOP
+    IF v_prod.zonas IS NOT NULL AND array_length(v_prod.zonas, 1) > 0 THEN
+      IF 'norte' = ANY(v_prod.zonas) THEN
+        v_zona_alvo := 'norte';
+      ELSIF 'sul_oeste' = ANY(v_prod.zonas) OR 'sul' = ANY(v_prod.zonas) OR 'oeste' = ANY(v_prod.zonas) THEN
+        v_zona_alvo := 'sul_oeste';
+      ELSE
+        v_zona_alvo := 'recife';
+      END IF;
+    ELSE
+      v_zona_alvo := 'recife';
+    END IF;
+
+    v_novas_zonas := ARRAY[]::TEXT[];
+    IF v_prod.zonas IS NOT NULL THEN
+      FOREACH v_zona_item IN ARRAY v_prod.zonas LOOP
+        IF v_zona_item IN ('sul', 'oeste', 'sul_oeste') THEN
+          IF NOT ('sul_oeste' = ANY(v_novas_zonas)) THEN
+            v_novas_zonas := array_append(v_novas_zonas, 'sul_oeste');
+          END IF;
+        ELSE
+          IF NOT (v_zona_item = ANY(v_novas_zonas)) THEN
+            v_novas_zonas := array_append(v_novas_zonas, v_zona_item);
+          END IF;
+        END IF;
+      END LOOP;
+    END IF;
+
+    IF array_length(v_novas_zonas, 1) IS NULL OR array_length(v_novas_zonas, 1) = 0 THEN
+      v_novas_zonas := ARRAY[v_zona_alvo];
+    END IF;
+
+    v_estoque_zonas_novo := jsonb_build_object(
+      v_zona_alvo, jsonb_build_object(
+        'estoque', COALESCE(v_prod.estoque, 0),
+        'sabores_estoque', COALESCE(v_prod.sabores_estoque, '{}'::jsonb)
+      )
+    );
+
+    UPDATE public.produtos
+    SET estoque_zonas = v_estoque_zonas_novo,
+        zonas = v_novas_zonas
+    WHERE id = v_prod.id;
+  END LOOP;
+END $$;
+
+-- 1. Função auxiliar de normalização de sabor (com fallback se unaccent não existir)
+CREATE OR REPLACE FUNCTION public.normalizar_sabor(p_texto TEXT)
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+DECLARE
+  v_res TEXT;
+BEGIN
+  IF p_texto IS NULL THEN
+    RETURN '';
+  END IF;
+
+  BEGIN
+    v_res := extensions.unaccent(p_texto);
+  EXCEPTION WHEN OTHERS THEN
+    BEGIN
+      v_res := unaccent(p_texto);
+    EXCEPTION WHEN OTHERS THEN
+      v_res := p_texto;
+    END;
+  END;
+
+  v_res := LOWER(TRIM(v_res));
+  v_res := REGEXP_REPLACE(v_res, '[áàãâä]', 'a', 'g');
+  v_res := REGEXP_REPLACE(v_res, '[éèêë]', 'e', 'g');
+  v_res := REGEXP_REPLACE(v_res, '[íìîï]', 'i', 'g');
+  v_res := REGEXP_REPLACE(v_res, '[óòõôö]', 'o', 'g');
+  v_res := REGEXP_REPLACE(v_res, '[úùûü]', 'u', 'g');
+  v_res := REGEXP_REPLACE(v_res, '[ç]', 'c', 'g');
+  v_res := REGEXP_REPLACE(v_res, '\s+', ' ', 'g');
+
+  RETURN v_res;
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.normalizar_sabor(p_texto VARCHAR)
 RETURNS TEXT
 LANGUAGE plpgsql
 IMMUTABLE
 AS $$
 BEGIN
-  IF p_texto IS NULL THEN
-    RETURN '';
-  END IF;
-  RETURN LOWER(TRIM(REGEXP_REPLACE(extensions.unaccent(p_texto), '\s+', ' ', 'g')));
+  RETURN public.normalizar_sabor(p_texto::text);
 END;
 $$;
 
+GRANT EXECUTE ON FUNCTION public.normalizar_sabor(TEXT) TO PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.normalizar_sabor(VARCHAR) TO PUBLIC, anon, authenticated;
+
 -- 2. Função para localizar chave exata ou normalizada dentro do JSONB de sabores
-CREATE OR REPLACE FUNCTION encontrar_chave_sabor(
+CREATE OR REPLACE FUNCTION public.encontrar_chave_sabor(
   p_sabores_estoque JSONB,
   p_sabor_procurado TEXT
 )
@@ -44,10 +170,10 @@ BEGIN
     RETURN p_sabor_procurado;
   END IF;
 
-  v_norm_procurado := normalizar_sabor(p_sabor_procurado);
+  v_norm_procurado := public.normalizar_sabor(p_sabor_procurado);
 
   FOR v_chave IN SELECT jsonb_object_keys(p_sabores_estoque) LOOP
-    IF normalizar_sabor(v_chave) = v_norm_procurado THEN
+    IF public.normalizar_sabor(v_chave) = v_norm_procurado THEN
       RETURN v_chave;
     END IF;
   END LOOP;
@@ -56,8 +182,24 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.encontrar_chave_sabor(
+  p_sabores_estoque JSONB,
+  p_sabor_procurado VARCHAR
+)
+RETURNS TEXT
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+BEGIN
+  RETURN public.encontrar_chave_sabor(p_sabores_estoque, p_sabor_procurado::text);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.encontrar_chave_sabor(JSONB, TEXT) TO PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.encontrar_chave_sabor(JSONB, VARCHAR) TO PUBLIC, anon, authenticated;
+
 -- 3. Função para recalcular colunas derivadas a partir da fonte única estoque_zonas
-CREATE OR REPLACE FUNCTION recalcular_estoque_produto(p_produto_id UUID)
+CREATE OR REPLACE FUNCTION public.recalcular_estoque_produto(p_produto_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -86,10 +228,21 @@ BEGIN
 
   v_estoque_zonas := v_produto.estoque_zonas;
 
-  -- Salvaguarda: se estoque_zonas estiver vazio, aborta para não zerar acidentalmente
+  -- Salvaguarda: se estoque_zonas estiver vazio, auto-recupera a partir de sabores_estoque ou preserva
   IF v_estoque_zonas IS NULL OR v_estoque_zonas = '{}'::jsonb THEN
-    RAISE EXCEPTION 'Produto "%" (ID: %) possui estoque_zonas vazio. Recálculo abortado para evitar zeramento acidental.', 
-      v_produto.nome, p_produto_id;
+    IF v_produto.sabores_estoque IS NOT NULL AND v_produto.sabores_estoque <> '{}'::jsonb THEN
+      v_estoque_zonas := jsonb_build_object(
+        'recife', jsonb_build_object(
+          'estoque', COALESCE(v_produto.estoque, 0),
+          'sabores_estoque', v_produto.sabores_estoque
+        )
+      );
+    ELSE
+      RETURN jsonb_build_object(
+        'produto_id', p_produto_id,
+        'aviso', 'estoque_zonas vazio mantido sem alteração'
+      );
+    END IF;
   END IF;
 
   IF v_produto.estoque_ilimitado THEN
