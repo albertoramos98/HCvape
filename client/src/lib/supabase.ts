@@ -306,17 +306,17 @@ export const produtosService = {
     produtoId: string, 
     zona: string, 
     sabor: string, 
-    novaQtd: number, 
-    motivo: string = 'ajuste_manual', 
-    usuario?: string
+    operacao: 'definir' | 'delta',
+    valor: number, 
+    motivo: string = 'ajuste_manual'
   ): Promise<any> {
     const { data, error } = await supabase.rpc('ajustar_estoque', {
       p_produto_id: produtoId,
-      p_zona: zona,
+      p_zona_id: zona,
       p_sabor: sabor,
-      p_nova_qtd: novaQtd,
-      p_motivo: motivo,
-      p_usuario: usuario || null
+      p_operacao: operacao,
+      p_valor: valor,
+      p_motivo: motivo
     });
     if (error) throw error;
     return data;
@@ -505,20 +505,18 @@ export const pedidosService = {
   },
 
   // Baixar estoque de pedido via RPC atômica e idempotente
-  async baixarEstoque(pedidoId: string, usuario?: string): Promise<any> {
+  async baixarEstoque(pedidoId: string): Promise<any> {
     const { data, error } = await supabase.rpc('baixar_estoque_pedido', {
-      p_pedido_id: pedidoId,
-      p_usuario: usuario || null
+      p_pedido_id: pedidoId
     });
     if (error) throw error;
     return data;
   },
 
-  // Estornar estoque de pedido via RPC atômica e simétrica
-  async estornarEstoque(pedidoId: string, usuario?: string): Promise<any> {
+  // Estornar estoque de pedido via RPC atômica e simétrica por saldo líquido
+  async estornarEstoque(pedidoId: string): Promise<any> {
     const { data, error } = await supabase.rpc('estornar_estoque_pedido', {
-      p_pedido_id: pedidoId,
-      p_usuario: usuario || null
+      p_pedido_id: pedidoId
     });
     if (error) throw error;
     return data;
@@ -605,96 +603,70 @@ export const trocasService = {
   },
 
   // Criar nova troca (utiliza RPC atômica registrar_troca para integridade de estoque)
-  async criar(troca: Omit<Troca, 'id' | 'created_at' | 'updated_at'>, usuario?: string): Promise<Troca> {
-    try {
-      const { data, error } = await supabase.rpc('registrar_troca', {
-        p_dados: troca,
-        p_usuario: usuario || null
-      });
+  async criar(troca: Omit<Troca, 'id' | 'created_at' | 'updated_at'>): Promise<Troca> {
+    const { data, error } = await supabase.rpc('registrar_troca', {
+      p_cliente_nome: troca.cliente_nome,
+      p_cliente_telefone: troca.cliente_telefone || null,
+      p_vape_defeito: troca.vape_defeito,
+      p_sabor_defeito: troca.sabor_defeito || null,
+      p_motivo: troca.motivo,
+      p_motivo_detalhes: troca.motivo_detalhes || null,
+      p_vape_trocado: troca.vape_trocado,
+      p_sabor_trocado: troca.sabor_trocado || null,
+      p_produto_trocado_id: troca.produto_trocado_id || null,
+      p_zona: troca.zona || null,
+      p_abater_estoque: !!troca.abateu_estoque,
+      p_observacoes: troca.observacoes || null,
+      p_data_troca: troca.data_troca || new Date().toISOString()
+    });
 
-      if (!error && data) {
-        const salva = data as Troca;
-        const locais = this.obterDoLocalStorage();
-        this.salvarNoLocalStorage([salva, ...locais.filter(t => t.id !== salva.id)]);
-        return salva;
-      }
-    } catch (err) {
-      console.warn('Erro ao chamar RPC registrar_troca, tentando fallback direto:', err);
-    }
+    if (error) throw error;
 
+    const novaTroca: Troca = {
+      id: data?.troca_id,
+      ...troca,
+      status: 'concluida',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    };
+    const locais = this.obterDoLocalStorage();
+    this.salvarNoLocalStorage([novaTroca, ...locais.filter(t => t.id !== novaTroca.id)]);
+    return novaTroca;
+  },
+
+  // Atualizar troca existente (NUNCA altera estoque)
+  async atualizar(id: string, updates: Partial<Omit<Troca, 'id' | 'created_at'>>): Promise<Troca> {
     const { data, error } = await supabase
       .from('trocas')
-      .insert([{
-        ...troca,
-        status: troca.status || 'concluida'
-      }])
+      .update({
+        ...updates,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id)
       .select()
       .single();
 
     if (error) throw error;
     
     const locais = this.obterDoLocalStorage();
-    this.salvarNoLocalStorage([data as Troca, ...locais.filter(t => t.id !== (data as any).id)]);
+    this.salvarNoLocalStorage(locais.map(t => t.id === id ? (data as Troca) : t));
     return data as Troca;
   },
 
-  // Atualizar troca existente (NUNCA altera estoque)
-  async atualizar(id: string, updates: Partial<Omit<Troca, 'id' | 'created_at'>>): Promise<Troca> {
-    try {
-      const { data, error } = await supabase
-        .from('trocas')
-        .update({
-          ...updates,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', id)
-        .select()
-        .single();
-
-      if (error) throw error;
-      
-      const locais = this.obterDoLocalStorage();
-      this.salvarNoLocalStorage(locais.map(t => t.id === id ? (data as Troca) : t));
-      return data as Troca;
-    } catch (err) {
-      console.warn('Atualizando troca no fallback:', err);
-      const locais = this.obterDoLocalStorage();
-      const atualizados = locais.map(t => t.id === id ? { ...t, ...updates, updated_at: new Date().toISOString() } : t);
-      this.salvarNoLocalStorage(atualizados);
-
-      const editada = atualizados.find(t => t.id === id);
-      if (!editada) throw new Error('Troca não encontrada');
-      return editada;
-    }
-  },
-
-  // Deletar troca (utiliza RPC atômica estornar_troca para reverter estoque caso tenha abatido)
-  async deletar(id: string, usuario?: string): Promise<void> {
-    try {
-      const { data, error } = await supabase.rpc('estornar_troca', {
-        p_troca_id: id,
-        p_usuario: usuario || null
-      });
-
-      if (!error && data) {
-        const locais = this.obterDoLocalStorage();
-        this.salvarNoLocalStorage(locais.filter(t => t.id !== id));
-        return;
-      }
-    } catch (err) {
-      console.warn('Erro ao chamar RPC estornar_troca, tentando exclusão direta:', err);
-    }
-
-    const { error } = await supabase
-      .from('trocas')
-      .delete()
-      .eq('id', id);
-
+  // Cancelar troca (utiliza RPC estornar_troca para marcar como 'cancelada' e reverter estoque)
+  async cancelar(id: string): Promise<void> {
+    const { error } = await supabase.rpc('estornar_troca', {
+      p_troca_id: id
+    });
     if (error) throw error;
 
     const locais = this.obterDoLocalStorage();
-    const filtrados = locais.filter(t => t.id !== id);
-    this.salvarNoLocalStorage(filtrados);
+    this.salvarNoLocalStorage(locais.map(t => t.id === id ? { ...t, status: 'cancelada' } : t));
+  },
+
+  // Alias para deletar troca mantendo integridade física: cancela logicamente via RPC
+  async deletar(id: string): Promise<void> {
+    return this.cancelar(id);
   }
 };
 

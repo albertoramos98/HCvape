@@ -105,12 +105,13 @@ export function obterEstoqueProdutoPorZona(
     };
   }
 
-  const zona = normalizarZonaId(zonaInput);
+  const zonaNormalizada = normalizarZonaId(zonaInput);
+  const zona = zonaNormalizada || (zonaInput && produto.estoque_zonas?.[zonaInput] ? (zonaInput as any) : null);
 
   // 2. Se o produto tiver lista restrita de zonas e a zona solicitada não estiver atendida
   if (zona && produto.zonas && Array.isArray(produto.zonas) && produto.zonas.length > 0) {
     const atende = produto.zonas.some(z => {
-      const zNorm = normalizarZonaId(z);
+      const zNorm = normalizarZonaId(z) || z;
       if (!zNorm) return false;
       if (zona === 'recife') {
         return zNorm === 'recife' || zNorm === 'norte' || zNorm === 'sul_oeste' || zNorm === 'sul' || zNorm === 'oeste';

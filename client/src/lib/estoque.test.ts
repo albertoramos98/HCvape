@@ -37,12 +37,10 @@ describe('Mapeamento e Normalização de Zonas', () => {
   it('deve mapear variações de nomes e siglas para IDs canônicos', () => {
     expect(normalizarZonaId('Recife')).toBe('recife');
     expect(normalizarZonaId('REC')).toBe('recife');
-    expect(normalizarZonaId('Gravatá')).toBe('gravata');
-    expect(normalizarZonaId('gv')).toBe('gravata');
     expect(normalizarZonaId('Zona Norte')).toBe('norte');
     expect(normalizarZonaId('Zona Sul/Oeste')).toBe('sul_oeste');
-    expect(normalizarZonaId('sul')).toBe('sul');
-    expect(normalizarZonaId('oeste')).toBe('oeste');
+    expect(normalizarZonaId('sul')).toBe('sul_oeste');
+    expect(normalizarZonaId('oeste')).toBe('sul_oeste');
   });
 
   it('deve retornar null para zonas inválidas ou desconhecidas', () => {
@@ -59,7 +57,7 @@ describe('Cálculo Centralizado de Estoque por Zona', () => {
     nome: 'IGNITE V150',
     estoque: 15,
     sabores: ['Menta Ice', 'Uva Ice', 'Manga Ice'],
-    zonas: ['recife', 'gravata'],
+    zonas: ['recife', 'sul_oeste'],
     estoque_zonas: {
       recife: {
         estoque: 10,
@@ -69,7 +67,7 @@ describe('Cálculo Centralizado de Estoque por Zona', () => {
           'Manga Ice': 0
         }
       },
-      gravata: {
+      sul_oeste: {
         estoque: 5,
         sabores_estoque: {
           'Menta Ice': 2,
@@ -90,8 +88,8 @@ describe('Cálculo Centralizado de Estoque por Zona', () => {
     expect(info.isIlimitado).toBe(false);
   });
 
-  it('deve calcular corretamente os saldos da zona Gravatá', () => {
-    const info = obterEstoqueProdutoPorZona(produtoControlado, 'gravata');
+  it('deve calcular corretamente os saldos da zona Sul/Oeste', () => {
+    const info = obterEstoqueProdutoPorZona(produtoControlado, 'sul_oeste');
     expect(info.possuiEstoqueNaZona).toBe(true);
     expect(info.estoque).toBe(5);
     expect(info.saboresDisponiveis).toEqual(['Menta Ice', 'Uva Ice']);

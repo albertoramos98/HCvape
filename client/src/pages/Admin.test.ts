@@ -513,22 +513,26 @@ describe('Sistema de Gestão de Clientes Únicos & WhatsApp', () => {
   });
 });
 
-describe('Gestão de Localidades e Regiões (Recife e Gravatá)', () => {
-  it('deve conter Recife e Gravatá na lista oficial de ZONAS_DISPONIVEIS com metadados corretos', async () => {
+describe('Gestão de Localidades e Regiões', () => {
+  it('deve conter Recife, Zona Norte e Zona Sul/Oeste na lista oficial de ZONAS_DISPONIVEIS com metadados corretos', async () => {
     const { ZONAS_DISPONIVEIS } = await import('../lib/supabase');
     const recife = ZONAS_DISPONIVEIS.find(z => z.id === 'recife');
-    const gravata = ZONAS_DISPONIVEIS.find(z => z.id === 'gravata');
+    const norte = ZONAS_DISPONIVEIS.find(z => z.id === 'norte');
+    const sulOeste = ZONAS_DISPONIVEIS.find(z => z.id === 'sul_oeste');
     
     expect(recife).toBeDefined();
     expect(recife?.nome).toBe('Recife');
     expect(recife?.sigla).toBe('REC');
     expect(recife?.cor).toBe('#76FF03');
 
-    expect(gravata).toBeDefined();
-    expect(gravata?.nome).toBe('Gravatá');
-    expect(gravata?.sigla).toBe('GV');
-    expect(gravata?.cor).toBe('#f59e0b');
-    expect(ZONAS_DISPONIVEIS.length).toBe(2);
+    expect(norte).toBeDefined();
+    expect(norte?.nome).toBe('Zona Norte');
+    expect(norte?.sigla).toBe('ZN');
+
+    expect(sulOeste).toBeDefined();
+    expect(sulOeste?.nome).toBe('Zona Sul / Oeste');
+    expect(sulOeste?.sigla).toBe('ZS/ZO');
+    expect(ZONAS_DISPONIVEIS.length).toBe(3);
   });
 
   it('deve calcular corretamente o estoque para a zona Gravatá em produtos com zonas configuradas', () => {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { ShoppingCart, X, Plus, Minus, AlertCircle, Zap, Clock, ImageOff, Phone, User, CheckCircle2, Loader2, Github, Mail, Search, Flame, ArrowRight, Shield, Sparkles, Check, ChevronRight, MapPin, Compass } from 'lucide-react';
-import { produtosService, pedidosService, clientesService, Produto, utils, PedidoItem, configService, PromoSchedule, HeroBannerConfig, ZonaId, ZONAS_DISPONIVEIS } from '@/lib/supabase';
+import { produtosService, pedidosService, clientesService, Produto, utils, PedidoItem, configService, PromoSchedule, HeroBannerConfig, ZonaId, ZONAS_DISPONIVEIS, normalizarZonaId } from '@/lib/supabase';
 import { useLocation } from "wouter";
 import { HeroBanner } from '@/components/HeroBanner';
 
@@ -67,10 +67,7 @@ export default function Home() {
   const [popupAviso, setPopupAviso] = useState(true);
   const [zonaSelecionada, setZonaSelecionada] = useState<ZonaId | null>(() => {
     const salva = localStorage.getItem('hcvape_zona_selecionada');
-    if (salva === 'recife') return 'recife';
-    if (salva === 'norte' || salva === 'sul' || salva === 'oeste' || salva === 'sul_oeste') return 'recife';
-    if (salva === 'gravata' || salva === 'gravatá') return 'gravata';
-    return null;
+    return normalizarZonaId(salva);
   });
   const [modalZonaAberto, setModalZonaAberto] = useState(false);
 

@@ -1,9 +1,9 @@
 -- =========================================================================
--- HC VAPE - MIGRAÇÃO 003: BAIXA E ESTORNO ATÔMICOS E IDEMPOTENTES DE PEDIDOS
+-- HC VAPE - MIGRAÇÃO 003: BAIXA E ESTORNO ATÔMICOS POR SALDO LÍQUIDO
 -- Idempotente: CREATE OR REPLACE FUNCTION
 -- =========================================================================
 
--- 1. Função para resolver identificador canônico de zona a partir de string
+-- 1. Função canônica para resolver identificador de zona
 CREATE OR REPLACE FUNCTION resolver_zona_id(p_zona_input TEXT)
 RETURNS VARCHAR(50)
 LANGUAGE plpgsql
@@ -13,27 +13,22 @@ DECLARE
   v_norm TEXT;
 BEGIN
   IF p_zona_input IS NULL OR TRIM(p_zona_input) = '' THEN
-    RETURN 'recife'; -- Padrão operacional de atendimento principal
+    RETURN 'recife';
   END IF;
 
   v_norm := normalizar_sabor(p_zona_input);
 
   IF v_norm = 'recife' OR v_norm = 'rec' OR v_norm LIKE '%recife%' THEN
     RETURN 'recife';
-  ELSIF v_norm = 'gravata' OR v_norm = 'gravata' OR v_norm = 'gv' OR v_norm LIKE '%gravata%' THEN
-    RETURN 'gravata';
   ELSIF v_norm = 'norte' OR v_norm LIKE '%norte%' THEN
     RETURN 'norte';
   ELSIF v_norm = 'sul_oeste' OR v_norm = 'suloeste' OR v_norm LIKE '%sul%oeste%' THEN
     RETURN 'sul_oeste';
-  ELSIF v_norm = 'sul' THEN
-    RETURN 'sul';
-  ELSIF v_norm = 'oeste' THEN
-    RETURN 'oeste';
+  ELSIF v_norm = 'sul' OR v_norm = 'oeste' THEN
+    RETURN 'sul_oeste';
   END IF;
 
-  -- Se já for um identificador conhecido direto
-  IF p_zona_input IN ('recife', 'gravata', 'norte', 'sul_oeste', 'sul', 'oeste') THEN
+  IF p_zona_input IN ('recife', 'norte', 'sul_oeste') THEN
     RETURN p_zona_input::VARCHAR(50);
   END IF;
 
@@ -42,13 +37,12 @@ END;
 $$;
 
 -- 2. RPC: Baixar estoque de pedido com validação atômica, lock e sem clamp
-CREATE OR REPLACE FUNCTION baixar_estoque_pedido(
-  p_pedido_id UUID,
-  p_usuario TEXT DEFAULT NULL
-)
+-- Obtém o usuário autenticado diretamente de auth.jwt() / auth.uid()
+CREATE OR REPLACE FUNCTION baixar_estoque_pedido(p_pedido_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_pedido RECORD;
@@ -63,10 +57,18 @@ DECLARE
   v_chave_sabor TEXT;
   v_saldo_antes INT;
   v_saldo_depois INT;
+  v_usuario TEXT;
 BEGIN
-  -- 1. Lock exclusivo no pedido para impedir execução concorrente
+  -- Obter usuário do JWT com segurança
+  v_usuario := COALESCE(
+    current_setting('request.jwt.claims', true)::jsonb->>'email',
+    auth.uid()::text,
+    'sistema'
+  );
+
+  -- 1. Lock exclusivo no pedido para impedir concorrência
   SELECT * INTO v_pedido 
-  FROM pedidos 
+  FROM public.pedidos 
   WHERE id = p_pedido_id 
   FOR UPDATE;
 
@@ -97,7 +99,7 @@ BEGIN
 
     -- Lock exclusivo no produto
     SELECT * INTO v_produto 
-    FROM produtos 
+    FROM public.produtos 
     WHERE id = v_prod_id 
     FOR UPDATE;
 
@@ -115,7 +117,7 @@ BEGIN
 
     -- Verificar se a zona existe no produto
     IF NOT (v_estoque_zonas ? v_zona_id) THEN
-      -- Se a zona for 'recife' e o produto tiver norte ou sul_oeste, tentar zona alternativa
+      -- Se a zona for 'recife' e o produto tiver sul_oeste ou norte, tentar alternativa
       IF v_zona_id = 'recife' AND (v_estoque_zonas ? 'sul_oeste') THEN
         v_zona_id := 'sul_oeste';
       ELSIF v_zona_id = 'recife' AND (v_estoque_zonas ? 'norte') THEN
@@ -151,12 +153,12 @@ BEGIN
     v_sabores_zona := jsonb_set(v_sabores_zona, ARRAY[v_chave_sabor], to_jsonb(v_saldo_depois));
     v_estoque_zonas := jsonb_set(v_estoque_zonas, ARRAY[v_zona_id, 'sabores_estoque'], v_sabores_zona);
 
-    UPDATE produtos 
+    UPDATE public.produtos 
     SET estoque_zonas = v_estoque_zonas
     WHERE id = v_prod_id;
 
     -- Registrar histórico do movimento
-    INSERT INTO movimentos_estoque (
+    INSERT INTO public.movimentos_estoque (
       produto_id,
       zona,
       sabor,
@@ -175,7 +177,7 @@ BEGIN
       v_saldo_depois,
       'venda',
       p_pedido_id,
-      p_usuario
+      v_usuario
     );
 
     -- Recalcula colunas derivadas
@@ -183,7 +185,7 @@ BEGIN
   END LOOP;
 
   -- 3. Atualizar status do checklist do pedido
-  UPDATE pedidos 
+  UPDATE public.pedidos 
   SET status_checklist = true 
   WHERE id = p_pedido_id;
 
@@ -196,34 +198,40 @@ BEGIN
 END;
 $$;
 
--- 3. RPC: Estornar estoque de pedido com reposição simétrica exata
-CREATE OR REPLACE FUNCTION estornar_estoque_pedido(
-  p_pedido_id UUID,
-  p_usuario TEXT DEFAULT NULL
-)
+-- Permissões baixar_estoque_pedido
+REVOKE ALL ON FUNCTION baixar_estoque_pedido(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION baixar_estoque_pedido(UUID) TO authenticated;
+
+-- 3. RPC: Estornar estoque de pedido com reposição por SALDO LÍQUIDO (-SUM(delta))
+-- Sem fallback por itens para pedidos legados anteriores à migração
+CREATE OR REPLACE FUNCTION estornar_estoque_pedido(p_pedido_id UUID)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, extensions
 AS $$
 DECLARE
   v_pedido RECORD;
-  v_mov RECORD;
+  v_item_mov RECORD;
   v_produto RECORD;
   v_estoque_zonas JSONB;
   v_sabores_zona JSONB;
   v_saldo_antes INT;
   v_saldo_depois INT;
-  v_qtd_estorno INT;
-  v_teve_movimentos BOOLEAN := false;
-  v_item JSONB;
-  v_prod_id UUID;
-  v_sabor_solicitado TEXT;
-  v_chave_sabor TEXT;
-  v_zona_id VARCHAR(50);
+  v_qtd_repor INT;
+  v_usuario TEXT;
+  v_teve_movimento BOOLEAN := false;
 BEGIN
+  -- Obter usuário do JWT com segurança
+  v_usuario := COALESCE(
+    current_setting('request.jwt.claims', true)::jsonb->>'email',
+    auth.uid()::text,
+    'sistema'
+  );
+
   -- 1. Lock exclusivo no pedido
   SELECT * INTO v_pedido 
-  FROM pedidos 
+  FROM public.pedidos 
   WHERE id = p_pedido_id 
   FOR UPDATE;
 
@@ -236,35 +244,43 @@ BEGIN
     RAISE EXCEPTION 'Pedido #% não está com o checklist baixado para estorno.', v_pedido.numero_pedido;
   END IF;
 
-  -- 2. Tentar estorno estritamente simétrico baseado na tabela movimentos_estoque
-  FOR v_mov IN 
-    SELECT * 
-    FROM movimentos_estoque 
-    WHERE pedido_id = p_pedido_id AND tipo = 'venda'
+  -- 2. Repor o NEGATIVO DA SOMA dos deltas daquele pedido por (produto, zona, sabor)
+  -- Isso impede duplicações em ciclos múltiplos de baixa/estorno
+  FOR v_item_mov IN 
+    SELECT 
+      produto_id, 
+      zona, 
+      sabor, 
+      -SUM(delta) AS qtd_repor
+    FROM public.movimentos_estoque 
+    WHERE pedido_id = p_pedido_id
+    GROUP BY produto_id, zona, sabor
+    HAVING -SUM(delta) > 0
   LOOP
-    v_teve_movimentos := true;
+    v_teve_movimento := true;
+    v_qtd_repor := v_item_mov.qtd_repor;
 
     SELECT * INTO v_produto 
-    FROM produtos 
-    WHERE id = v_mov.produto_id 
+    FROM public.produtos 
+    WHERE id = v_item_mov.produto_id 
     FOR UPDATE;
 
     IF FOUND THEN
       v_estoque_zonas := COALESCE(v_produto.estoque_zonas, '{}'::jsonb);
-      v_sabores_zona := COALESCE(v_estoque_zonas->v_mov.zona->'sabores_estoque', '{}'::jsonb);
+      v_sabores_zona := COALESCE(v_estoque_zonas->v_item_mov.zona->'sabores_estoque', '{}'::jsonb);
 
-      v_saldo_antes := COALESCE((v_sabores_zona->>v_mov.sabor)::int, 0);
-      v_qtd_estorno := -v_mov.delta; -- delta era negativo (-Q), vira positivo (+Q)
-      v_saldo_depois := v_saldo_antes + v_qtd_estorno;
+      v_saldo_antes := COALESCE((v_sabores_zona->>v_item_mov.sabor)::int, 0);
+      v_saldo_depois := v_saldo_antes + v_qtd_repor;
 
-      v_sabores_zona := jsonb_set(v_sabores_zona, ARRAY[v_mov.sabor], to_jsonb(v_saldo_depois));
-      v_estoque_zonas := jsonb_set(v_estoque_zonas, ARRAY[v_mov.zona, 'sabores_estoque'], v_sabores_zona);
+      v_sabores_zona := jsonb_set(v_sabores_zona, ARRAY[v_item_mov.sabor], to_jsonb(v_saldo_depois));
+      v_estoque_zonas := jsonb_set(v_estoque_zonas, ARRAY[v_item_mov.zona, 'sabores_estoque'], v_sabores_zona);
 
-      UPDATE produtos 
-      SET estoque_zonas = v_estoque_zonas 
-      WHERE id = v_mov.produto_id;
+      UPDATE public.produtos 
+      SET estoque_zonas = v_estoque_zonas
+      WHERE id = v_item_mov.produto_id;
 
-      INSERT INTO movimentos_estoque (
+      -- Registrar movimento de estorno
+      INSERT INTO public.movimentos_estoque (
         produto_id,
         zona,
         sabor,
@@ -273,89 +289,31 @@ BEGIN
         saldo_depois,
         tipo,
         pedido_id,
-        usuario
+        usuario,
+        motivo
       ) VALUES (
-        v_mov.produto_id,
-        v_mov.zona,
-        v_mov.sabor,
-        v_qtd_estorno,
+        v_item_mov.produto_id,
+        v_item_mov.zona,
+        v_item_mov.sabor,
+        v_qtd_repor,
         v_saldo_antes,
         v_saldo_depois,
         'estorno',
         p_pedido_id,
-        p_usuario
+        v_usuario,
+        'reabertura_ou_cancelamento_pedido'
       );
 
-      PERFORM recalcular_estoque_produto(v_mov.produto_id);
+      PERFORM recalcular_estoque_produto(v_item_mov.produto_id);
     END IF;
   END LOOP;
 
-  -- 3. Fallback para pedidos legados (conferidos antes da tabela movimentos_estoque existir)
-  IF NOT v_teve_movimentos THEN
-    v_zona_id := resolver_zona_id(v_pedido.zona);
+  -- Para pedidos conferidos antes da migração (sem movimentos registrados),
+  -- o estoque NÃO é alterado, pois já está embutido na contagem física inicial.
+  -- NÃO há fallback por itens.
 
-    FOR v_item IN SELECT * FROM jsonb_array_elements(COALESCE(v_pedido.itens, '[]'::jsonb)) LOOP
-      v_prod_id := (v_item->>'id')::UUID;
-      v_sabor_solicitado := v_item->>'sabor';
-      v_qtd_estorno := COALESCE((v_item->>'quantidade')::int, 0);
-
-      IF v_qtd_estorno <= 0 THEN
-        CONTINUE;
-      END IF;
-
-      SELECT * INTO v_produto 
-      FROM produtos 
-      WHERE id = v_prod_id 
-      FOR UPDATE;
-
-      IF FOUND AND NOT v_produto.estoque_ilimitado THEN
-        v_estoque_zonas := COALESCE(v_produto.estoque_zonas, '{}'::jsonb);
-        v_sabores_zona := COALESCE(v_estoque_zonas->v_zona_id->'sabores_estoque', '{}'::jsonb);
-        v_chave_sabor := encontrar_chave_sabor(v_sabores_zona, v_sabor_solicitado);
-
-        IF v_chave_sabor IS NULL THEN
-          v_chave_sabor := TRIM(v_sabor_solicitado);
-        END IF;
-
-        v_saldo_antes := COALESCE((v_sabores_zona->>v_chave_sabor)::int, 0);
-        v_saldo_depois := v_saldo_antes + v_qtd_estorno;
-
-        v_sabores_zona := jsonb_set(v_sabores_zona, ARRAY[v_chave_sabor], to_jsonb(v_saldo_depois));
-        v_estoque_zonas := jsonb_set(v_estoque_zonas, ARRAY[v_zona_id, 'sabores_estoque'], v_sabores_zona);
-
-        UPDATE produtos 
-        SET estoque_zonas = v_estoque_zonas 
-        WHERE id = v_prod_id;
-
-        INSERT INTO movimentos_estoque (
-          produto_id,
-          zona,
-          sabor,
-          delta,
-          saldo_antes,
-          saldo_depois,
-          tipo,
-          pedido_id,
-          usuario
-        ) VALUES (
-          v_prod_id,
-          v_zona_id,
-          v_chave_sabor,
-          v_qtd_estorno,
-          v_saldo_antes,
-          v_saldo_depois,
-          'estorno',
-          p_pedido_id,
-          p_usuario
-        );
-
-        PERFORM recalcular_estoque_produto(v_prod_id);
-      END IF;
-    END LOOP;
-  END IF;
-
-  -- 4. Atualizar status no pedido
-  UPDATE pedidos 
+  -- 3. Atualizar status do checklist do pedido para false
+  UPDATE public.pedidos 
   SET status_checklist = false 
   WHERE id = p_pedido_id;
 
@@ -363,14 +321,12 @@ BEGIN
     'success', true,
     'pedido_id', p_pedido_id,
     'numero_pedido', v_pedido.numero_pedido,
-    'status_checklist', false
+    'status_checklist', false,
+    'movimentos_estornados', v_teve_movimento
   );
 END;
 $$;
 
--- Permissões: apenas administradores autenticados podem baixar e estornar pedidos
-REVOKE ALL ON FUNCTION baixar_estoque_pedido(UUID, TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION baixar_estoque_pedido(UUID, TEXT) TO authenticated;
-
-REVOKE ALL ON FUNCTION estornar_estoque_pedido(UUID, TEXT) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION estornar_estoque_pedido(UUID, TEXT) TO authenticated;
+-- Permissões estornar_estoque_pedido
+REVOKE ALL ON FUNCTION estornar_estoque_pedido(UUID) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION estornar_estoque_pedido(UUID) TO authenticated;

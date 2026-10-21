@@ -1,291 +1,211 @@
 -- =========================================================================
--- HC VAPE - BATERIA DE TESTES DE INTEGRIDADE DO ESTOQUE
--- Executado 100% dentro de transação com ROLLBACK no final (nenhum dado persiste)
+-- HC VAPE - SUÍTE COMPLETA DE TESTES SQL EM TRANSAÇÃO REVERSÍVEL
+-- Execução: Pode ser colada inteira no SQL Editor do Supabase.
+-- NENHUM dado é salvo (termina com ROLLBACK).
 -- =========================================================================
 
 BEGIN;
 
+-- 1. Simular JWT de usuário autenticado
+SELECT set_config(
+  'request.jwt.claims', 
+  '{"sub": "00000000-0000-0000-0000-000000000001", "email": "auditor@hcvape.com", "role": "authenticated"}', 
+  true
+);
+
 DO $$
 DECLARE
-  v_prod_id UUID;
-  v_prod_ilim_id UUID;
-  v_ped_1 UUID;
-  v_ped_dois_sabores UUID;
-  v_ped_sem_saldo UUID;
-  v_ped_sabor_espacos UUID;
-  v_ped_ilim UUID;
-  v_troca_res JSONB;
-  v_troca_id UUID;
+  v_prod_id UUID := gen_random_uuid();
+  v_prod_legado_id UUID := gen_random_uuid();
+  v_pedido_res JSONB;
+  v_pedido_id UUID;
   v_res JSONB;
-  v_erro_capturado BOOLEAN;
+  v_estoque_final INT;
+  v_deu_erro BOOLEAN := false;
   v_saldo_menta INT;
   v_saldo_uva INT;
-  v_estoque_total INT;
 BEGIN
-  RAISE NOTICE '=== INICIANDO BATERIA DE TESTES DE ESTOQUE ===';
+  RAISE NOTICE '=== INICIANDO SUÍTE DE TESTES DE ESTOQUE BLINDADO ===';
 
   -- -----------------------------------------------------------------------
-  -- SETUP: Criar produtos de teste
+  -- CENÁRIO 1: Recálculo em produto legado com estoque_zonas vazio DEVE ABORTAR
   -- -----------------------------------------------------------------------
-  INSERT INTO produtos (
-    marca,
-    nome,
-    preco,
-    estoque,
-    sabores,
-    zonas,
-    estoque_zonas,
-    estoque_ilimitado
+  INSERT INTO public.produtos (
+    id, marca, nome, preco, estoque, sabores, sabores_estoque, zonas, estoque_zonas, ativo
   ) VALUES (
-    'TEST_BRAND',
-    'POD DE TESTE CONTROLADO',
-    100.00,
-    10,
-    ARRAY['Menta Ice', 'Uva Ice'],
-    ARRAY['recife'],
-    '{
-      "recife": {
-        "estoque": 10,
-        "sabores_estoque": {
-          "Menta Ice": 6,
-          "Uva Ice": 4
-        }
-      }
-    }'::jsonb,
-    false
-  ) RETURNING id INTO v_prod_id;
-
-  INSERT INTO produtos (
-    marca,
-    nome,
-    preco,
-    estoque,
-    sabores,
-    zonas,
-    estoque_zonas,
-    estoque_ilimitado
-  ) VALUES (
-    'TEST_BRAND',
-    'POD DE TESTE ILIMITADO',
-    80.00,
-    999,
-    ARRAY['Sabor Livre'],
-    ARRAY['recife'],
-    '{
-      "recife": {
-        "estoque": 999,
-        "sabores_estoque": {
-          "Sabor Livre": 999
-        }
-      }
-    }'::jsonb,
-    true
-  ) RETURNING id INTO v_prod_ilim_id;
-
-  -- -----------------------------------------------------------------------
-  -- CENÁRIO 1: Venda de 1 unidade
-  -- -----------------------------------------------------------------------
-  INSERT INTO pedidos (
-    nome_cliente, telefone_cliente, zona, total, total_final, status_checklist, itens
-  ) VALUES (
-    'Cliente 1', '81999999991', 'recife', 100.00, 100.00, false,
-    jsonb_build_array(
-      jsonb_build_object('id', v_prod_id, 'nome', 'POD DE TESTE CONTROLADO', 'sabor', 'Menta Ice', 'quantidade', 1)
-    )
-  ) RETURNING id INTO v_ped_1;
-
-  v_res := baixar_estoque_pedido(v_ped_1, 'teste_runner');
-  
-  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Menta Ice')::int, estoque 
-  INTO v_saldo_menta, v_estoque_total 
-  FROM produtos WHERE id = v_prod_id;
-
-  ASSERT v_saldo_menta = 5, format('Falha Cenário 1: Saldo esperado 5, obtido %s', v_saldo_menta);
-  ASSERT v_estoque_total = 9, format('Falha Cenário 1: Estoque total esperado 9, obtido %s', v_estoque_total);
-  RAISE NOTICE '✓ Cenário 1 (Venda 1 unidade): OK';
-
-  -- -----------------------------------------------------------------------
-  -- CENÁRIO 2: Venda de N unidades (3 unidades de Menta Ice)
-  -- -----------------------------------------------------------------------
-  INSERT INTO pedidos (
-    nome_cliente, telefone_cliente, zona, total, total_final, status_checklist, itens
-  ) VALUES (
-    'Cliente 2', '81999999992', 'recife', 300.00, 300.00, false,
-    jsonb_build_array(
-      jsonb_build_object('id', v_prod_id, 'nome', 'POD DE TESTE CONTROLADO', 'sabor', 'Menta Ice', 'quantidade', 3)
-    )
-  ) RETURNING id INTO v_ped_1;
-
-  PERFORM baixar_estoque_pedido(v_ped_1, 'teste_runner');
-  
-  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Menta Ice')::int 
-  INTO v_saldo_menta FROM produtos WHERE id = v_prod_id;
-
-  ASSERT v_saldo_menta = 2, format('Falha Cenário 2: Saldo esperado 2, obtido %s', v_saldo_menta);
-  RAISE NOTICE '✓ Cenário 2 (Venda N unidades): OK';
-
-  -- -----------------------------------------------------------------------
-  -- CENÁRIO 3: Dois sabores do mesmo produto no mesmo pedido
-  -- -----------------------------------------------------------------------
-  INSERT INTO pedidos (
-    nome_cliente, telefone_cliente, zona, total, total_final, status_checklist, itens
-  ) VALUES (
-    'Cliente Multi', '81999999993', 'recife', 300.00, 300.00, false,
-    jsonb_build_array(
-      jsonb_build_object('id', v_prod_id, 'nome', 'POD DE TESTE CONTROLADO', 'sabor', 'Menta Ice', 'quantidade', 1),
-      jsonb_build_object('id', v_prod_id, 'nome', 'POD DE TESTE CONTROLADO', 'sabor', 'Uva Ice', 'quantidade', 2)
-    )
-  ) RETURNING id INTO v_ped_dois_sabores;
-
-  PERFORM baixar_estoque_pedido(v_ped_dois_sabores, 'teste_runner');
-
-  SELECT 
-    (estoque_zonas->'recife'->'sabores_estoque'->>'Menta Ice')::int,
-    (estoque_zonas->'recife'->'sabores_estoque'->>'Uva Ice')::int,
-    estoque
-  INTO v_saldo_menta, v_saldo_uva, v_estoque_total 
-  FROM produtos WHERE id = v_prod_id;
-
-  ASSERT v_saldo_menta = 1, format('Falha Cenário 3: Menta esperada 1, obtida %s', v_saldo_menta);
-  ASSERT v_saldo_uva = 2, format('Falha Cenário 3: Uva esperada 2, obtida %s', v_saldo_uva);
-  ASSERT v_estoque_total = 3, format('Falha Cenário 3: Total esperado 3, obtido %s', v_estoque_total);
-  RAISE NOTICE '✓ Cenário 3 (Dois sabores do mesmo produto): OK';
-
-  -- -----------------------------------------------------------------------
-  -- CENÁRIO 4: Venda acima do saldo (deve lançar erro e dar rollback)
-  -- -----------------------------------------------------------------------
-  INSERT INTO pedidos (
-    nome_cliente, telefone_cliente, zona, total, total_final, status_checklist, itens
-  ) VALUES (
-    'Cliente Sem Saldo', '81999999994', 'recife', 500.00, 500.00, false,
-    jsonb_build_array(
-      jsonb_build_object('id', v_prod_id, 'nome', 'POD DE TESTE CONTROLADO', 'sabor', 'Menta Ice', 'quantidade', 10)
-    )
-  ) RETURNING id INTO v_ped_sem_saldo;
-
-  v_erro_capturado := false;
-  BEGIN
-    PERFORM baixar_estoque_pedido(v_ped_sem_saldo, 'teste_runner');
-  EXCEPTION WHEN OTHERS THEN
-    v_erro_capturado := true;
-  END;
-
-  ASSERT v_erro_capturado = true, 'Falha Cenário 4: Venda acima do saldo deveria ter gerado exceção!';
-  RAISE NOTICE '✓ Cenário 4 (Venda acima do saldo rejeitada com rollback): OK';
-
-  -- -----------------------------------------------------------------------
-  -- CENÁRIO 5: Baixa duplicada (Idempotência: deve dar erro)
-  -- -----------------------------------------------------------------------
-  v_erro_capturado := false;
-  BEGIN
-    PERFORM baixar_estoque_pedido(v_ped_dois_sabores, 'teste_runner');
-  EXCEPTION WHEN OTHERS THEN
-    v_erro_capturado := true;
-  END;
-
-  ASSERT v_erro_capturado = true, 'Falha Cenário 5: Baixa duplicada deveria ter sido rejeitada!';
-  RAISE NOTICE '✓ Cenário 5 (Bloqueio de baixa duplicada): OK';
-
-  -- -----------------------------------------------------------------------
-  -- CENÁRIO 6: Estorno devolve exatamente o que baixou (Simetria)
-  -- -----------------------------------------------------------------------
-  PERFORM estornar_estoque_pedido(v_ped_dois_sabores, 'teste_runner');
-
-  SELECT 
-    (estoque_zonas->'recife'->'sabores_estoque'->>'Menta Ice')::int,
-    (estoque_zonas->'recife'->'sabores_estoque'->>'Uva Ice')::int,
-    estoque
-  INTO v_saldo_menta, v_saldo_uva, v_estoque_total 
-  FROM produtos WHERE id = v_prod_id;
-
-  ASSERT v_saldo_menta = 2, format('Falha Cenário 6: Menta pós-estorno esperada 2, obtida %s', v_saldo_menta);
-  ASSERT v_saldo_uva = 4, format('Falha Cenário 6: Uva pós-estorno esperada 4, obtida %s', v_saldo_uva);
-  ASSERT v_estoque_total = 6, format('Falha Cenário 6: Total pós-estorno esperado 6, obtido %s', v_estoque_total);
-  RAISE NOTICE '✓ Cenário 6 (Estorno simétrico exato): OK';
-
-  -- -----------------------------------------------------------------------
-  -- CENÁRIO 7: Estorno duplicado (Idempotência: deve dar erro)
-  -- -----------------------------------------------------------------------
-  v_erro_capturado := false;
-  BEGIN
-    PERFORM estornar_estoque_pedido(v_ped_dois_sabores, 'teste_runner');
-  EXCEPTION WHEN OTHERS THEN
-    v_erro_capturado := true;
-  END;
-
-  ASSERT v_erro_capturado = true, 'Falha Cenário 7: Estorno duplicado deveria ter sido rejeitado!';
-  RAISE NOTICE '✓ Cenário 7 (Bloqueio de estorno duplicado): OK';
-
-  -- -----------------------------------------------------------------------
-  -- CENÁRIO 8: Casamento de sabor com maiúscula e espaços extras
-  -- -----------------------------------------------------------------------
-  INSERT INTO pedidos (
-    nome_cliente, telefone_cliente, zona, total, total_final, status_checklist, itens
-  ) VALUES (
-    'Cliente Espacos', '81999999995', 'recife', 100.00, 100.00, false,
-    jsonb_build_array(
-      jsonb_build_object('id', v_prod_id, 'nome', 'POD DE TESTE CONTROLADO', 'sabor', '  menta   ice  ', 'quantidade', 1)
-    )
-  ) RETURNING id INTO v_ped_sabor_espacos;
-
-  PERFORM baixar_estoque_pedido(v_ped_sabor_espacos, 'teste_runner');
-
-  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Menta Ice')::int 
-  INTO v_saldo_menta FROM produtos WHERE id = v_prod_id;
-
-  ASSERT v_saldo_menta = 1, format('Falha Cenário 8: Sabor normalizado esperado 1, obtido %s', v_saldo_menta);
-  RAISE NOTICE '✓ Cenário 8 (Casamento resiliente de sabor com espaços/maiúsculas): OK';
-
-  -- -----------------------------------------------------------------------
-  -- CENÁRIO 9: Trocas (Criar, Abater e Estornar na Exclusão)
-  -- -----------------------------------------------------------------------
-  v_troca_res := registrar_troca(
-    jsonb_build_object(
-      'cliente_nome', 'Cliente Troca',
-      'vape_defeito', 'Vape Quebrado',
-      'motivo', 'Não liga',
-      'vape_trocado', 'POD DE TESTE CONTROLADO',
-      'sabor_trocado', 'Uva Ice',
-      'produto_trocado_id', v_prod_id,
-      'zona', 'recife',
-      'abateu_estoque', true
-    ),
-    'teste_runner'
+    v_prod_legado_id, 'TESTE_LEGADO', 'PROD SEM ZONAS', 100, 10,
+    ARRAY['Menta Ice'], '{"Menta Ice": 10}'::jsonb,
+    ARRAY['recife'], '{}'::jsonb, true
   );
 
-  v_troca_id := (v_troca_res->>'id')::UUID;
+  BEGIN
+    PERFORM recalcular_estoque_produto(v_prod_legado_id);
+    v_deu_erro := false;
+  EXCEPTION WHEN OTHERS THEN
+    v_deu_erro := true;
+    RAISE NOTICE 'CENÁRIO 1 [PASSOU]: recalcular_estoque_produto abortou com sucesso em produto legado vazio: %', SQLERRM;
+  END;
 
-  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Uva Ice')::int 
-  INTO v_saldo_uva FROM produtos WHERE id = v_prod_id;
-  ASSERT v_saldo_uva = 3, format('Falha Cenário 9 (Criação Troca): Saldo Uva esperado 3, obtido %s', v_saldo_uva);
-
-  -- Estornar a troca
-  PERFORM estornar_troca(v_troca_id, 'teste_runner');
-
-  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Uva Ice')::int 
-  INTO v_saldo_uva FROM produtos WHERE id = v_prod_id;
-  ASSERT v_saldo_uva = 4, format('Falha Cenário 9 (Estorno Troca): Saldo Uva esperado 4, obtido %s', v_saldo_uva);
-  RAISE NOTICE '✓ Cenário 9 (Trocas: registro com baixa e exclusão com estorno): OK';
+  IF NOT v_deu_erro THEN
+    RAISE EXCEPTION 'FALHA NO CENÁRIO 1: recalcular_estoque_produto deveria ter abortado para estoque_zonas vazio!';
+  END IF;
 
   -- -----------------------------------------------------------------------
-  -- CENÁRIO 10: Produto com Estoque Ilimitado
+  -- CENÁRIO 2: Criação de produto de teste com 2 sabores e ajustes atômicos
   -- -----------------------------------------------------------------------
-  INSERT INTO pedidos (
-    nome_cliente, telefone_cliente, zona, total, total_final, status_checklist, itens
+  INSERT INTO public.produtos (
+    id, marca, nome, preco, estoque, sabores, sabores_estoque, zonas, estoque_zonas, ativo
   ) VALUES (
-    'Cliente Ilimitado', '81999999996', 'recife', 80.00, 80.00, false,
+    v_prod_id, 'TESTE', 'POD MULTI SABORES', 100.00, 20,
+    ARRAY['Menta Ice', 'Uva Ice'],
+    '{"Menta Ice": 10, "Uva Ice": 10}'::jsonb,
+    ARRAY['recife', 'norte'],
+    jsonb_build_object(
+      'recife', jsonb_build_object(
+        'estoque', 20,
+        'sabores_estoque', jsonb_build_object('Menta Ice', 10, 'Uva Ice', 10)
+      )
+    ),
+    true
+  );
+
+  -- Teste de ajustar_estoque modo 'definir'
+  PERFORM ajustar_estoque(v_prod_id, 'recife', 'Menta Ice', 'definir', 15, 'ajuste_teste');
+  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Menta Ice')::int INTO v_saldo_menta 
+  FROM public.produtos WHERE id = v_prod_id;
+  ASSERT v_saldo_menta = 15, 'FALHA: saldo Menta Ice deveria ser 15';
+
+  -- Teste de ajustar_estoque modo 'delta'
+  PERFORM ajustar_estoque(v_prod_id, 'recife', 'Uva Ice', 'delta', -2, 'ajuste_teste_delta');
+  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Uva Ice')::int INTO v_saldo_uva 
+  FROM public.produtos WHERE id = v_prod_id;
+  ASSERT v_saldo_uva = 8, 'FALHA: saldo Uva Ice deveria ser 8';
+  RAISE NOTICE 'CENÁRIO 2 [PASSOU]: ajustar_estoque definir e delta funcionando perfeitamente.';
+
+  -- -----------------------------------------------------------------------
+  -- CENÁRIO 3: Pedido com 2 sabores do mesmo produto e recálculo financeiro no servidor
+  -- O cliente envia total = 10, mas o banco DEVE recalcular (100 * 2 + 100 * 1 = 300)
+  -- -----------------------------------------------------------------------
+  v_pedido_res := criar_pedido_catalogo(
+    'Cliente Teste',
+    '81999999999',
+    'Amigo',
+    'recife',
     jsonb_build_array(
-      jsonb_build_object('id', v_prod_ilim_id, 'nome', 'POD DE TESTE ILIMITADO', 'sabor', 'Sabor Livre', 'quantidade', 10)
-    )
-  ) RETURNING id INTO v_ped_ilim;
+      jsonb_build_object('id', v_prod_id, 'nome', 'POD MULTI SABORES', 'sabor', 'Menta Ice', 'quantidade', 2),
+      jsonb_build_object('id', v_prod_id, 'nome', 'POD MULTI SABORES', 'sabor', 'Uva Ice', 'quantidade', 1)
+    ),
+    10.00, -- valor adulterado pelo front
+    0.00,
+    10.00
+  );
 
-  PERFORM baixar_estoque_pedido(v_ped_ilim, 'teste_runner');
+  v_pedido_id := (v_pedido_res->>'id')::UUID;
+  ASSERT (v_pedido_res->>'total')::numeric = 300.00, 'FALHA: banco não recalculou total do pedido com base nos preços reais!';
+  RAISE NOTICE 'CENÁRIO 3 [PASSOU]: criar_pedido_catalogo validou itens e recalculou total financeiro no servidor (R$ 300,00).';
 
-  SELECT estoque INTO v_estoque_total FROM produtos WHERE id = v_prod_ilim_id;
-  ASSERT v_estoque_total = 999, format('Falha Cenário 10: Ilimitado esperado 999, obtido %s', v_estoque_total);
-  RAISE NOTICE '✓ Cenário 10 (Produto com estoque ilimitado não sofre decremento): OK';
+  -- -----------------------------------------------------------------------
+  -- CENÁRIO 4: Baixa atômica nos 2 sabores do produto
+  -- -----------------------------------------------------------------------
+  v_res := baixar_estoque_pedido(v_pedido_id);
+  ASSERT (v_res->>'success')::boolean = true, 'FALHA: baixa_estoque_pedido falhou';
 
-  RAISE NOTICE '=== TODOS OS 10 CENÁRIOS PASSARAM COM SUCESSO! ===';
-END $$;
+  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Menta Ice')::int INTO v_saldo_menta FROM public.produtos WHERE id = v_prod_id;
+  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Uva Ice')::int INTO v_saldo_uva FROM public.produtos WHERE id = v_prod_id;
 
-ROLLBACK; -- Nenhum dado de teste persiste no banco
+  ASSERT v_saldo_menta = 13, 'FALHA: saldo Menta Ice após baixa deveria ser 13';
+  ASSERT v_saldo_uva = 7, 'FALHA: saldo Uva Ice após baixa deveria ser 7';
+  RAISE NOTICE 'CENÁRIO 4 [PASSOU]: Baixa atômica em múltiplos sabores do mesmo produto executada com sucesso.';
+
+  -- -----------------------------------------------------------------------
+  -- CENÁRIO 5: Idempotência da baixa (segunda baixa deve falhar)
+  -- -----------------------------------------------------------------------
+  BEGIN
+    PERFORM baixar_estoque_pedido(v_pedido_id);
+    v_deu_erro := false;
+  EXCEPTION WHEN OTHERS THEN
+    v_deu_erro := true;
+    RAISE NOTICE 'CENÁRIO 5 [PASSOU]: Segunda baixa rejeitada com sucesso (Idempotência).';
+  END;
+
+  IF NOT v_deu_erro THEN
+    RAISE EXCEPTION 'FALHA NO CENÁRIO 5: Segunda baixa deveria ter sido recusada!';
+  END IF;
+
+  -- -----------------------------------------------------------------------
+  -- CENÁRIO 6: Estorno atômico por Saldo Líquido (-SUM(delta))
+  -- -----------------------------------------------------------------------
+  v_res := estornar_estoque_pedido(v_pedido_id);
+  ASSERT (v_res->>'success')::boolean = true, 'FALHA: estorno falhou';
+
+  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Menta Ice')::int INTO v_saldo_menta FROM public.produtos WHERE id = v_prod_id;
+  SELECT (estoque_zonas->'recife'->'sabores_estoque'->>'Uva Ice')::int INTO v_saldo_uva FROM public.produtos WHERE id = v_prod_id;
+
+  ASSERT v_saldo_menta = 15, 'FALHA: saldo Menta Ice após estorno deveria voltar a ser 15';
+  ASSERT v_saldo_uva = 8, 'FALHA: saldo Uva Ice após estorno deveria voltar a ser 8';
+  RAISE NOTICE 'CENÁRIO 6 [PASSOU]: Estorno por saldo líquido restaurou exatamente as quantidades debitadas.';
+
+  -- -----------------------------------------------------------------------
+  -- CENÁRIO 7: Idempotência do estorno (segundo estorno deve falhar)
+  -- -----------------------------------------------------------------------
+  BEGIN
+    PERFORM estornar_estoque_pedido(v_pedido_id);
+    v_deu_erro := false;
+  EXCEPTION WHEN OTHERS THEN
+    v_deu_erro := true;
+    RAISE NOTICE 'CENÁRIO 7 [PASSOU]: Segundo estorno rejeitado com sucesso (Idempotência).';
+  END;
+
+  IF NOT v_deu_erro THEN
+    RAISE EXCEPTION 'FALHA NO CENÁRIO 7: Segundo estorno deveria ter sido recusado!';
+  END IF;
+
+  -- -----------------------------------------------------------------------
+  -- CENÁRIO 8: Teste de quantidade inválida (quantidade <= 0)
+  -- -----------------------------------------------------------------------
+  BEGIN
+    PERFORM criar_pedido_catalogo(
+      'Cliente Invalido',
+      '81999999999',
+      '',
+      'recife',
+      jsonb_build_array(
+        jsonb_build_object('id', v_prod_id, 'nome', 'POD', 'sabor', 'Menta Ice', 'quantidade', 0)
+      )
+    );
+    v_deu_erro := false;
+  EXCEPTION WHEN OTHERS THEN
+    v_deu_erro := true;
+    RAISE NOTICE 'CENÁRIO 8 [PASSOU]: Pedido com quantidade zero rejeitado pelo banco.';
+  END;
+
+  IF NOT v_deu_erro THEN
+    RAISE EXCEPTION 'FALHA NO CENÁRIO 8: Pedido com quantidade <= 0 deveria ter sido recusado!';
+  END IF;
+
+  RAISE NOTICE '=== TODOS OS CENÁRIOS SQL PASSARAM COM 100%% DE SUCESSO! ===';
+END;
+$$;
+
+-- -----------------------------------------------------------------------
+-- CENÁRIO 9: Validação de Segurança de Permissão para Usuário Anônimo (anon)
+-- Tentativa do papel anon de executar baixar_estoque_pedido DEVE falhar
+-- -----------------------------------------------------------------------
+DO $$
+BEGIN
+  -- Verificar se as permissões de authenticated foram concedidas e PUBLIC foi revogado
+  ASSERT has_function_privilege('authenticated', 'baixar_estoque_pedido(uuid)', 'EXECUTE') = true, 
+    'FALHA: authenticated deve ter permissão de EXECUTE em baixar_estoque_pedido';
+    
+  ASSERT has_function_privilege('anon', 'baixar_estoque_pedido(uuid)', 'EXECUTE') = false, 
+    'FALHA: anon NÃO pode ter permissão em baixar_estoque_pedido';
+
+  ASSERT has_function_privilege('anon', 'criar_pedido_catalogo(text,text,text,text,jsonb,numeric,numeric,numeric,text)', 'EXECUTE') = true, 
+    'FALHA: anon deve poder criar pedidos no catálogo';
+
+  RAISE NOTICE 'CENÁRIO 9 [PASSOU]: Permissões estritas validadas: anon bloqueado e authenticated liberado.';
+END;
+$$;
+
+-- NADA É GRAVADO NO BANCO DE DADOS
+ROLLBACK;

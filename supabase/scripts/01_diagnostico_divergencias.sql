@@ -1,56 +1,39 @@
 -- =========================================================================
--- HC VAPE - SCRIPT 01: DIAGNÓSTICO DE DIVERGÊNCIAS
--- Compara sabores_estoque x estoque_zonas para identificar divergências
--- Hipótese: sabores_estoque está correto e estoque_zonas ficou defasado
+-- HC VAPE - SCRIPT 01: DIAGNÓSTICO DE DIVERGÊNCIAS ENTRE SABORES E ZONAS
+-- Compara os saldos de cada sabor entre sabores_estoque e a soma em estoque_zonas
+-- Normaliza sabores via unaccent, sem FULL OUTER JOIN com linhas nulas
 -- =========================================================================
 
 WITH sabores_gerais AS (
   SELECT 
-    p.id,
-    p.marca,
-    p.nome,
-    p.estoque,
-    p.is_promo,
-    p.estoque_ilimitado,
-    kv.key AS sabor,
-    (kv.value)::numeric AS qtd_sabores_estoque
-  FROM produtos p,
-  LATERAL jsonb_each_text(COALESCE(p.sabores_estoque, '{}'::jsonb)) kv
+    p.id AS produto_id,
+    p.nome AS produto_nome,
+    key AS sabor_original,
+    normalizar_sabor(key) AS sabor_norm,
+    COALESCE(value::int, 0) AS saldo_geral
+  FROM public.produtos p,
+       jsonb_each_text(COALESCE(p.sabores_estoque, '{}'::jsonb))
 ),
-sabores_por_zona AS (
+sabores_por_zonas AS (
   SELECT 
-    p.id,
-    z.key AS zona,
-    s.key AS sabor,
-    (s.value)::numeric AS qtd_zona
-  FROM produtos p,
-  LATERAL jsonb_each(COALESCE(p.estoque_zonas, '{}'::jsonb)) z,
-  LATERAL jsonb_each_text(COALESCE(z.value->'sabores_estoque', '{}'::jsonb)) s
-),
-consolidado_zonas AS (
-  SELECT 
-    id,
-    sabor,
-    SUM(qtd_zona) AS total_em_zonas,
-    string_agg(zona || ': ' || qtd_zona, ' | ') AS detalhe_zonas
-  FROM sabores_por_zona
-  GROUP BY id, sabor
+    p.id AS produto_id,
+    normalizar_sabor(sabor_kv.key) AS sabor_norm,
+    SUM(COALESCE(sabor_kv.value::int, 0)) AS saldo_zonas_soma
+  FROM public.produtos p,
+       jsonb_each(COALESCE(p.estoque_zonas, '{}'::jsonb)) AS zona_kv,
+       jsonb_each_text(COALESCE(zona_kv.value->'sabores_estoque', '{}'::jsonb)) AS sabor_kv
+  GROUP BY p.id, normalizar_sabor(sabor_kv.key)
 )
 SELECT 
-  sg.marca,
-  sg.nome AS produto,
-  sg.sabor,
-  sg.qtd_sabores_estoque AS saldo_sabores_estoque,
-  COALESCE(cz.total_em_zonas, 0) AS saldo_total_zonas,
-  COALESCE(cz.detalhe_zonas, 'Sem registro em estoque_zonas') AS detalhe_zonas,
-  (COALESCE(cz.total_em_zonas, 0) - sg.qtd_sabores_estoque) AS diferenca,
-  CASE 
-    WHEN COALESCE(cz.total_em_zonas, 0) > sg.qtd_sabores_estoque THEN 'estoque_zonas MAIOR que sabores_estoque (baixa não refletida em zonas)'
-    WHEN COALESCE(cz.total_em_zonas, 0) < sg.qtd_sabores_estoque THEN 'sabores_estoque MAIOR que estoque_zonas'
-    ELSE 'OK'
-  END AS diagnostico
+  sg.produto_id,
+  sg.produto_nome,
+  sg.sabor_original,
+  sg.saldo_geral,
+  COALESCE(sz.saldo_zonas_soma, 0) AS saldo_somado_zonas,
+  (sg.saldo_geral - COALESCE(sz.saldo_zonas_soma, 0)) AS divergencia
 FROM sabores_gerais sg
-FULL OUTER JOIN consolidado_zonas cz 
-  ON sg.id = cz.id AND LOWER(TRIM(sg.sabor)) = LOWER(TRIM(cz.sabor))
-WHERE COALESCE(cz.total_em_zonas, 0) <> sg.qtd_sabores_estoque
-ORDER BY diferenca DESC, sg.marca, sg.nome, sg.sabor;
+LEFT JOIN sabores_por_zonas sz 
+  ON sg.produto_id = sz.produto_id 
+ AND sg.sabor_norm = sz.sabor_norm
+WHERE sg.saldo_geral != COALESCE(sz.saldo_zonas_soma, 0)
+ORDER BY sg.produto_nome, sg.sabor_original;

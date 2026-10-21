@@ -1197,16 +1197,19 @@ export default function Admin() {
     setFormSabores(listaSabores);
 
     // Zonas ativas
-    const zonasAtivasInit: Record<string, boolean> = {
-      recife: false,
-      gravata: false
-    };
+    const zonasAtivasInit: Record<string, boolean> = {};
+    const estoquePorZonaInit: Record<string, Record<string, number>> = {};
+    ZONAS_DISPONIVEIS.forEach(z => {
+      zonasAtivasInit[z.id] = false;
+      estoquePorZonaInit[z.id] = {};
+    });
 
     const produtoZonasNorm = (produto.zonas || []).map(z => utils.normalizarTexto(z));
     ZONAS_DISPONIVEIS.forEach(z => {
       const match = produtoZonasNorm.some(pzn => {
-        if (z.id === 'recife') return pzn.includes('recife') || pzn.includes('norte') || pzn.includes('sul') || pzn.includes('oeste');
-        if (z.id === 'gravata') return pzn.includes('gravata');
+        if (z.id === 'recife') return pzn.includes('recife');
+        if (z.id === 'norte') return pzn.includes('norte');
+        if (z.id === 'sul_oeste') return pzn.includes('sul') || pzn.includes('oeste');
         return pzn === z.id;
       });
       const temNoEstoqueZonas = Boolean(produto.estoque_zonas?.[z.id]);
@@ -1214,19 +1217,13 @@ export default function Admin() {
     });
     setFormZonasAtivas(zonasAtivasInit);
 
-    // Estoque por zona
-    const estoquePorZonaInit: Record<string, Record<string, number>> = {
-      recife: {},
-      gravata: {}
-    };
-
     ZONAS_DISPONIVEIS.forEach(z => {
       let zData = produto.estoque_zonas?.[z.id];
       if (!zData && z.id === 'recife') {
-        zData = produto.estoque_zonas?.['recife'] || produto.estoque_zonas?.['norte'] || produto.estoque_zonas?.['sul_oeste'] || produto.estoque_zonas?.['sul'] || produto.estoque_zonas?.['oeste'];
+        zData = produto.estoque_zonas?.['recife'];
       }
-      if (!zData && z.id === 'gravata') {
-        zData = produto.estoque_zonas?.['gravata'] || produto.estoque_zonas?.['gravatá'];
+      if (!zData && z.id === 'sul_oeste') {
+        zData = produto.estoque_zonas?.['sul_oeste'] || produto.estoque_zonas?.['sul'] || produto.estoque_zonas?.['oeste'];
       }
 
       listaSabores.forEach(sabor => {
@@ -1493,9 +1490,9 @@ export default function Admin() {
                   editandoId,
                   zId,
                   s,
+                  'definir',
                   novoSaldo,
-                  'ajuste_manual_edicao',
-                  usuarioEmail || undefined
+                  'ajuste_manual_edicao'
                 );
               }
             }
@@ -1690,9 +1687,9 @@ export default function Admin() {
         id,
         zonaDestino,
         saborUnico,
+        'definir',
         novoEstoque,
-        'ajuste_inline',
-        usuarioEmail || undefined
+        'ajuste_inline'
       );
 
       await carregarProdutos();
@@ -1724,11 +1721,11 @@ export default function Admin() {
 
       if (status) {
         // Baixa atômica via RPC (com lock FOR UPDATE, sem clamp e com auditoria)
-        await pedidosService.baixarEstoque(id, usuarioEmail || undefined);
+        await pedidosService.baixarEstoque(id);
         setSucesso('Checklist concluído e estoque baixado com sucesso!');
       } else {
-        // Estorno atômico e estritamente simétrico via RPC
-        await pedidosService.estornarEstoque(id, usuarioEmail || undefined);
+        // Estorno atômico e estritamente simétrico por saldo líquido via RPC
+        await pedidosService.estornarEstoque(id);
         setSucesso('Pedido reaberto e estoque reposto com sucesso!');
       }
 
@@ -1783,7 +1780,7 @@ export default function Admin() {
       const pedido = pedidos.find(p => p.id === id);
       // Se o pedido teve o checklist concluído, estorna o estoque antes de deletar
       if (pedido?.status_checklist) {
-        await pedidosService.estornarEstoque(id, usuarioEmail || undefined);
+        await pedidosService.estornarEstoque(id);
       }
 
       await pedidosService.deletar(id);
@@ -2233,20 +2230,20 @@ export default function Admin() {
     }
   };
 
-  // Excluir registro de troca (com estorno automático via RPC estornar_troca)
+  // Cancelar registro de troca (com estorno automático via RPC estornar_troca)
   const handleDeletarTroca = async (id: string, cliente: string) => {
-    if (!window.confirm(`Deseja realmente remover o registro de troca de ${cliente}?`)) {
+    if (!window.confirm(`Deseja realmente cancelar e estornar o registro de troca de ${cliente}?`)) {
       return;
     }
     try {
-      await trocasService.deletar(id);
+      await trocasService.cancelar(id);
       await carregarProdutos();
-      setTrocas(prev => prev.filter(t => t.id !== id));
-      setSucesso('Registro de troca excluído!');
+      setTrocas(prev => prev.map(t => t.id === id ? { ...t, status: 'cancelada' } : t));
+      setSucesso('Registro de troca cancelado e estoque estornado!');
       setTimeout(() => setSucesso(null), 3000);
     } catch (err: any) {
-      console.error('Erro ao deletar troca:', err);
-      setErro(err?.message || 'Erro ao excluir registro de troca');
+      console.error('Erro ao cancelar troca:', err);
+      setErro(err?.message || 'Erro ao cancelar registro de troca');
     }
   };
 
@@ -3029,17 +3026,27 @@ export default function Admin() {
                               : 'text-slate-400 hover:text-white'
                           }`}
                         >
-                          🟢 Apenas Recife (REC)
+                          🟢 Recife (Geral)
                         </button>
                         <button
-                          onClick={() => setFiltroZonaEstoqueExpresso('gravata')}
+                          onClick={() => setFiltroZonaEstoqueExpresso('norte')}
                           className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                            filtroZonaEstoqueExpresso === 'gravata'
-                              ? 'bg-[#f59e0b] text-black shadow-[0_0_10px_rgba(245,158,11,0.4)]'
+                            filtroZonaEstoqueExpresso === 'norte'
+                              ? 'bg-[#38bdf8] text-black shadow-[0_0_10px_rgba(56,189,248,0.4)]'
                               : 'text-slate-400 hover:text-white'
                           }`}
                         >
-                          🟠 Apenas Gravatá (GV)
+                          🔵 Zona Norte
+                        </button>
+                        <button
+                          onClick={() => setFiltroZonaEstoqueExpresso('sul_oeste')}
+                          className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                            filtroZonaEstoqueExpresso === 'sul_oeste'
+                              ? 'bg-[#a855f7] text-black shadow-[0_0_10px_rgba(168,85,247,0.4)]'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          🟣 Zona Sul/Oeste
                         </button>
                       </div>
                     </div>

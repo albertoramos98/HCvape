@@ -1,9 +1,10 @@
 // =========================================================================
 // HC VAPE - TABELA DA VERDADE E NORMALIZAÇÃO DE ZONAS / REGIÕES
 // Compartilhado entre Frontend, Backend e Validações
+// Zonas ativas: recife, norte, sul_oeste (com legados sul e oeste)
 // =========================================================================
 
-export type ZonaId = 'recife' | 'gravata' | 'norte' | 'sul_oeste' | 'sul' | 'oeste';
+export type ZonaId = 'recife' | 'norte' | 'sul_oeste' | 'sul' | 'oeste';
 
 export interface ZonaInfo {
   id: ZonaId;
@@ -19,17 +20,25 @@ export const ZONAS_DISPONIVEIS: ZonaInfo[] = [
     id: 'recife', 
     nome: 'Recife', 
     badge: 'Atendimento Rápido', 
-    descricao: 'Disponibilidade e estoque para toda a região de Recife',
+    descricao: 'Disponibilidade e estoque para a região de Recife',
     cor: '#76FF03',
     sigla: 'REC'
   },
   { 
-    id: 'gravata', 
-    nome: 'Gravatá', 
-    badge: 'Atendimento Gravatá', 
-    descricao: 'Disponibilidade e estoque para a região de Gravatá',
-    cor: '#f59e0b',
-    sigla: 'GV'
+    id: 'norte', 
+    nome: 'Zona Norte', 
+    badge: 'Zona Norte', 
+    descricao: 'Disponibilidade e estoque para a Zona Norte',
+    cor: '#38bdf8',
+    sigla: 'ZN'
+  },
+  { 
+    id: 'sul_oeste', 
+    nome: 'Zona Sul / Oeste', 
+    badge: 'Zona Sul/Oeste', 
+    descricao: 'Disponibilidade e estoque para a Zona Sul e Oeste',
+    cor: '#a855f7',
+    sigla: 'ZS/ZO'
   }
 ];
 
@@ -48,9 +57,6 @@ export function normalizarZonaId(zonaInput?: string | null): ZonaId | null {
   if (limpo === 'recife' || limpo === 'rec' || limpo.includes('recife')) {
     return 'recife';
   }
-  if (limpo === 'gravata' || limpo === 'gv' || limpo.includes('gravata')) {
-    return 'gravata';
-  }
   if (limpo === 'norte' || limpo.includes('norte')) {
     return 'norte';
   }
@@ -58,10 +64,10 @@ export function normalizarZonaId(zonaInput?: string | null): ZonaId | null {
     return 'sul_oeste';
   }
   if (limpo === 'sul') {
-    return 'sul';
+    return 'sul_oeste';
   }
   if (limpo === 'oeste') {
-    return 'oeste';
+    return 'sul_oeste';
   }
 
   return null;
