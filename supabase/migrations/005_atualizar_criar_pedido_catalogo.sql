@@ -184,3 +184,6 @@ $$;
 
 -- Permissões: liberar para clientes anônimos e autenticados
 GRANT EXECUTE ON FUNCTION criar_pedido_catalogo TO anon, authenticated;
+
+-- Recarregar cache de schema do PostgREST imediatamente
+NOTIFY pgrst, 'reload schema';

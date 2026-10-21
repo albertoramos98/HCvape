@@ -147,16 +147,20 @@ $$;
 REVOKE ALL ON FUNCTION recalcular_estoque_produto(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION recalcular_estoque_produto(UUID) TO authenticated;
 
--- 4. Função atômica para ajustar estoque (definir contagem física ou delta entrada/saída)
--- Suporta operações: 'definir' e 'delta'.
--- Extrai o usuário automaticamente de auth.jwt() / auth.uid().
+-- 4. Limpar sobrecargas de ajustar_estoque
+DROP FUNCTION IF EXISTS public.ajustar_estoque(UUID, VARCHAR, TEXT, INT, TEXT, TEXT);
+DROP FUNCTION IF EXISTS public.ajustar_estoque(UUID, VARCHAR, TEXT, TEXT, INT, TEXT);
+DROP FUNCTION IF EXISTS public.ajustar_estoque(UUID, VARCHAR, TEXT, TEXT, INT, TEXT, TEXT);
+
+-- Função atômica para ajustar estoque (definir contagem física ou delta entrada/saída)
 CREATE OR REPLACE FUNCTION ajustar_estoque(
   p_produto_id UUID,
   p_zona_id VARCHAR(50),
   p_sabor TEXT,
   p_operacao TEXT, -- 'definir' ou 'delta'
   p_valor INT,
-  p_motivo TEXT DEFAULT 'ajuste_manual'
+  p_motivo TEXT DEFAULT 'ajuste_manual',
+  p_usuario TEXT DEFAULT NULL
 )
 RETURNS JSONB
 LANGUAGE plpgsql
@@ -178,8 +182,9 @@ BEGIN
     RAISE EXCEPTION 'Operação inválida: "%". As operações permitidas são "definir" ou "delta".', p_operacao;
   END IF;
 
-  -- Obter usuário do JWT de forma estritamente segura
+  -- Obter usuário com fallback seguro
   v_usuario := COALESCE(
+    NULLIF(TRIM(p_usuario), ''),
     current_setting('request.jwt.claims', true)::jsonb->>'email',
     auth.uid()::text,
     'sistema'
@@ -316,5 +321,8 @@ END;
 $$;
 
 -- Permissões ajustar_estoque
-REVOKE ALL ON FUNCTION ajustar_estoque(UUID, VARCHAR, TEXT, TEXT, INT, TEXT) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION ajustar_estoque(UUID, VARCHAR, TEXT, TEXT, INT, TEXT) TO authenticated;
+REVOKE ALL ON FUNCTION ajustar_estoque(UUID, VARCHAR, TEXT, TEXT, INT, TEXT, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION ajustar_estoque(UUID, VARCHAR, TEXT, TEXT, INT, TEXT, TEXT) TO authenticated;
+
+-- Recarregar cache de schema do PostgREST imediatamente
+NOTIFY pgrst, 'reload schema';

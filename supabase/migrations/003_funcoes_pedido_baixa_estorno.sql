@@ -1,6 +1,6 @@
 -- =========================================================================
 -- HC VAPE - MIGRAÇÃO 003: BAIXA E ESTORNO ATÔMICOS POR SALDO LÍQUIDO
--- Idempotente: CREATE OR REPLACE FUNCTION
+-- Com compatibilidade universal de parâmetros e recarga do cache PostgREST
 -- =========================================================================
 
 -- 1. Função canônica para resolver identificador de zona
@@ -36,9 +36,16 @@ BEGIN
 END;
 $$;
 
--- 2. RPC: Baixar estoque de pedido com validação atômica, lock e sem clamp
--- Obtém o usuário autenticado diretamente de auth.jwt() / auth.uid()
-CREATE OR REPLACE FUNCTION baixar_estoque_pedido(p_pedido_id UUID)
+-- 2. Limpar sobrecargas anteriores para evitar conflitos de cache no PostgREST
+DROP FUNCTION IF EXISTS public.baixar_estoque_pedido(UUID);
+DROP FUNCTION IF EXISTS public.baixar_estoque_pedido(UUID, TEXT);
+
+-- 3. RPC: Baixar estoque de pedido com validação atômica, lock e sem clamp
+-- Aceita p_pedido_id (novo) e p_usuario opcional (compatibilidade com versões em cache)
+CREATE OR REPLACE FUNCTION baixar_estoque_pedido(
+  p_pedido_id UUID,
+  p_usuario TEXT DEFAULT NULL
+)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -59,8 +66,9 @@ DECLARE
   v_saldo_depois INT;
   v_usuario TEXT;
 BEGIN
-  -- Obter usuário do JWT com segurança
+  -- Obter usuário com prioridade: parâmetro explícito -> JWT -> auth.uid() -> 'sistema'
   v_usuario := COALESCE(
+    NULLIF(TRIM(p_usuario), ''),
     current_setting('request.jwt.claims', true)::jsonb->>'email',
     auth.uid()::text,
     'sistema'
@@ -117,7 +125,6 @@ BEGIN
 
     -- Verificar se a zona existe no produto
     IF NOT (v_estoque_zonas ? v_zona_id) THEN
-      -- Se a zona for 'recife' e o produto tiver sul_oeste ou norte, tentar alternativa
       IF v_zona_id = 'recife' AND (v_estoque_zonas ? 'sul_oeste') THEN
         v_zona_id := 'sul_oeste';
       ELSIF v_zona_id = 'recife' AND (v_estoque_zonas ? 'norte') THEN
@@ -199,12 +206,18 @@ END;
 $$;
 
 -- Permissões baixar_estoque_pedido
-REVOKE ALL ON FUNCTION baixar_estoque_pedido(UUID) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION baixar_estoque_pedido(UUID) TO authenticated;
+REVOKE ALL ON FUNCTION baixar_estoque_pedido(UUID, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION baixar_estoque_pedido(UUID, TEXT) TO authenticated;
 
--- 3. RPC: Estornar estoque de pedido com reposição por SALDO LÍQUIDO (-SUM(delta))
--- Sem fallback por itens para pedidos legados anteriores à migração
-CREATE OR REPLACE FUNCTION estornar_estoque_pedido(p_pedido_id UUID)
+-- 4. Limpar sobrecargas anteriores de estorno
+DROP FUNCTION IF EXISTS public.estornar_estoque_pedido(UUID);
+DROP FUNCTION IF EXISTS public.estornar_estoque_pedido(UUID, TEXT);
+
+-- 5. RPC: Estornar estoque de pedido com reposição por SALDO LÍQUIDO (-SUM(delta))
+CREATE OR REPLACE FUNCTION estornar_estoque_pedido(
+  p_pedido_id UUID,
+  p_usuario TEXT DEFAULT NULL
+)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -222,8 +235,9 @@ DECLARE
   v_usuario TEXT;
   v_teve_movimento BOOLEAN := false;
 BEGIN
-  -- Obter usuário do JWT com segurança
+  -- Obter usuário com prioridade: parâmetro explícito -> JWT -> auth.uid() -> 'sistema'
   v_usuario := COALESCE(
+    NULLIF(TRIM(p_usuario), ''),
     current_setting('request.jwt.claims', true)::jsonb->>'email',
     auth.uid()::text,
     'sistema'
@@ -245,7 +259,6 @@ BEGIN
   END IF;
 
   -- 2. Repor o NEGATIVO DA SOMA dos deltas daquele pedido por (produto, zona, sabor)
-  -- Isso impede duplicações em ciclos múltiplos de baixa/estorno
   FOR v_item_mov IN 
     SELECT 
       produto_id, 
@@ -308,10 +321,6 @@ BEGIN
     END IF;
   END LOOP;
 
-  -- Para pedidos conferidos antes da migração (sem movimentos registrados),
-  -- o estoque NÃO é alterado, pois já está embutido na contagem física inicial.
-  -- NÃO há fallback por itens.
-
   -- 3. Atualizar status do checklist do pedido para false
   UPDATE public.pedidos 
   SET status_checklist = false 
@@ -328,5 +337,8 @@ END;
 $$;
 
 -- Permissões estornar_estoque_pedido
-REVOKE ALL ON FUNCTION estornar_estoque_pedido(UUID) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION estornar_estoque_pedido(UUID) TO authenticated;
+REVOKE ALL ON FUNCTION estornar_estoque_pedido(UUID, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION estornar_estoque_pedido(UUID, TEXT) TO authenticated;
+
+-- 6. Recarregar cache de schema do PostgREST imediatamente
+NOTIFY pgrst, 'reload schema';

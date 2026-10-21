@@ -183,6 +183,30 @@ BEGIN
     RAISE EXCEPTION 'FALHA NO CENÁRIO 8: Pedido com quantidade <= 0 deveria ter sido recusado!';
   END IF;
 
+  -- -----------------------------------------------------------------------
+  -- CENÁRIO 10: Compatibilidade de Parâmetros e Cache PostgREST (1 e 2 parâmetros)
+  -- Garante que chamadas legadas com (p_pedido_id, p_usuario) e novas com (p_pedido_id)
+  -- funcionem de forma idêntica e sem erro no schema cache do PostgREST.
+  -- -----------------------------------------------------------------------
+  -- Baixa com 2 parâmetros (simulando frontend em cache ou aba antiga)
+  v_res := baixar_estoque_pedido(v_pedido_id, 'sessao_legada@hcvape.com');
+  ASSERT (v_res->>'success')::boolean = true, 'FALHA: baixar_estoque_pedido com 2 parâmetros falhou';
+
+  -- Validar que o usuário foi registrado na auditoria
+  ASSERT (
+    SELECT usuario 
+    FROM public.movimentos_estoque 
+    WHERE pedido_id = v_pedido_id AND tipo = 'venda' 
+    ORDER BY created_at DESC 
+    LIMIT 1
+  ) = 'sessao_legada@hcvape.com', 'FALHA: usuário da chamada legada não foi gravado na auditoria';
+
+  -- Estorno com 2 parâmetros (simulando frontend em cache)
+  v_res := estornar_estoque_pedido(v_pedido_id, 'sessao_legada@hcvape.com');
+  ASSERT (v_res->>'success')::boolean = true, 'FALHA: estornar_estoque_pedido com 2 parâmetros falhou';
+
+  RAISE NOTICE 'CENÁRIO 10 [PASSOU]: Compatibilidade total de 1 e 2 parâmetros validada para baixa e estorno.';
+
   RAISE NOTICE '=== TODOS OS CENÁRIOS SQL PASSARAM COM 100%% DE SUCESSO! ===';
 END;
 $$;
@@ -194,11 +218,17 @@ $$;
 DO $$
 BEGIN
   -- Verificar se as permissões de authenticated foram concedidas e PUBLIC foi revogado
-  ASSERT has_function_privilege('authenticated', 'baixar_estoque_pedido(uuid)', 'EXECUTE') = true, 
+  ASSERT has_function_privilege('authenticated', 'baixar_estoque_pedido(uuid, text)', 'EXECUTE') = true, 
     'FALHA: authenticated deve ter permissão de EXECUTE em baixar_estoque_pedido';
     
-  ASSERT has_function_privilege('anon', 'baixar_estoque_pedido(uuid)', 'EXECUTE') = false, 
+  ASSERT has_function_privilege('anon', 'baixar_estoque_pedido(uuid, text)', 'EXECUTE') = false, 
     'FALHA: anon NÃO pode ter permissão em baixar_estoque_pedido';
+
+  ASSERT has_function_privilege('authenticated', 'estornar_estoque_pedido(uuid, text)', 'EXECUTE') = true, 
+    'FALHA: authenticated deve ter permissão de EXECUTE em estornar_estoque_pedido';
+
+  ASSERT has_function_privilege('anon', 'estornar_estoque_pedido(uuid, text)', 'EXECUTE') = false, 
+    'FALHA: anon NÃO pode ter permissão em estornar_estoque_pedido';
 
   ASSERT has_function_privilege('anon', 'criar_pedido_catalogo(text,text,text,text,jsonb,numeric,numeric,numeric,text)', 'EXECUTE') = true, 
     'FALHA: anon deve poder criar pedidos no catálogo';
@@ -206,6 +236,9 @@ BEGIN
   RAISE NOTICE 'CENÁRIO 9 [PASSOU]: Permissões estritas validadas: anon bloqueado e authenticated liberado.';
 END;
 $$;
+
+-- Recarregar cache de schema do PostgREST
+NOTIFY pgrst, 'reload schema';
 
 -- NADA É GRAVADO NO BANCO DE DADOS
 ROLLBACK;

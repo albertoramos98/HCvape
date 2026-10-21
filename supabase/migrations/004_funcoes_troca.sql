@@ -212,8 +212,15 @@ $$;
 REVOKE ALL ON FUNCTION registrar_troca FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION registrar_troca TO authenticated;
 
--- 2. RPC: Estornar troca (NÃO deleta o registro: atualiza status para 'cancelada')
-CREATE OR REPLACE FUNCTION estornar_troca(p_troca_id UUID)
+-- 2. Limpar sobrecargas anteriores de estornar_troca
+DROP FUNCTION IF EXISTS public.estornar_troca(UUID);
+DROP FUNCTION IF EXISTS public.estornar_troca(UUID, TEXT);
+
+-- RPC: Estornar troca (NÃO deleta o registro: atualiza status para 'cancelada')
+CREATE OR REPLACE FUNCTION estornar_troca(
+  p_troca_id UUID,
+  p_usuario TEXT DEFAULT NULL
+)
 RETURNS JSONB
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -229,8 +236,9 @@ DECLARE
   v_saldo_depois INT;
   v_usuario TEXT;
 BEGIN
-  -- Obter usuário do JWT com segurança
+  -- Obter usuário com prioridade: parâmetro explícito -> JWT -> auth.uid() -> 'sistema'
   v_usuario := COALESCE(
+    NULLIF(TRIM(p_usuario), ''),
     current_setting('request.jwt.claims', true)::jsonb->>'email',
     auth.uid()::text,
     'sistema'
@@ -325,5 +333,8 @@ END;
 $$;
 
 -- Permissões estornar_troca
-REVOKE ALL ON FUNCTION estornar_troca(UUID) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION estornar_troca(UUID) TO authenticated;
+REVOKE ALL ON FUNCTION estornar_troca(UUID, TEXT) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION estornar_troca(UUID, TEXT) TO authenticated;
+
+-- Recarregar cache de schema do PostgREST imediatamente
+NOTIFY pgrst, 'reload schema';

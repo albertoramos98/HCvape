@@ -505,19 +505,55 @@ export const pedidosService = {
   },
 
   // Baixar estoque de pedido via RPC atômica e idempotente
-  async baixarEstoque(pedidoId: string): Promise<any> {
-    const { data, error } = await supabase.rpc('baixar_estoque_pedido', {
-      p_pedido_id: pedidoId
-    });
+  // Compatível tanto com nova assinatura (sem p_usuario) quanto em cache (com p_usuario)
+  async baixarEstoque(pedidoId: string, usuario?: string): Promise<any> {
+    const paramsPadrao: Record<string, any> = { p_pedido_id: pedidoId };
+    if (usuario) {
+      paramsPadrao.p_usuario = usuario;
+    }
+
+    let { data, error } = await supabase.rpc('baixar_estoque_pedido', paramsPadrao);
+
+    // Se houver erro de schema cache ou parâmetro, tentar formato alternativo
+    if (error && (error.message?.includes('schema cache') || error.message?.includes('p_usuario') || error.message?.includes('function'))) {
+      const paramsAlt: Record<string, any> = paramsPadrao.p_usuario !== undefined
+        ? { p_pedido_id: pedidoId }
+        : { p_pedido_id: pedidoId, p_usuario: null };
+
+      const retry = await supabase.rpc('baixar_estoque_pedido', paramsAlt);
+      if (!retry.error) {
+        return retry.data;
+      }
+      throw retry.error;
+    }
+
     if (error) throw error;
     return data;
   },
 
   // Estornar estoque de pedido via RPC atômica e simétrica por saldo líquido
-  async estornarEstoque(pedidoId: string): Promise<any> {
-    const { data, error } = await supabase.rpc('estornar_estoque_pedido', {
-      p_pedido_id: pedidoId
-    });
+  // Compatível tanto com nova assinatura (sem p_usuario) quanto em cache (com p_usuario)
+  async estornarEstoque(pedidoId: string, usuario?: string): Promise<any> {
+    const paramsPadrao: Record<string, any> = { p_pedido_id: pedidoId };
+    if (usuario) {
+      paramsPadrao.p_usuario = usuario;
+    }
+
+    let { data, error } = await supabase.rpc('estornar_estoque_pedido', paramsPadrao);
+
+    // Se houver erro de schema cache ou parâmetro, tentar formato alternativo
+    if (error && (error.message?.includes('schema cache') || error.message?.includes('p_usuario') || error.message?.includes('function'))) {
+      const paramsAlt: Record<string, any> = paramsPadrao.p_usuario !== undefined
+        ? { p_pedido_id: pedidoId }
+        : { p_pedido_id: pedidoId, p_usuario: null };
+
+      const retry = await supabase.rpc('estornar_estoque_pedido', paramsAlt);
+      if (!retry.error) {
+        return retry.data;
+      }
+      throw retry.error;
+    }
+
     if (error) throw error;
     return data;
   },

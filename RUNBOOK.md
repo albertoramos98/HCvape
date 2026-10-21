@@ -107,7 +107,19 @@ Acesse o **SQL Editor** do Supabase e execute os arquivos na ordem rigorosa abai
 
 ---
 
-## 6. Plano de Rollback
+## 6. Resolução de Cache do PostgREST ("function not found in schema cache")
+
+Caso o painel exiba o alerta:
+`Could not find the function public.baixar_estoque_pedido(p_pedido_id, p_usuario) in the schema cache`
+
+Execute imediatamente o script [`supabase/scripts/05_corrigir_cache_e_compatibilidade.sql`](file:///c:/Users/alberto/Desktop/HCvape/supabase/scripts/05_corrigir_cache_e_compatibilidade.sql) no SQL Editor do Supabase. Ele:
+1. Elimina conflitos de sobrecargas antigas (`DROP FUNCTION IF EXISTS`).
+2. Recria as RPCs com parâmetro `p_usuario TEXT DEFAULT NULL`, aceitando chamadas com e sem `p_usuario`.
+3. Notifica o PostgREST para recarregar o schema cache imediatamente (`NOTIFY pgrst, 'reload schema';`).
+
+---
+
+## 7. Plano de Rollback
 
 Caso ocorra qualquer inconsistência imprevista antes do término da janela de manutenção:
 
