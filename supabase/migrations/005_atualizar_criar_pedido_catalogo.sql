@@ -53,7 +53,7 @@ BEGIN
     RAISE EXCEPTION 'O pedido deve conter pelo menos um item.';
   END IF;
 
-  v_zona_id := resolver_zona_id(p_zona);
+  v_zona_id := public.resolver_zona_id(COALESCE(p_zona::text, 'recife'));
 
   -- 2. Validar cada item: integridade, quantidade > 0, saldo e preços reais
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_itens) LOOP

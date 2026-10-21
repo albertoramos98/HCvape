@@ -42,7 +42,7 @@ BEGIN
     'sistema'
   );
 
-  v_zona_id := resolver_zona_id(p_zona);
+  v_zona_id := public.resolver_zona_id(COALESCE(p_zona::text, 'recife'));
 
   -- 1. Se foi solicitado abater estoque, processar com lock atômico
   IF p_abater_estoque AND p_produto_trocado_id IS NOT NULL THEN

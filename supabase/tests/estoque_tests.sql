@@ -85,7 +85,7 @@ BEGIN
 END;
 $$;
 
-CREATE OR REPLACE FUNCTION resolver_zona_id(p_zona_input TEXT)
+CREATE OR REPLACE FUNCTION public.resolver_zona_id(p_zona_input TEXT)
 RETURNS VARCHAR(50) LANGUAGE plpgsql IMMUTABLE AS $$
 DECLARE v_norm TEXT;
 BEGIN
@@ -97,14 +97,25 @@ BEGIN
   v_norm := REGEXP_REPLACE(v_norm, '[óòõôö]', 'o', 'g');
   v_norm := REGEXP_REPLACE(v_norm, '[úùûü]', 'u', 'g');
   v_norm := REGEXP_REPLACE(v_norm, '[ç]', 'c', 'g');
-  IF v_norm = 'recife' OR v_norm = 'rec' THEN RETURN 'recife';
+  IF v_norm = 'recife' OR v_norm = 'rec' OR v_norm LIKE '%recife%' THEN RETURN 'recife';
   ELSIF v_norm = 'norte' OR v_norm LIKE '%norte%' THEN RETURN 'norte';
-  ELSIF v_norm = 'sul_oeste' OR v_norm LIKE '%sul%' OR v_norm LIKE '%oeste%' THEN RETURN 'sul_oeste';
+  ELSIF v_norm = 'sul_oeste' OR v_norm = 'suloeste' OR v_norm LIKE '%sul%oeste%' THEN RETURN 'sul_oeste';
+  ELSIF v_norm = 'sul' OR v_norm = 'oeste' OR v_norm LIKE '%sul%' OR v_norm LIKE '%oeste%' THEN RETURN 'sul_oeste';
   ELSIF v_norm = 'gravata' OR v_norm LIKE '%gravata%' THEN RETURN 'gravata';
   END IF;
   RETURN 'recife';
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.resolver_zona_id(p_zona_input VARCHAR)
+RETURNS VARCHAR(50) LANGUAGE plpgsql IMMUTABLE AS $$
+BEGIN
+  RETURN public.resolver_zona_id(p_zona_input::text);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.resolver_zona_id(TEXT) TO PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.resolver_zona_id(VARCHAR) TO PUBLIC, anon, authenticated;
 
 -- Limpar sobrecargas de ajustar_estoque
 DROP FUNCTION IF EXISTS public.ajustar_estoque(UUID, VARCHAR, TEXT, INT, TEXT, TEXT);
@@ -179,7 +190,7 @@ BEGIN
   IF NOT FOUND THEN RAISE EXCEPTION 'Pedido não encontrado: %', p_pedido_id; END IF;
   IF v_pedido.status_checklist = true THEN RAISE EXCEPTION 'Pedido #% já teve o estoque baixado anteriormente.', v_pedido.numero_pedido; END IF;
   IF v_pedido.excluido = true THEN RAISE EXCEPTION 'Não é permitido dar baixa em pedido excluído (Pedido #%).', v_pedido.numero_pedido; END IF;
-  v_zona_id := resolver_zona_id(v_pedido.zona);
+  v_zona_id := public.resolver_zona_id(COALESCE(v_pedido.zona::text, 'recife'));
   FOR v_item IN SELECT * FROM jsonb_array_elements(COALESCE(v_pedido.itens, '[]'::jsonb)) LOOP
     v_prod_id := (v_item->>'id')::UUID; v_sabor_solicitado := v_item->>'sabor'; v_qtd := COALESCE((v_item->>'quantidade')::int, 0);
     IF v_qtd <= 0 THEN CONTINUE; END IF;
@@ -304,7 +315,7 @@ BEGIN
   IF p_abater_estoque = true THEN
     IF p_produto_trocado_id IS NULL THEN RAISE EXCEPTION 'Produto entregue deve ser selecionado.'; END IF;
     IF p_sabor_trocado IS NULL OR TRIM(p_sabor_trocado) = '' THEN RAISE EXCEPTION 'Sabor do vape entregue é obrigatório.'; END IF;
-    v_zona_id := resolver_zona_id(p_zona);
+    v_zona_id := public.resolver_zona_id(COALESCE(p_zona::text, 'recife'));
     SELECT * INTO v_produto FROM public.produtos WHERE id = p_produto_trocado_id FOR UPDATE;
     IF NOT FOUND THEN RAISE EXCEPTION 'Produto trocado não encontrado (ID: %).', p_produto_trocado_id; END IF;
     IF NOT v_produto.estoque_ilimitado THEN
@@ -351,7 +362,7 @@ BEGIN
   IF p_nome_cliente IS NULL OR TRIM(p_nome_cliente) = '' THEN RAISE EXCEPTION 'Nome do cliente é obrigatório.'; END IF;
   IF p_telefone_cliente IS NULL OR TRIM(p_telefone_cliente) = '' THEN RAISE EXCEPTION 'WhatsApp do cliente é obrigatório.'; END IF;
   IF p_itens IS NULL OR jsonb_array_length(p_itens) = 0 THEN RAISE EXCEPTION 'O pedido deve conter pelo menos um item.'; END IF;
-  v_zona_id := resolver_zona_id(p_zona);
+  v_zona_id := public.resolver_zona_id(COALESCE(p_zona::text, 'recife'));
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_itens) LOOP
     v_prod_id := (v_item->>'id')::UUID; v_sabor_solicitado := v_item->>'sabor'; v_qtd := COALESCE((v_item->>'quantidade')::int, 0);
     IF v_qtd <= 0 THEN RAISE EXCEPTION 'Quantidade inválida para o item "%"', COALESCE(v_item->>'nome', 'Item'); END IF;

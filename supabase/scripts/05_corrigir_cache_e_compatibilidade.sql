@@ -140,8 +140,8 @@ $$;
 REVOKE ALL ON FUNCTION recalcular_estoque_produto(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION recalcular_estoque_produto(UUID) TO authenticated;
 
--- 4. Função canônica para resolver identificador de zona
-CREATE OR REPLACE FUNCTION resolver_zona_id(p_zona_input TEXT)
+-- 4. Função canônica para resolver identificador de zona (suporta TEXT e VARCHAR)
+CREATE OR REPLACE FUNCTION public.resolver_zona_id(p_zona_input TEXT)
 RETURNS VARCHAR(50)
 LANGUAGE plpgsql
 IMMUTABLE
@@ -161,11 +161,13 @@ BEGIN
   v_norm := REGEXP_REPLACE(v_norm, '[úùûü]', 'u', 'g');
   v_norm := REGEXP_REPLACE(v_norm, '[ç]', 'c', 'g');
 
-  IF v_norm = 'recife' OR v_norm = 'rec' THEN
+  IF v_norm = 'recife' OR v_norm = 'rec' OR v_norm LIKE '%recife%' THEN
     RETURN 'recife';
   ELSIF v_norm = 'norte' OR v_norm LIKE '%norte%' THEN
     RETURN 'norte';
-  ELSIF v_norm = 'sul_oeste' OR v_norm LIKE '%sul%' OR v_norm LIKE '%oeste%' THEN
+  ELSIF v_norm = 'sul_oeste' OR v_norm = 'suloeste' OR v_norm LIKE '%sul%oeste%' THEN
+    RETURN 'sul_oeste';
+  ELSIF v_norm = 'sul' OR v_norm = 'oeste' OR v_norm LIKE '%sul%' OR v_norm LIKE '%oeste%' THEN
     RETURN 'sul_oeste';
   ELSIF v_norm = 'gravata' OR v_norm LIKE '%gravata%' THEN
     RETURN 'gravata';
@@ -174,6 +176,19 @@ BEGIN
   RETURN 'recife';
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.resolver_zona_id(p_zona_input VARCHAR)
+RETURNS VARCHAR(50)
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+BEGIN
+  RETURN public.resolver_zona_id(p_zona_input::text);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.resolver_zona_id(TEXT) TO PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.resolver_zona_id(VARCHAR) TO PUBLIC, anon, authenticated;
 
 -- 5. Limpar sobrecargas anteriores de ajustar_estoque
 DROP FUNCTION IF EXISTS public.ajustar_estoque(UUID, VARCHAR, TEXT, INT, TEXT, TEXT);
@@ -391,7 +406,7 @@ BEGIN
     RAISE EXCEPTION 'Não é permitido dar baixa em pedido excluído (Pedido #%).', v_pedido.numero_pedido;
   END IF;
 
-  v_zona_id := resolver_zona_id(v_pedido.zona);
+  v_zona_id := public.resolver_zona_id(COALESCE(v_pedido.zona::text, 'recife'));
 
   FOR v_item IN SELECT * FROM jsonb_array_elements(COALESCE(v_pedido.itens, '[]'::jsonb)) LOOP
     v_prod_id := (v_item->>'id')::UUID;
@@ -755,7 +770,7 @@ BEGIN
       RAISE EXCEPTION 'Sabor do vape entregue é obrigatório para abater estoque.';
     END IF;
 
-    v_zona_id := resolver_zona_id(p_zona);
+    v_zona_id := public.resolver_zona_id(COALESCE(p_zona::text, 'recife'));
 
     SELECT * INTO v_produto 
     FROM public.produtos 
@@ -925,7 +940,7 @@ BEGIN
     RAISE EXCEPTION 'O pedido deve conter pelo menos um item.';
   END IF;
 
-  v_zona_id := resolver_zona_id(p_zona);
+  v_zona_id := public.resolver_zona_id(COALESCE(p_zona::text, 'recife'));
 
   FOR v_item IN SELECT * FROM jsonb_array_elements(p_itens) LOOP
     v_prod_id := (v_item->>'id')::UUID;

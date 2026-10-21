@@ -3,8 +3,8 @@
 -- Com compatibilidade universal de parâmetros e recarga do cache PostgREST
 -- =========================================================================
 
--- 1. Função canônica para resolver identificador de zona
-CREATE OR REPLACE FUNCTION resolver_zona_id(p_zona_input TEXT)
+-- 1. Função canônica para resolver identificador de zona (suporta TEXT e VARCHAR)
+CREATE OR REPLACE FUNCTION public.resolver_zona_id(p_zona_input TEXT)
 RETURNS VARCHAR(50)
 LANGUAGE plpgsql
 IMMUTABLE
@@ -16,7 +16,13 @@ BEGIN
     RETURN 'recife';
   END IF;
 
-  v_norm := normalizar_sabor(p_zona_input);
+  v_norm := LOWER(TRIM(p_zona_input));
+  v_norm := REGEXP_REPLACE(v_norm, '[áàãâä]', 'a', 'g');
+  v_norm := REGEXP_REPLACE(v_norm, '[éèêë]', 'e', 'g');
+  v_norm := REGEXP_REPLACE(v_norm, '[íìîï]', 'i', 'g');
+  v_norm := REGEXP_REPLACE(v_norm, '[óòõôö]', 'o', 'g');
+  v_norm := REGEXP_REPLACE(v_norm, '[úùûü]', 'u', 'g');
+  v_norm := REGEXP_REPLACE(v_norm, '[ç]', 'c', 'g');
 
   IF v_norm = 'recife' OR v_norm = 'rec' OR v_norm LIKE '%recife%' THEN
     RETURN 'recife';
@@ -24,17 +30,28 @@ BEGIN
     RETURN 'norte';
   ELSIF v_norm = 'sul_oeste' OR v_norm = 'suloeste' OR v_norm LIKE '%sul%oeste%' THEN
     RETURN 'sul_oeste';
-  ELSIF v_norm = 'sul' OR v_norm = 'oeste' THEN
+  ELSIF v_norm = 'sul' OR v_norm = 'oeste' OR v_norm LIKE '%sul%' OR v_norm LIKE '%oeste%' THEN
     RETURN 'sul_oeste';
-  END IF;
-
-  IF p_zona_input IN ('recife', 'norte', 'sul_oeste') THEN
-    RETURN p_zona_input::VARCHAR(50);
+  ELSIF v_norm = 'gravata' OR v_norm LIKE '%gravata%' THEN
+    RETURN 'gravata';
   END IF;
 
   RETURN 'recife';
 END;
 $$;
+
+CREATE OR REPLACE FUNCTION public.resolver_zona_id(p_zona_input VARCHAR)
+RETURNS VARCHAR(50)
+LANGUAGE plpgsql
+IMMUTABLE
+AS $$
+BEGIN
+  RETURN public.resolver_zona_id(p_zona_input::text);
+END;
+$$;
+
+GRANT EXECUTE ON FUNCTION public.resolver_zona_id(TEXT) TO PUBLIC, anon, authenticated;
+GRANT EXECUTE ON FUNCTION public.resolver_zona_id(VARCHAR) TO PUBLIC, anon, authenticated;
 
 -- 2. Limpar sobrecargas anteriores para evitar conflitos de cache no PostgREST
 DROP FUNCTION IF EXISTS public.baixar_estoque_pedido(UUID);
@@ -93,7 +110,7 @@ BEGIN
     RAISE EXCEPTION 'Não é permitido dar baixa em pedido excluído (Pedido #%).', v_pedido.numero_pedido;
   END IF;
 
-  v_zona_id := resolver_zona_id(v_pedido.zona);
+  v_zona_id := public.resolver_zona_id(COALESCE(v_pedido.zona::text, 'recife'));
 
   -- 2. Processar cada item do pedido
   FOR v_item IN SELECT * FROM jsonb_array_elements(COALESCE(v_pedido.itens, '[]'::jsonb)) LOOP
