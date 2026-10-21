@@ -35,7 +35,7 @@ export function HeroBanner({
 
   // Produtos filtrados por promo e destaque para uso nos cards
   const produtosPromo = produtos.filter(p => p.is_promo && p.ativo !== false);
-  const produtosDestaque = produtos.filter(p => !p.is_promo && p.estoque > 0);
+  const produtosDestaque = produtos.filter(p => !p.is_promo && (p.estoque_ilimitado || p.estoque > 0));
 
   // Next / Prev slide
   const proximoSlide = () => {

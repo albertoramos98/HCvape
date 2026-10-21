@@ -8,43 +8,19 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 // Nome do bucket de imagens no Supabase Storage
 const BUCKET_IMAGENS = 'produto-imagens';
 
-// Tipos de Zonas
-export type ZonaId = 'recife' | 'gravata' | 'norte' | 'sul_oeste' | 'sul' | 'oeste';
-
-export interface ZonaInfo {
-  id: ZonaId;
-  nome: string;
-  badge: string;
-  descricao: string;
-  cor: string;
-  sigla?: string;
-}
-
-export const ZONAS_DISPONIVEIS: ZonaInfo[] = [
-  { 
-    id: 'recife', 
-    nome: 'Recife', 
-    badge: 'Atendimento Rápido', 
-    descricao: 'Disponibilidade e estoque para toda a região de Recife',
-    cor: '#76FF03',
-    sigla: 'REC'
-  },
-  { 
-    id: 'gravata', 
-    nome: 'Gravatá', 
-    badge: 'Atendimento Gravatá', 
-    descricao: 'Disponibilidade e estoque para a região de Gravatá',
-    cor: '#f59e0b',
-    sigla: 'GV'
-  }
-];
-
-export interface EstoqueZona {
-  estoque: number;
-  sabores_estoque?: { [sabor: string]: number };
-}
-
-export type EstoqueZonasMap = Partial<Record<string, EstoqueZona>>;
+export * from './estoque';
+import type { 
+  ZonaId, 
+  EstoqueZona, 
+  EstoqueZonasMap 
+} from './estoque';
+import { 
+  ZONAS_DISPONIVEIS, 
+  obterEstoqueProdutoPorZona as obterEstoqueCentralizado,
+  normalizarNomeSabor,
+  casarSabor,
+  normalizarZonaId as normalizarZonaIdShared
+} from './estoque';
 
 // Tipos para o banco de dados
 export interface Produto {
@@ -57,6 +33,7 @@ export interface Produto {
   sabores_estoque?: { [sabor: string]: number } | null;
   zonas?: string[] | null;
   estoque_zonas?: EstoqueZonasMap | null;
+  estoque_ilimitado?: boolean;
   is_promo?: boolean;
   preco_promo?: number;
   imagem_url?: string | null;
@@ -324,7 +301,28 @@ export const produtosService = {
     }
   },
 
-  // Atualizar estoque total
+  // Ajustar estoque via RPC atômica (fonte única estoque_zonas + movimentos_estoque)
+  async ajustarEstoque(
+    produtoId: string, 
+    zona: string, 
+    sabor: string, 
+    novaQtd: number, 
+    motivo: string = 'ajuste_manual', 
+    usuario?: string
+  ): Promise<any> {
+    const { data, error } = await supabase.rpc('ajustar_estoque', {
+      p_produto_id: produtoId,
+      p_zona: zona,
+      p_sabor: sabor,
+      p_nova_qtd: novaQtd,
+      p_motivo: motivo,
+      p_usuario: usuario || null
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  // Atualizar estoque total (legado)
   async atualizarEstoque(id: string, novoEstoque: number): Promise<void> {
     const { error } = await supabase
       .from('produtos')
@@ -334,7 +332,7 @@ export const produtosService = {
     if (error) throw error;
   },
 
-  // Atualizar estoque por sabores e total
+  // Atualizar estoque por sabores e total (legado)
   async atualizarEstoqueSabores(id: string, saboresEstoque: { [sabor: string]: number }, estoqueTotal: number): Promise<void> {
     const { error } = await supabase
       .from('produtos')
@@ -506,7 +504,27 @@ export const pedidosService = {
     return data;
   },
 
-  // Atualizar status checklist
+  // Baixar estoque de pedido via RPC atômica e idempotente
+  async baixarEstoque(pedidoId: string, usuario?: string): Promise<any> {
+    const { data, error } = await supabase.rpc('baixar_estoque_pedido', {
+      p_pedido_id: pedidoId,
+      p_usuario: usuario || null
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  // Estornar estoque de pedido via RPC atômica e simétrica
+  async estornarEstoque(pedidoId: string, usuario?: string): Promise<any> {
+    const { data, error } = await supabase.rpc('estornar_estoque_pedido', {
+      p_pedido_id: pedidoId,
+      p_usuario: usuario || null
+    });
+    if (error) throw error;
+    return data;
+  },
+
+  // Atualizar status checklist (legado direto)
   async atualizarStatus(id: string, status: boolean): Promise<void> {
     const { error } = await supabase
       .from('pedidos')
@@ -586,43 +604,41 @@ export const trocasService = {
     }
   },
 
-  // Criar nova troca
-  async criar(troca: Omit<Troca, 'id' | 'created_at' | 'updated_at'>): Promise<Troca> {
-    const novaTrocaId = typeof crypto !== 'undefined' && crypto.randomUUID ? crypto.randomUUID() : `troca_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    const trocaCompleta: Troca = {
-      ...troca,
-      id: novaTrocaId,
-      status: troca.status || 'concluida',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString()
-    };
-
+  // Criar nova troca (utiliza RPC atômica registrar_troca para integridade de estoque)
+  async criar(troca: Omit<Troca, 'id' | 'created_at' | 'updated_at'>, usuario?: string): Promise<Troca> {
     try {
-      const { data, error } = await supabase
-        .from('trocas')
-        .insert([{
-          ...troca,
-          status: troca.status || 'concluida'
-        }])
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('registrar_troca', {
+        p_dados: troca,
+        p_usuario: usuario || null
+      });
 
-      if (error) throw error;
-      
-      const locais = this.obterDoLocalStorage();
-      this.salvarNoLocalStorage([data as Troca, ...locais.filter(t => t.id !== (data as any).id)]);
-      return data as Troca;
+      if (!error && data) {
+        const salva = data as Troca;
+        const locais = this.obterDoLocalStorage();
+        this.salvarNoLocalStorage([salva, ...locais.filter(t => t.id !== salva.id)]);
+        return salva;
+      }
     } catch (err) {
-      console.warn('Salvando troca em fallback (tabela trocas pode não existir):', err);
-      const locais = this.obterDoLocalStorage();
-      const atualizados = [trocaCompleta, ...locais];
-      this.salvarNoLocalStorage(atualizados);
-      
-      return trocaCompleta;
+      console.warn('Erro ao chamar RPC registrar_troca, tentando fallback direto:', err);
     }
+
+    const { data, error } = await supabase
+      .from('trocas')
+      .insert([{
+        ...troca,
+        status: troca.status || 'concluida'
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    const locais = this.obterDoLocalStorage();
+    this.salvarNoLocalStorage([data as Troca, ...locais.filter(t => t.id !== (data as any).id)]);
+    return data as Troca;
   },
 
-  // Atualizar troca existente
+  // Atualizar troca existente (NUNCA altera estoque)
   async atualizar(id: string, updates: Partial<Omit<Troca, 'id' | 'created_at'>>): Promise<Troca> {
     try {
       const { data, error } = await supabase
@@ -652,24 +668,33 @@ export const trocasService = {
     }
   },
 
-  // Deletar troca
-  async deletar(id: string): Promise<void> {
+  // Deletar troca (utiliza RPC atômica estornar_troca para reverter estoque caso tenha abatido)
+  async deletar(id: string, usuario?: string): Promise<void> {
     try {
-      const { error } = await supabase
-        .from('trocas')
-        .delete()
-        .eq('id', id);
+      const { data, error } = await supabase.rpc('estornar_troca', {
+        p_troca_id: id,
+        p_usuario: usuario || null
+      });
 
-      if (error) throw error;
+      if (!error && data) {
+        const locais = this.obterDoLocalStorage();
+        this.salvarNoLocalStorage(locais.filter(t => t.id !== id));
+        return;
+      }
     } catch (err) {
-      console.warn('Deletando troca no fallback:', err);
+      console.warn('Erro ao chamar RPC estornar_troca, tentando exclusão direta:', err);
     }
+
+    const { error } = await supabase
+      .from('trocas')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
 
     const locais = this.obterDoLocalStorage();
     const filtrados = locais.filter(t => t.id !== id);
     this.salvarNoLocalStorage(filtrados);
-
-    // Troca removida do cache local
   }
 };
 
@@ -1650,121 +1675,12 @@ export const utils = {
     });
   },
 
-  // Obter estoque e sabores disponíveis de um produto filtrado por zona
+  // Obter estoque e sabores disponíveis de um produto filtrado por zona (centralizado em estoque.ts)
   obterEstoqueProdutoPorZona(
     produto: Produto,
-    zona: ZonaId | null
-  ): {
-    estoque: number;
-    saboresEstoque: { [sabor: string]: number };
-    saboresDisponiveis: string[];
-    possuiEstoqueNaZona: boolean;
-  } {
-    // Se o produto tiver lista de zonas cadastradas e a zona não estiver inclusa
-    if (zona && produto.zonas && Array.isArray(produto.zonas) && produto.zonas.length > 0) {
-      const atende = produto.zonas.some(z => {
-        const norm = utils.normalizarTexto(z);
-        if (zona === 'recife') {
-          return norm === 'recife' || norm.includes('recife') || norm === 'norte' || norm.includes('sul') || norm.includes('oeste');
-        }
-        if (zona === 'sul_oeste') {
-          return norm === 'sul_oeste' || norm.includes('oeste') || norm.includes('sul') || norm === 'recife';
-        }
-        if (zona === 'gravata') {
-          return norm === 'gravata' || norm.includes('gravata');
-        }
-        return norm === zona || norm.includes(zona);
-      });
-      if (!atende) {
-        return {
-          estoque: 0,
-          saboresEstoque: {},
-          saboresDisponiveis: [],
-          possuiEstoqueNaZona: false
-        };
-      }
-    }
-
-    // Se nenhuma zona foi especificada, usar estoque geral consolidado
-    if (!zona) {
-      const saboresEstoque = produto.sabores_estoque || {};
-      const temControleSabores = Object.keys(saboresEstoque).length > 0;
-      const saboresDisponiveis = produto.sabores.filter(sabor => {
-        if (temControleSabores) {
-          return (saboresEstoque[sabor] ?? 0) > 0;
-        }
-        return produto.estoque > 0;
-      });
-
-      return {
-        estoque: produto.estoque,
-        saboresEstoque,
-        saboresDisponiveis,
-        possuiEstoqueNaZona: produto.estoque > 0
-      };
-    }
-
-    // Se o produto possui configuração de estoque_zonas
-    if (produto.estoque_zonas && typeof produto.estoque_zonas === 'object' && Object.keys(produto.estoque_zonas).length > 0) {
-      let zonaData = produto.estoque_zonas[zona];
-      if (!zonaData && zona === 'recife') {
-        zonaData = produto.estoque_zonas['recife'] || produto.estoque_zonas['norte'] || produto.estoque_zonas['sul_oeste'] || produto.estoque_zonas['sul'] || produto.estoque_zonas['oeste'];
-      }
-      if (!zonaData && zona === 'sul_oeste') {
-        zonaData = produto.estoque_zonas['recife'] || produto.estoque_zonas['sul_oeste'] || produto.estoque_zonas['oeste'] || produto.estoque_zonas['sul'];
-      }
-      if (!zonaData && zona === 'gravata') {
-        zonaData = produto.estoque_zonas['gravata'] || produto.estoque_zonas['gravatá'];
-      }
-
-      if (zonaData !== undefined && zonaData !== null) {
-        const saboresEstoque = zonaData.sabores_estoque || {};
-        const temControleSabores = Object.keys(saboresEstoque).length > 0;
-
-        const saboresDisponiveis = produto.sabores.filter(sabor => {
-          if (temControleSabores) {
-            return (saboresEstoque[sabor] ?? 0) > 0;
-          }
-          return (zonaData?.estoque ?? 0) > 0;
-        });
-
-        const estoqueZona = temControleSabores
-          ? Object.values(saboresEstoque).reduce((acc, v) => acc + (Number(v) || 0), 0)
-          : (zonaData.estoque ?? 0);
-
-        return {
-          estoque: estoqueZona,
-          saboresEstoque,
-          saboresDisponiveis,
-          possuiEstoqueNaZona: estoqueZona > 0 && (produto.sabores.length === 0 || saboresDisponiveis.length > 0)
-        };
-      } else {
-        // Se tem estoque_zonas configurado para o produto mas NÃO para esta zona em específico, a zona está zerada
-        return {
-          estoque: 0,
-          saboresEstoque: {},
-          saboresDisponiveis: [],
-          possuiEstoqueNaZona: false
-        };
-      }
-    }
-
-    // Fallback para produtos legados sem estoque_zonas configurado ainda
-    const saboresEstoque = produto.sabores_estoque || {};
-    const temControleSabores = Object.keys(saboresEstoque).length > 0;
-    const saboresDisponiveis = produto.sabores.filter(sabor => {
-      if (temControleSabores) {
-        return (saboresEstoque[sabor] ?? 0) > 0;
-      }
-      return produto.estoque > 0;
-    });
-
-    return {
-      estoque: produto.estoque,
-      saboresEstoque,
-      saboresDisponiveis,
-      possuiEstoqueNaZona: produto.estoque > 0 && (produto.sabores.length === 0 || saboresDisponiveis.length > 0)
-    };
+    zona: ZonaId | string | null | undefined
+  ) {
+    return obterEstoqueCentralizado(produto, zona);
   }
 };
 

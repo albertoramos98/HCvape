@@ -685,6 +685,7 @@ export default function Admin() {
   const [marcas, setMarcas] = useState<string[]>([]);
   const [estoqueEditado, setEstoqueEditado] = useState<EstoqueEditado>({});
   const [salvando, setSalvando] = useState(false);
+  const [salvandoStatusId, setSalvandoStatusId] = useState<string | null>(null);
   const [usuarioEmail, setUsuarioEmail] = useState<string>('');
 
   // Estados para financeiro (desconto)
@@ -860,6 +861,20 @@ export default function Admin() {
       setMarcas(marcasData);
     } catch (err) {
       console.error('Erro ao carregar marcas:', err);
+    }
+  };
+
+  // Carregar pedidos
+  const carregarPedidos = async () => {
+    try {
+      const [ativos, excluidos] = await Promise.all([
+        pedidosService.obterTodos(),
+        pedidosService.obterExcluidos(),
+      ]);
+      setPedidos(ativos);
+      setPedidosExcluidos(excluidos);
+    } catch (err) {
+      console.error('Erro ao carregar pedidos:', err);
     }
   };
 
@@ -1334,7 +1349,37 @@ export default function Admin() {
       return;
     }
 
-    // Montar estoque_zonas e consolidar estoque geral
+    // Verificar se algum sabor com estoque positivo está sendo removido na edição
+    const produtoOriginal = editandoId ? produtos.find(p => p.id === editandoId) : null;
+    if (produtoOriginal) {
+      const saboresRemovidosComSaldo: string[] = [];
+      const novosSaboresSet = new Set(saboresLimpos.map(s => s.toLowerCase()));
+      
+      (produtoOriginal.sabores || []).forEach(saborAntigo => {
+        if (!novosSaboresSet.has(saborAntigo.toLowerCase())) {
+          let saldoTotal = 0;
+          if (produtoOriginal.estoque_zonas) {
+            Object.values(produtoOriginal.estoque_zonas).forEach(zData => {
+              saldoTotal += Number(zData?.sabores_estoque?.[saborAntigo] || 0);
+            });
+          }
+          if (saldoTotal > 0) {
+            saboresRemovidosComSaldo.push(`- ${saborAntigo}: ${saldoTotal} un`);
+          }
+        }
+      });
+
+      if (saboresRemovidosComSaldo.length > 0) {
+        const confirmar = window.confirm(
+          `Atenção: Os seguintes sabores tinham estoque positivo e estão sendo removidos:\n\n${saboresRemovidosComSaldo.join('\n')}\n\nDeseja realmente remover estes sabores?`
+        );
+        if (!confirmar) {
+          return;
+        }
+      }
+    }
+
+    // Montar estoque_zonas e consolidar estoque geral (usado para criação de novos produtos)
     const estoqueZonasFinal: EstoqueZonasMap = {};
     let estoqueTotalConsolidado = 0;
     const saboresEstoqueConsolidado: { [sabor: string]: number } = {};
@@ -1417,15 +1462,14 @@ export default function Admin() {
           imagemUrl = null;
         }
 
+        // Não sobrescrevemos estoque_zonas ou derivados diretamente na edição:
+        // Atualizamos metadados e aplicamos qualquer ajuste de saldo via RPC ajustar_estoque
         const updates: any = {
           marca: marcaFinal,
           nome: formProduto.nome,
           preco,
-          estoque: estoqueTotalConsolidado,
           sabores: saboresLimpos,
-          sabores_estoque: saboresEstoqueConsolidado,
           zonas: zonasSelecionadas,
-          estoque_zonas: estoqueZonasFinal,
           is_promo: formProduto.is_promo,
           preco_promo: precoPromo || null,
         };
@@ -1435,6 +1479,29 @@ export default function Admin() {
         }
 
         await produtosService.editar(editandoId, updates);
+
+        // Se houver ajustes manuais de estoque nos sabores/zonas preenchidos no formulário,
+        // aplicar através da RPC ajustar_estoque para auditar na tabela movimentos_estoque
+        if (produtoOriginal) {
+          for (const zId of zonasSelecionadas) {
+            const zSaboresMap = formEstoquePorZona[zId] || {};
+            for (const s of saboresLimpos) {
+              const saldoAnterior = produtoOriginal.estoque_zonas?.[zId]?.sabores_estoque?.[s] ?? 0;
+              const novoSaldo = formProduto.is_promo ? 999 : Math.max(0, Number(zSaboresMap[s]) || 0);
+              if (saldoAnterior !== novoSaldo) {
+                await produtosService.ajustarEstoque(
+                  editandoId,
+                  zId,
+                  s,
+                  novoSaldo,
+                  'ajuste_manual_edicao',
+                  usuarioEmail || undefined
+                );
+              }
+            }
+          }
+        }
+
         setSucesso('Produto atualizado com sucesso!');
       } else {
         // --- CRIAR ---
@@ -1595,11 +1662,11 @@ export default function Admin() {
     }
   };
 
-  // Atualizar estoque
+  // Atualizar estoque inline
   const handleAtualizarEstoque = async (id: string) => {
     const novoEstoque = estoqueEditado[id];
 
-    if (novoEstoque === undefined || novoEstoque === null) {
+    if (novoEstoque === undefined || novoEstoque === null || isNaN(novoEstoque) || novoEstoque < 0) {
       setErro('Valor de estoque inválido');
       return;
     }
@@ -1611,31 +1678,31 @@ export default function Admin() {
       const produto = produtos.find(p => p.id === id);
       if (!produto) return;
 
-      // Se o produto tiver apenas um sabor ou nenhum, podemos atualizar inline
-      if (produto.sabores.length <= 1) {
-        const saborUnico = produto.sabores[0] || 'Original';
-        const novosSaboresEstoque = { [saborUnico]: novoEstoque };
-        
-        await produtosService.atualizarEstoqueSabores(id, novosSaboresEstoque, novoEstoque);
-
-        setProdutos(produtos.map(p =>
-          p.id === id ? { ...p, estoque: novoEstoque, sabores_estoque: novosSaboresEstoque } : p
-        ));
-      } else {
-        // Se tiver múltiplos sabores, atualiza o total geral (embora a UI bloqueie isso)
-        await produtosService.atualizarEstoque(id, novoEstoque);
-        setProdutos(produtos.map(p =>
-          p.id === id ? { ...p, estoque: novoEstoque } : p
-        ));
+      if (produto.sabores.length > 1) {
+        setErro('Para produtos com múltiplos sabores, utilize a edição completa.');
+        return;
       }
 
-      setEstoqueEditado({ ...estoqueEditado, [id]: undefined });
+      const saborUnico = produto.sabores[0] || 'Original';
+      const zonaDestino = (filtroZonaEstoqueExpresso !== 'todas' ? filtroZonaEstoqueExpresso : (produto.zonas?.[0] || 'recife'));
+
+      await produtosService.ajustarEstoque(
+        id,
+        zonaDestino,
+        saborUnico,
+        novoEstoque,
+        'ajuste_inline',
+        usuarioEmail || undefined
+      );
+
+      await carregarProdutos();
+      setEstoqueEditado(prev => ({ ...prev, [id]: undefined }));
       setSucesso('Estoque atualizado com sucesso!');
 
       setTimeout(() => setSucesso(null), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao atualizar estoque:', err);
-      setErro('Erro ao atualizar estoque');
+      setErro(err?.message || 'Erro ao atualizar estoque');
     } finally {
       setSalvando(false);
     }
@@ -1644,71 +1711,38 @@ export default function Admin() {
   // --- LÓGICA DE PEDIDOS ---
 
   const handleAtualizarStatusPedido = async (id: string, status: boolean) => {
+    if (salvandoStatusId === id) return;
     try {
-      setSalvando(true);
-      
+      setSalvandoStatusId(id);
+      setErro(null);
+
       const pedido = pedidos.find(p => p.id === id);
       if (!pedido) return;
 
       // Se o status não mudou, não faz nada (evita cliques duplos)
       if (pedido.status_checklist === status) return;
 
-      // 1. Atualizar o status do pedido no banco
-      await pedidosService.atualizarStatus(id, status);
+      if (status) {
+        // Baixa atômica via RPC (com lock FOR UPDATE, sem clamp e com auditoria)
+        await pedidosService.baixarEstoque(id, usuarioEmail || undefined);
+        setSucesso('Checklist concluído e estoque baixado com sucesso!');
+      } else {
+        // Estorno atômico e estritamente simétrico via RPC
+        await pedidosService.estornarEstoque(id, usuarioEmail || undefined);
+        setSucesso('Pedido reaberto e estoque reposto com sucesso!');
+      }
 
-      // 2. Lógica de Estoque: Baixa ou Reposição
-      // Buscamos os produtos atuais para garantir valores reais
-      const produtosAtuais = await produtosService.obterTodos();
-      
-      const promessasEstoque = pedido.itens.map(async (item) => {
-        const produto = produtosAtuais.find(p => p.id === item.id);
-        
-        if (produto) {
-          const fator = status ? -1 : 1;
-          const saboresEstoque = produto.sabores_estoque ? { ...produto.sabores_estoque } : {};
-          
-          // Se o sabor comprado não existe mapeado no JSON, inicializamos
-          if (saboresEstoque[item.sabor] === undefined) {
-            produto.sabores.forEach(s => {
-              saboresEstoque[s] = s.toLowerCase() === item.sabor.toLowerCase() ? produto.estoque : 0;
-            });
-          }
-          
-          const estoqueAtualSabor = saboresEstoque[item.sabor] || 0;
-          saboresEstoque[item.sabor] = Math.max(0, estoqueAtualSabor + (item.quantidade * fator));
-          
-          const novoEstoqueTotal = Object.values(saboresEstoque).reduce((a, b) => a + b, 0);
-          
-          await produtosService.atualizarEstoqueSabores(item.id, saboresEstoque, novoEstoqueTotal);
-          return { id: item.id, estoque: novoEstoqueTotal, sabores_estoque: saboresEstoque };
-        }
-        return null;
-      });
+      await Promise.all([
+        carregarPedidos(),
+        carregarProdutos()
+      ]);
 
-      const resultadosEstoque = await Promise.all(promessasEstoque);
-      
-      // 3. Atualizar estados locais para refletir a mudança imediatamente
-      const novosProdutos = [...produtos];
-      resultadosEstoque.forEach(res => {
-        if (res) {
-          const index = novosProdutos.findIndex(p => p.id === res.id);
-          if (index !== -1) {
-            novosProdutos[index].estoque = res.estoque;
-            novosProdutos[index].sabores_estoque = res.sabores_estoque;
-          }
-        }
-      });
-      setProdutos(novosProdutos);
-
-      setPedidos(pedidos.map(p => p.id === id ? { ...p, status_checklist: status } : p));
-      setSucesso(status ? 'Checklist concluído e estoque baixado!' : 'Pedido reaberto e estoque reposto!');
-      
       setTimeout(() => setSucesso(null), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao atualizar status do pedido:', err);
-      setErro('Erro ao atualizar status do pedido e estoque');
+      setErro(err?.message || 'Erro ao atualizar status do pedido e estoque');
     } finally {
-      setSalvando(false);
+      setSalvandoStatusId(null);
     }
   };
 
@@ -1744,13 +1778,24 @@ export default function Admin() {
 
     try {
       setSalvando(true);
+      setErro(null);
+
+      const pedido = pedidos.find(p => p.id === id);
+      // Se o pedido teve o checklist concluído, estorna o estoque antes de deletar
+      if (pedido?.status_checklist) {
+        await pedidosService.estornarEstoque(id, usuarioEmail || undefined);
+      }
+
       await pedidosService.deletar(id);
-      setPedidos(pedidos.filter(p => p.id !== id));
+      await Promise.all([
+        carregarPedidos(),
+        carregarProdutos()
+      ]);
       setSucesso('Pedido deletado com sucesso!');
       setTimeout(() => setSucesso(null), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao deletar pedido:', err);
-      setErro('Erro ao deletar pedido');
+      setErro(err?.message || 'Erro ao deletar pedido');
     } finally {
       setSalvando(false);
     }
@@ -2149,45 +2194,6 @@ export default function Admin() {
       setSalvandoTroca(true);
       setErro(null);
 
-      // Se marcou para abater estoque do novo vape
-      if (formTroca.abater_estoque && produtoTrocadoObj && produtoTrocadoId) {
-        try {
-          const estoqueAtual = produtoTrocadoObj.estoque || 0;
-          const novoEstoqueGeral = Math.max(0, estoqueAtual - 1);
-
-          let novosSaboresEstoque = produtoTrocadoObj.sabores_estoque ? { ...produtoTrocadoObj.sabores_estoque } : undefined;
-          if (novosSaboresEstoque && formTroca.sabor_trocado && novosSaboresEstoque[formTroca.sabor_trocado] !== undefined) {
-            novosSaboresEstoque[formTroca.sabor_trocado] = Math.max(0, (novosSaboresEstoque[formTroca.sabor_trocado] || 0) - 1);
-          }
-
-          let novoEstoqueZonas = produtoTrocadoObj.estoque_zonas ? { ...produtoTrocadoObj.estoque_zonas } : undefined;
-          if (novoEstoqueZonas && formTroca.zona && novoEstoqueZonas[formTroca.zona]) {
-            const zonaAtual = novoEstoqueZonas[formTroca.zona]!;
-            const novoQtdZona = Math.max(0, (zonaAtual.estoque || 0) - 1);
-            let saboresZona = zonaAtual.sabores_estoque ? { ...zonaAtual.sabores_estoque } : undefined;
-            if (saboresZona && formTroca.sabor_trocado && saboresZona[formTroca.sabor_trocado] !== undefined) {
-              saboresZona[formTroca.sabor_trocado] = Math.max(0, (saboresZona[formTroca.sabor_trocado] || 0) - 1);
-            }
-            novoEstoqueZonas[formTroca.zona] = {
-              ...zonaAtual,
-              estoque: novoQtdZona,
-              sabores_estoque: saboresZona
-            };
-          }
-
-          const updates: any = {
-            estoque: novoEstoqueGeral
-          };
-          if (novosSaboresEstoque) updates.sabores_estoque = novosSaboresEstoque;
-          if (novoEstoqueZonas) updates.estoque_zonas = novoEstoqueZonas;
-
-          await produtosService.editar(produtoTrocadoId, updates);
-          setProdutos(prev => prev.map(p => p.id === produtoTrocadoId ? { ...p, ...updates } : p));
-        } catch (errEstoque) {
-          console.warn('Erro ao atualizar estoque do produto trocado:', errEstoque);
-        }
-      }
-
       const dadosTroca = {
         cliente_nome: formTroca.cliente_nome.trim(),
         cliente_telefone: formTroca.cliente_telefone.trim() || undefined,
@@ -2210,34 +2216,37 @@ export default function Admin() {
         setTrocas(prev => prev.map(t => t.id === editandoTrocaId ? atualizada : t));
         setSucesso('Registro de troca atualizado com sucesso!');
       } else {
+        // trocasService.criar agora executa a RPC registrar_troca de forma atômica
         const nova = await trocasService.criar(dadosTroca);
         setTrocas(prev => [nova, ...prev]);
         setSucesso('Troca registrada com sucesso!');
       }
 
+      await carregarProdutos();
       fecharModalTroca();
       setTimeout(() => setSucesso(null), 3000);
     } catch (err: any) {
       console.error('Erro ao salvar troca:', err);
-      setErro('Erro ao salvar registro de troca');
+      setErro(err?.message || 'Erro ao salvar registro de troca');
     } finally {
       setSalvandoTroca(false);
     }
   };
 
-  // Excluir registro de troca
+  // Excluir registro de troca (com estorno automático via RPC estornar_troca)
   const handleDeletarTroca = async (id: string, cliente: string) => {
     if (!window.confirm(`Deseja realmente remover o registro de troca de ${cliente}?`)) {
       return;
     }
     try {
       await trocasService.deletar(id);
+      await carregarProdutos();
       setTrocas(prev => prev.filter(t => t.id !== id));
       setSucesso('Registro de troca excluído!');
       setTimeout(() => setSucesso(null), 3000);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao deletar troca:', err);
-      setErro('Erro ao excluir registro de troca');
+      setErro(err?.message || 'Erro ao excluir registro de troca');
     }
   };
 
@@ -4219,7 +4228,14 @@ export default function Admin() {
                       <div className="flex gap-2">
                         {subAbaPedidos === 'ativos' ? (
                           <>
-                            <button onClick={() => handleAtualizarStatusPedido(pedido.id, !pedido.status_checklist)} className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all duration-300 ${pedido.status_checklist ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' : 'bg-[#76FF03] text-black'}`}>
+                            <button
+                              disabled={salvandoStatusId === pedido.id}
+                              onClick={() => handleAtualizarStatusPedido(pedido.id, !pedido.status_checklist)}
+                              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all duration-300 ${pedido.status_checklist ? 'bg-yellow-500/20 text-yellow-500 border border-yellow-500/50' : 'bg-[#76FF03] text-black'} ${salvandoStatusId === pedido.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                              {salvandoStatusId === pedido.id ? (
+                                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                              ) : null}
                               {pedido.status_checklist ? 'Reabrir' : 'Checklist'}
                             </button>
                             <button onClick={() => handleDeletarPedido(pedido.id, pedido.numero_pedido)} className="p-2 bg-red-500/20 border border-red-500 text-red-400 rounded-lg hover:bg-red-500/40 transition-all"><Trash2 className="w-4 h-4" /></button>

@@ -411,9 +411,9 @@ export default function Home() {
       // Abrir WhatsApp
       window.location.href = whatsappUrl;
 
-    } catch (err) {
+    } catch (err: any) {
       console.error('Erro ao salvar pedido:', err);
-      alert('Erro ao processar pedido. Por favor, tente novamente.');
+      alert(err?.message || 'Erro ao processar pedido. Por favor, tente novamente.');
     } finally {
       setEnviandoPedido(false);
     }
