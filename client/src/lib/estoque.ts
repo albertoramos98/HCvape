@@ -174,6 +174,12 @@ export function obterEstoqueProdutoPorZona(
         || produto.estoque_zonas['oeste'];
     }
 
+    // Salvaguarda: se a zona solicitada (ex: sul_oeste, norte) não possuir estoque cadastrado
+    // mas o produto tiver estoque na zona principal (recife), recorre a ela para não sumir da vitrine
+    if (!zonaData && (zona === 'sul_oeste' || zona === 'norte' || zona === 'sul' || zona === 'oeste')) {
+      zonaData = produto.estoque_zonas['recife'] || Object.values(produto.estoque_zonas)[0];
+    }
+
     if (zonaData) {
       const saboresZona = zonaData.sabores_estoque || {};
       const temControleSabores = Object.keys(saboresZona).length > 0;

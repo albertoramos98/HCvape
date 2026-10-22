@@ -63,12 +63,9 @@ export default function Home() {
   const [horarioPromoAtivo, setHorarioPromoAtivo] = useState(true);
   const [abaAtiva, setAbaAtiva] = useState<'expressos' | 'promocionais'>('expressos');
   
-  // Estado de Pop-up de Aviso e Modal de Seleção de Zona
+  // Estado de Pop-up de Aviso e Zona Fixa em Recife (Operação Unificada)
   const [popupAviso, setPopupAviso] = useState(true);
-  const [zonaSelecionada, setZonaSelecionada] = useState<ZonaId | null>(() => {
-    const salva = localStorage.getItem('hcvape_zona_selecionada');
-    return normalizarZonaId(salva);
-  });
+  const [zonaSelecionada, setZonaSelecionada] = useState<ZonaId | null>('recife');
   const [modalZonaAberto, setModalZonaAberto] = useState(false);
 
   const [feedbackAdicionado, setFeedbackAdicionado] = useState<string | null>(null);
@@ -86,12 +83,12 @@ export default function Home() {
   const [enviandoPedido, setEnviandoPedido] = useState(false);
   const [pedidoConcluido, setPedidoConcluido] = useState<{ numero: number; total: number; link: string } | null>(null);
 
-  // Fechar pop-up de aviso e engatilhar escolha de zona se ainda não definida
+  // Fechar pop-up de aviso garantindo Recife unificado
   const fecharPopupAviso = () => {
     setPopupAviso(false);
-    if (!zonaSelecionada) {
-      setModalZonaAberto(true);
-    }
+    setZonaSelecionada('recife');
+    localStorage.setItem('hcvape_zona_selecionada', 'recife');
+    setModalZonaAberto(false);
   };
 
   // Selecionar zona e persistir
@@ -521,7 +518,7 @@ export default function Home() {
       )}
 
       {/* 2. Pop-up / Modal de Seleção de Zona / Região */}
-      {modalZonaAberto && (
+      {modalZonaAberto && ZONAS_DISPONIVEIS.length > 1 && (
         <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center z-50 p-3 sm:p-4 animate-in fade-in duration-300">
           <div className="w-full max-w-xl bg-[#080808] border border-white/15 rounded-3xl p-5 sm:p-8 shadow-2xl space-y-5 sm:space-y-6 max-h-[90dvh] overflow-y-auto">
             <div className="flex items-start justify-between gap-2">
@@ -631,16 +628,14 @@ export default function Home() {
 
           {/* Quick Actions & Cart */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Botão Seletor de Região / Zona */}
-            <button
-              onClick={() => setModalZonaAberto(true)}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 bg-white/5 hover:bg-white/10 border border-white/10 hover:border-[#76FF03]/50 transition-all duration-200"
-              title="Trocar região de entrega"
+            {/* Indicador de Região / Zona (Unificado em Recife) */}
+            <div
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold text-slate-200 bg-white/5 border border-white/10"
+              title="Atendimento Unificado: Recife"
             >
               <MapPin className="w-3.5 h-3.5 text-[#76FF03]" />
-              <span>{zonaAtualInfo ? zonaAtualInfo.nome : 'Escolher Zona'}</span>
-              <span className="text-[10px] text-slate-400">▾</span>
-            </button>
+              <span>Recife</span>
+            </div>
 
             <button
               onClick={() => setCarrinhoAberto(true)}

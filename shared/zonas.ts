@@ -20,25 +20,9 @@ export const ZONAS_DISPONIVEIS: ZonaInfo[] = [
     id: 'recife', 
     nome: 'Recife', 
     badge: 'Atendimento Rápido', 
-    descricao: 'Disponibilidade e estoque para a região de Recife',
+    descricao: 'Disponibilidade e estoque para toda a região de Recife',
     cor: '#76FF03',
     sigla: 'REC'
-  },
-  { 
-    id: 'norte', 
-    nome: 'Zona Norte', 
-    badge: 'Zona Norte', 
-    descricao: 'Disponibilidade e estoque para a Zona Norte',
-    cor: '#38bdf8',
-    sigla: 'ZN'
-  },
-  { 
-    id: 'sul_oeste', 
-    nome: 'Zona Sul / Oeste', 
-    badge: 'Zona Sul/Oeste', 
-    descricao: 'Disponibilidade e estoque para a Zona Sul e Oeste',
-    cor: '#a855f7',
-    sigla: 'ZS/ZO'
   }
 ];
 

@@ -718,18 +718,16 @@ export default function Admin() {
     preco: '',
     estoque: '',
     sabores: '',
-    zonas: ['recife', 'gravata'],
+    zonas: ['recife'],
     is_promo: false,
     preco_promo: '',
   });
   const [formSabores, setFormSabores] = useState<string[]>(['Menta Ice']);
   const [formZonasAtivas, setFormZonasAtivas] = useState<Record<string, boolean>>({
     recife: true,
-    gravata: true,
   });
   const [formEstoquePorZona, setFormEstoquePorZona] = useState<Record<string, Record<string, number>>>({
-    recife: { 'Menta Ice': 10 },
-    gravata: { 'Menta Ice': 5 },
+    recife: { 'Menta Ice': 0 },
   });
   const [zonaModalAtiva, setZonaModalAtiva] = useState<ZonaId>('recife');
   const [formSaboresEstoque, setFormSaboresEstoque] = useState<{ sabor: string; estoque: number }[]>([]);
@@ -1157,18 +1155,16 @@ export default function Admin() {
       preco: '',
       estoque: '',
       sabores: '',
-      zonas: ['recife', 'gravata'],
+      zonas: ['recife'],
       is_promo: isPromo,
       preco_promo: '',
     });
     setFormSabores(['Menta Ice']);
     setFormZonasAtivas({
       recife: true,
-      gravata: true,
     });
     setFormEstoquePorZona({
-      recife: { 'Menta Ice': isPromo ? 999 : 10 },
-      gravata: { 'Menta Ice': isPromo ? 999 : 5 },
+      recife: { 'Menta Ice': isPromo ? 999 : 0 },
     });
     setZonaModalAtiva('recife');
     setImagemArquivo(null);
@@ -1188,7 +1184,7 @@ export default function Admin() {
       preco: produto.preco.toString(),
       estoque: produto.estoque.toString(),
       sabores: produto.sabores.join(', '),
-      zonas: produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['recife', 'gravata'],
+      zonas: produto.zonas && produto.zonas.length > 0 ? produto.zonas : ['recife'],
       is_promo: produto.is_promo || false,
       preco_promo: produto.preco_promo?.toString() || '',
     });
@@ -1208,8 +1204,6 @@ export default function Admin() {
     ZONAS_DISPONIVEIS.forEach(z => {
       const match = produtoZonasNorm.some(pzn => {
         if (z.id === 'recife') return pzn.includes('recife');
-        if (z.id === 'norte') return pzn.includes('norte');
-        if (z.id === 'sul_oeste') return pzn.includes('sul') || pzn.includes('oeste');
         return pzn === z.id;
       });
       const temNoEstoqueZonas = Boolean(produto.estoque_zonas?.[z.id]);
@@ -1221,9 +1215,6 @@ export default function Admin() {
       let zData = produto.estoque_zonas?.[z.id];
       if (!zData && z.id === 'recife') {
         zData = produto.estoque_zonas?.['recife'];
-      }
-      if (!zData && z.id === 'sul_oeste') {
-        zData = produto.estoque_zonas?.['sul_oeste'] || produto.estoque_zonas?.['sul'] || produto.estoque_zonas?.['oeste'];
       }
 
       listaSabores.forEach(sabor => {
@@ -1257,13 +1248,13 @@ export default function Admin() {
       preco: '',
       estoque: '',
       sabores: '',
-      zonas: ['recife', 'gravata'],
+      zonas: ['recife'],
       is_promo: false,
       preco_promo: '',
     });
     setFormSabores([]);
-    setFormZonasAtivas({ recife: true, gravata: true });
-    setFormEstoquePorZona({ recife: {}, gravata: {} });
+    setFormZonasAtivas({ recife: true });
+    setFormEstoquePorZona({ recife: {} });
     setImagemArquivo(null);
     setImagemPreview(null);
     setImagemUrlAtual(null);
@@ -1336,14 +1327,13 @@ export default function Admin() {
       return;
     }
 
-    // Identificar zonas ativas
+    // Identificar zonas ativas estritamente presentes na lista oficial de ZONAS_DISPONIVEIS
     const zonasSelecionadas = Object.entries(formZonasAtivas)
-      .filter(([_, ativo]) => ativo)
+      .filter(([zId, ativo]) => ativo && ZONAS_DISPONIVEIS.some(zd => zd.id === zId))
       .map(([zId]) => zId);
 
     if (zonasSelecionadas.length === 0) {
-      setErro('Selecione pelo menos uma região/zona de atendimento ativa');
-      return;
+      zonasSelecionadas.push('recife');
     }
 
     // Verificar se algum sabor com estoque positivo está sendo removido na edição
