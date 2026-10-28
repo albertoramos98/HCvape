@@ -1449,14 +1449,17 @@ export default function Admin() {
           imagemUrl = null;
         }
 
-        // Não sobrescrevemos estoque_zonas ou derivados diretamente na edição:
-        // Atualizamos metadados e aplicamos qualquer ajuste de saldo via RPC ajustar_estoque
+        // Sincronizamos dados cadastrais e saneamos estoque_zonas e derivados na edição
+        // para garantir que sabores removidos/renomeados ou zonas desativadas não fiquem órfãos
         const updates: any = {
           marca: marcaFinal,
           nome: formProduto.nome,
           preco,
+          estoque: estoqueTotalConsolidado,
           sabores: saboresLimpos,
+          sabores_estoque: saboresEstoqueConsolidado,
           zonas: zonasSelecionadas,
+          estoque_zonas: estoqueZonasFinal,
           is_promo: formProduto.is_promo,
           preco_promo: precoPromo || null,
         };
@@ -1470,20 +1473,48 @@ export default function Admin() {
         // Se houver ajustes manuais de estoque nos sabores/zonas preenchidos no formulário,
         // aplicar através da RPC ajustar_estoque para auditar na tabela movimentos_estoque
         if (produtoOriginal) {
+          // 1. Auditar sabores ativos que tiveram saldo alterado
           for (const zId of zonasSelecionadas) {
             const zSaboresMap = formEstoquePorZona[zId] || {};
             for (const s of saboresLimpos) {
               const saldoAnterior = produtoOriginal.estoque_zonas?.[zId]?.sabores_estoque?.[s] ?? 0;
               const novoSaldo = formProduto.is_promo ? 999 : Math.max(0, Number(zSaboresMap[s]) || 0);
               if (saldoAnterior !== novoSaldo) {
-                await produtosService.ajustarEstoque(
-                  editandoId,
-                  zId,
-                  s,
-                  'definir',
-                  novoSaldo,
-                  'ajuste_manual_edicao'
-                );
+                try {
+                  await produtosService.ajustarEstoque(
+                    editandoId,
+                    zId,
+                    s,
+                    'definir',
+                    novoSaldo,
+                    'ajuste_manual_edicao'
+                  );
+                } catch (errAjuste) {
+                  console.warn(`Ajuste auditado para ${s} na zona ${zId} falhou, sincronizado via updates:`, errAjuste);
+                }
+              }
+            }
+          }
+
+          // 2. Auditar zeramento de sabores legados/renomeados que tinham saldo e foram removidos
+          const saboresLimposLower = new Set(saboresLimpos.map(s => s.toLowerCase()));
+          const zonasOriginais = Object.keys(produtoOriginal.estoque_zonas || {});
+          for (const zId of zonasOriginais) {
+            const saboresOriginaisZona = produtoOriginal.estoque_zonas?.[zId]?.sabores_estoque || {};
+            for (const [saborAntigo, saldoAntigo] of Object.entries(saboresOriginaisZona)) {
+              if (!saboresLimposLower.has(saborAntigo.toLowerCase()) && Number(saldoAntigo) > 0) {
+                try {
+                  await produtosService.ajustarEstoque(
+                    editandoId,
+                    zId,
+                    saborAntigo,
+                    'definir',
+                    0,
+                    'remocao_sabor'
+                  );
+                } catch (errZerar) {
+                  console.warn(`Zeramento auditado para sabor removido ${saborAntigo} falhou:`, errZerar);
+                }
               }
             }
           }
@@ -1643,7 +1674,7 @@ export default function Admin() {
       setTimeout(() => setSucesso(null), 3000);
     } catch (err: any) {
       console.error('Erro ao deletar produto:', err);
-      setErro('Erro ao deletar produto');
+      setErro(err?.message || 'Erro ao deletar produto');
     } finally {
       setSalvando(false);
     }

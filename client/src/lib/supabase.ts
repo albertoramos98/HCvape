@@ -487,6 +487,24 @@ export const produtosService = {
       }
     }
 
+    // 1. Tentar via RPC deletar_produto (que limpa movimentos_estoque com privilégio SECURITY DEFINER)
+    try {
+      const { data: rpcData, error: rpcError } = await supabase.rpc('deletar_produto', {
+        p_produto_id: id
+      });
+      if (!rpcError && rpcData?.success) {
+        return;
+      }
+    } catch {
+      // continua para fallback direto
+    }
+
+    // 2. Limpar movimentos_estoque preventivamente caso RLS permita
+    try {
+      await supabase.from('movimentos_estoque').delete().eq('produto_id', id);
+    } catch {}
+
+    // 3. Exclusão direta na tabela produtos
     const { error } = await supabase
       .from('produtos')
       .delete()

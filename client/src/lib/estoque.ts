@@ -150,13 +150,28 @@ export function obterEstoqueProdutoPorZona(
       Object.assign(saboresConsolidados, produto.sabores_estoque || {});
     }
 
-    const saboresDisponiveis = produto.sabores.filter(s => (saboresConsolidados[s] ?? 0) > 0);
+    let saboresFinal: { [sabor: string]: number } = {};
+    let totalFinal = 0;
+
+    if (produto.sabores && produto.sabores.length > 0) {
+      produto.sabores.forEach(sabor => {
+        const chaveReal = casarSabor(Object.keys(saboresConsolidados), sabor);
+        const qtd = chaveReal ? (Number(saboresConsolidados[chaveReal]) || 0) : 0;
+        saboresFinal[sabor] = qtd;
+        totalFinal += qtd;
+      });
+    } else {
+      saboresFinal = saboresConsolidados;
+      totalFinal = estoqueTotal;
+    }
+
+    const saboresDisponiveis = produto.sabores.filter(s => (saboresFinal[s] ?? 0) > 0);
 
     return {
-      estoque: estoqueTotal,
-      saboresEstoque: saboresConsolidados,
+      estoque: totalFinal,
+      saboresEstoque: saboresFinal,
       saboresDisponiveis,
-      possuiEstoqueNaZona: estoqueTotal > 0 && (produto.sabores.length === 0 || saboresDisponiveis.length > 0),
+      possuiEstoqueNaZona: totalFinal > 0 && (produto.sabores.length === 0 || saboresDisponiveis.length > 0),
       isIlimitado: false
     };
   }
@@ -184,21 +199,28 @@ export function obterEstoqueProdutoPorZona(
       const saboresZona = zonaData.sabores_estoque || {};
       const temControleSabores = Object.keys(saboresZona).length > 0;
 
-      const saboresDisponiveis = produto.sabores.filter(sabor => {
-        const chaveReal = casarSabor(Object.keys(saboresZona), sabor);
-        if (chaveReal && temControleSabores) {
-          return (saboresZona[chaveReal] ?? 0) > 0;
-        }
-        return (zonaData?.estoque ?? 0) > 0;
-      });
+      let saboresFiltrados: { [sabor: string]: number } = {};
+      let totalCalculado = 0;
 
-      const totalCalculado = temControleSabores
-        ? Object.values(saboresZona).reduce((acc, v) => acc + (Number(v) || 0), 0)
-        : (zonaData.estoque ?? 0);
+      if (produto.sabores && produto.sabores.length > 0) {
+        produto.sabores.forEach(sabor => {
+          const chaveReal = casarSabor(Object.keys(saboresZona), sabor);
+          const qtd = chaveReal ? (Number(saboresZona[chaveReal]) || 0) : 0;
+          saboresFiltrados[sabor] = qtd;
+          totalCalculado += qtd;
+        });
+      } else {
+        saboresFiltrados = saboresZona;
+        totalCalculado = temControleSabores
+          ? Object.values(saboresZona).reduce((acc, v) => acc + (Number(v) || 0), 0)
+          : (zonaData.estoque ?? 0);
+      }
+
+      const saboresDisponiveis = produto.sabores.filter(sabor => (saboresFiltrados[sabor] ?? 0) > 0);
 
       return {
         estoque: totalCalculado,
-        saboresEstoque: saboresZona,
+        saboresEstoque: saboresFiltrados,
         saboresDisponiveis,
         possuiEstoqueNaZona: totalCalculado > 0 && (produto.sabores.length === 0 || saboresDisponiveis.length > 0),
         isIlimitado: false
@@ -217,13 +239,28 @@ export function obterEstoqueProdutoPorZona(
 
   // 5. Fallback para produtos legados sem estoque_zonas
   const saboresLegados = produto.sabores_estoque || {};
-  const disponiveisLegados = produto.sabores.filter(s => (saboresLegados[s] ?? 0) > 0);
+  let saboresLegadosFiltrados: { [sabor: string]: number } = {};
+  let estoqueLegadoCalculado = 0;
+
+  if (produto.sabores && produto.sabores.length > 0) {
+    produto.sabores.forEach(sabor => {
+      const chaveReal = casarSabor(Object.keys(saboresLegados), sabor);
+      const qtd = chaveReal ? (Number(saboresLegados[chaveReal]) || 0) : 0;
+      saboresLegadosFiltrados[sabor] = qtd;
+      estoqueLegadoCalculado += qtd;
+    });
+  } else {
+    saboresLegadosFiltrados = saboresLegados;
+    estoqueLegadoCalculado = produto.estoque || 0;
+  }
+
+  const disponiveisLegados = produto.sabores.filter(s => (saboresLegadosFiltrados[s] ?? 0) > 0);
 
   return {
-    estoque: produto.estoque || 0,
-    saboresEstoque: saboresLegados,
+    estoque: estoqueLegadoCalculado,
+    saboresEstoque: saboresLegadosFiltrados,
     saboresDisponiveis: disponiveisLegados,
-    possuiEstoqueNaZona: (produto.estoque || 0) > 0 && (produto.sabores.length === 0 || disponiveisLegados.length > 0),
+    possuiEstoqueNaZona: estoqueLegadoCalculado > 0 && (produto.sabores.length === 0 || disponiveisLegados.length > 0),
     isIlimitado: false
   };
 }

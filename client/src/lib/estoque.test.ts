@@ -136,4 +136,43 @@ describe('Cálculo Centralizado de Estoque por Zona', () => {
     expect(info.estoque).toBe(8);
     expect(info.saboresDisponiveis).toEqual(['Sabor Antigo']);
   });
+
+  it('deve desconsiderar sabores órfãos no estoque_zonas que não constam na lista oficial de sabores do produto (caso Elfbar 23k: Maça verde 2un + green apple 2un)', () => {
+    const produtoElfbar: ProdutoBasico = {
+      id: 'elfbar-23k',
+      marca: 'ELF BAR',
+      nome: 'ELF BAR 23K',
+      estoque: 7, // estoque legado ou inflado
+      sabores: ['green apple', 'baja splash', 'lime grapefruit', 'raspberry watermelon', 'green apple plum sour lime'],
+      estoque_zonas: {
+        recife: {
+          estoque: 7,
+          sabores_estoque: {
+            'Maça verde': 2, // sabor órfão/antigo renomeado
+            'green apple': 2,
+            'baja splash': 1,
+            'lime grapefruit': 0,
+            'raspberry watermelon': 1,
+            'green apple plum sour lime': 1,
+            'blueberry pear': 0 // sabor antigo zerado
+          }
+        }
+      }
+    };
+
+    // Leitura na zona Recife deve retornar exatamente 5 unidades, sem o sabor órfão "Maça verde"
+    const infoRecife = obterEstoqueProdutoPorZona(produtoElfbar, 'recife');
+    expect(infoRecife.estoque).toBe(5);
+    expect(infoRecife.saboresEstoque['Maça verde']).toBeUndefined();
+    expect(infoRecife.saboresEstoque['green apple']).toBe(2);
+    expect(infoRecife.saboresEstoque['baja splash']).toBe(1);
+    expect(infoRecife.saboresEstoque['raspberry watermelon']).toBe(1);
+    expect(infoRecife.saboresEstoque['green apple plum sour lime']).toBe(1);
+
+    // Leitura consolidada geral (zona null / todas) também deve retornar 5 unidades
+    const infoGeral = obterEstoqueProdutoPorZona(produtoElfbar, null);
+    expect(infoGeral.estoque).toBe(5);
+    expect(infoGeral.saboresEstoque['Maça verde']).toBeUndefined();
+  });
 });
+
