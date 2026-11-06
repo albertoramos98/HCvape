@@ -9,6 +9,8 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 const BUCKET_IMAGENS = 'produto-imagens';
 
 export * from './estoque';
+export * from './estoque_zona_norte';
+import { estoqueZonaNorteService } from './estoque_zona_norte';
 import type { 
   ZonaId, 
   EstoqueZona, 
@@ -634,14 +636,27 @@ export const pedidosService = {
   },
 
   // Baixar estoque de pedido via RPC atômica e idempotente
-  // Compatível tanto com nova assinatura (sem p_usuario) quanto em cache (com p_usuario)
-  async baixarEstoque(pedidoId: string, usuario?: string): Promise<any> {
+  // PONTO ÚNICO DE DECISÃO: baseado na zona do pedido
+  async baixarEstoque(pedidoId: string, usuario?: string, zona?: string): Promise<any> {
+    const zonaResolvida = zona ? normalizarZonaIdShared(zona) : null;
+
+    // Se a zona informada for Zona Norte, desvia 100% para o serviço dedicado da Zona Norte
+    if (zonaResolvida === 'norte') {
+      return await estoqueZonaNorteService.baixarEstoque(pedidoId, usuario);
+    }
+
+    // Fluxo legado mantido intacto para Recife / demais zonas:
     const paramsPadrao: Record<string, any> = { p_pedido_id: pedidoId };
     if (usuario) {
       paramsPadrao.p_usuario = usuario;
     }
 
     let { data, error } = await supabase.rpc('baixar_estoque_pedido', paramsPadrao);
+
+    // Se o banco indicar que o pedido pertence à Zona Norte, redireciona para a RPC correta
+    if (error && (error.message?.includes('Zona Norte') || error.message?.includes('baixar_estoque_zona_norte'))) {
+      return await estoqueZonaNorteService.baixarEstoque(pedidoId, usuario);
+    }
 
     // Se houver erro de schema cache ou parâmetro, tentar formato alternativo
     if (error && (error.message?.includes('schema cache') || error.message?.includes('p_usuario') || error.message?.includes('function'))) {
@@ -653,6 +668,9 @@ export const pedidosService = {
       if (!retry.error) {
         return retry.data;
       }
+      if (retry.error?.message?.includes('Zona Norte') || retry.error?.message?.includes('baixar_estoque_zona_norte')) {
+        return await estoqueZonaNorteService.baixarEstoque(pedidoId, usuario);
+      }
       throw retry.error;
     }
 
@@ -661,14 +679,27 @@ export const pedidosService = {
   },
 
   // Estornar estoque de pedido via RPC atômica e simétrica por saldo líquido
-  // Compatível tanto com nova assinatura (sem p_usuario) quanto em cache (com p_usuario)
-  async estornarEstoque(pedidoId: string, usuario?: string): Promise<any> {
+  // PONTO ÚNICO DE DECISÃO: baseado na zona do pedido
+  async estornarEstoque(pedidoId: string, usuario?: string, zona?: string): Promise<any> {
+    const zonaResolvida = zona ? normalizarZonaIdShared(zona) : null;
+
+    // Se a zona informada for Zona Norte, desvia 100% para o serviço dedicado da Zona Norte
+    if (zonaResolvida === 'norte') {
+      return await estoqueZonaNorteService.estornarEstoque(pedidoId, usuario);
+    }
+
+    // Fluxo legado mantido intacto para Recife / demais zonas:
     const paramsPadrao: Record<string, any> = { p_pedido_id: pedidoId };
     if (usuario) {
       paramsPadrao.p_usuario = usuario;
     }
 
     let { data, error } = await supabase.rpc('estornar_estoque_pedido', paramsPadrao);
+
+    // Se o banco indicar que o pedido pertence à Zona Norte, redireciona para a RPC correta
+    if (error && (error.message?.includes('Zona Norte') || error.message?.includes('estornar_estoque_zona_norte'))) {
+      return await estoqueZonaNorteService.estornarEstoque(pedidoId, usuario);
+    }
 
     // Se houver erro de schema cache ou parâmetro, tentar formato alternativo
     if (error && (error.message?.includes('schema cache') || error.message?.includes('p_usuario') || error.message?.includes('function'))) {
@@ -679,6 +710,9 @@ export const pedidosService = {
       const retry = await supabase.rpc('estornar_estoque_pedido', paramsAlt);
       if (!retry.error) {
         return retry.data;
+      }
+      if (retry.error?.message?.includes('Zona Norte') || retry.error?.message?.includes('estornar_estoque_zona_norte')) {
+        return await estoqueZonaNorteService.estornarEstoque(pedidoId, usuario);
       }
       throw retry.error;
     }
@@ -769,8 +803,19 @@ export const trocasService = {
     }
   },
 
-  // Criar nova troca (utiliza RPC atômica registrar_troca para integridade de estoque)
+  // Criar nova troca (utiliza RPC atômica correspondente à zona para integridade de estoque)
   async criar(troca: Omit<Troca, 'id' | 'created_at' | 'updated_at'>): Promise<Troca> {
+    const zonaResolvida = normalizarZonaIdShared(troca.zona);
+    const isAbater = !!(troca.abateu_estoque ?? (troca as any).abater_estoque);
+
+    // Se for Zona Norte e abateu estoque, desvia 100% para o serviço dedicado da Zona Norte
+    if (zonaResolvida === 'norte' && isAbater) {
+      return await estoqueZonaNorteService.registrarTroca({
+        ...troca,
+        abateu_estoque: isAbater
+      });
+    }
+
     const { data, error } = await supabase.rpc('registrar_troca', {
       p_cliente_nome: troca.cliente_nome,
       p_cliente_telefone: troca.cliente_telefone || null,
@@ -782,7 +827,7 @@ export const trocasService = {
       p_sabor_trocado: troca.sabor_trocado || null,
       p_produto_trocado_id: troca.produto_trocado_id || null,
       p_zona: troca.zona || null,
-      p_abater_estoque: !!troca.abateu_estoque,
+      p_abater_estoque: isAbater,
       p_observacoes: troca.observacoes || null,
       p_data_troca: troca.data_troca || new Date().toISOString()
     });
@@ -792,6 +837,7 @@ export const trocasService = {
     const novaTroca: Troca = {
       id: data?.troca_id,
       ...troca,
+      abateu_estoque: isAbater,
       status: 'concluida',
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -820,11 +866,27 @@ export const trocasService = {
     return data as Troca;
   },
 
-  // Cancelar troca (utiliza RPC estornar_troca para marcar como 'cancelada' e reverter estoque)
-  async cancelar(id: string): Promise<void> {
+  // Cancelar troca (utiliza RPC estornar_troca correspondente à zona)
+  async cancelar(id: string, zona?: string): Promise<void> {
+    const zonaResolvida = zona ? normalizarZonaIdShared(zona) : null;
+    if (zonaResolvida === 'norte') {
+      await estoqueZonaNorteService.estornarTroca(id);
+      const locais = this.obterDoLocalStorage();
+      this.salvarNoLocalStorage(locais.map(t => t.id === id ? { ...t, status: 'cancelada' } : t));
+      return;
+    }
+
     const { error } = await supabase.rpc('estornar_troca', {
       p_troca_id: id
     });
+
+    if (error && (error.message?.includes('Zona Norte') || error.message?.includes('estornar_troca_zona_norte'))) {
+      await estoqueZonaNorteService.estornarTroca(id);
+      const locais = this.obterDoLocalStorage();
+      this.salvarNoLocalStorage(locais.map(t => t.id === id ? { ...t, status: 'cancelada' } : t));
+      return;
+    }
+
     if (error) throw error;
 
     const locais = this.obterDoLocalStorage();
