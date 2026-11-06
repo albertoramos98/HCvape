@@ -106,6 +106,12 @@ export default function Admin() {
   const [pesquisaZN, setPesquisaZN] = useState('');
   const [sincronizandoZN, setSincronizandoZN] = useState(false);
   const [valoresEditadosZN, setValoresEditadosZN] = useState<Record<string, number>>({});
+  const [modalAdicionarZN, setModalAdicionarZN] = useState(false);
+  const [produtoSelecionadoZN, setProdutoSelecionadoZN] = useState<string>('');
+  const [saborSelecionadoZN, setSaborSelecionadoZN] = useState<string>('');
+  const [saborCustomizadoZN, setSaborCustomizadoZN] = useState<string>('');
+  const [quantidadeInicialZN, setQuantidadeInicialZN] = useState<number>(10);
+  const [salvandoNovoItemZN, setSalvandoNovoItemZN] = useState(false);
 
   // Estados para Gestão Única de Clientes & Relatórios WhatsApp
   const [clientes, setClientes] = useState<Cliente[]>([]);
@@ -953,6 +959,63 @@ export default function Admin() {
       setErro(err?.message || 'Erro ao sincronizar sabores na Zona Norte');
     } finally {
       setSincronizandoZN(false);
+    }
+  };
+
+  // Abrir modal de adição de produto/sabor na Zona Norte
+  const abrirModalAdicionarZN = (produtoIdPredefinido?: string) => {
+    const prodId = produtoIdPredefinido || (produtos[0]?.id || '');
+    setProdutoSelecionadoZN(prodId);
+    const prodObj = produtos.find(p => p.id === prodId) || produtos[0];
+    const primeiroSabor = prodObj?.sabores?.[0] || 'Original';
+    setSaborSelecionadoZN(primeiroSabor);
+    setSaborCustomizadoZN('');
+    setQuantidadeInicialZN(10);
+    setModalAdicionarZN(true);
+  };
+
+  // Salvar novo produto/sabor no estoque da Zona Norte
+  const handleAdicionarItemZN = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!produtoSelecionadoZN) {
+      setErro('Selecione um produto do catálogo para adicionar à Zona Norte.');
+      return;
+    }
+    const saborFinal = saborSelecionadoZN === '__outro__'
+      ? saborCustomizadoZN.trim()
+      : (saborSelecionadoZN || saborCustomizadoZN).trim();
+
+    if (!saborFinal) {
+      setErro('Informe ou selecione o nome do sabor.');
+      return;
+    }
+
+    if (quantidadeInicialZN < 0) {
+      setErro('A quantidade não pode ser negativa.');
+      return;
+    }
+
+    try {
+      setSalvandoNovoItemZN(true);
+      setErro(null);
+      await estoqueZonaNorteService.ajustarEstoque(
+        produtoSelecionadoZN,
+        saborFinal,
+        'definir',
+        quantidadeInicialZN,
+        'cadastro_manual_zn'
+      );
+      await carregarEstoqueZN();
+      const prodNome = produtos.find(p => p.id === produtoSelecionadoZN)?.nome || 'Produto';
+      setSucesso(`"${prodNome}" (${saborFinal}) adicionado com sucesso na Zona Norte (${quantidadeInicialZN} un)!`);
+      setModalAdicionarZN(false);
+      setSaborCustomizadoZN('');
+      setTimeout(() => setSucesso(null), 3500);
+    } catch (err: any) {
+      console.error('Erro ao adicionar produto na Zona Norte:', err);
+      setErro(err?.message || 'Erro ao adicionar item na Zona Norte');
+    } finally {
+      setSalvandoNovoItemZN(false);
     }
   };
 
@@ -3786,6 +3849,15 @@ export default function Admin() {
 
                 <div className="flex flex-wrap items-center gap-2">
                   <button
+                    onClick={() => abrirModalAdicionarZN()}
+                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#38bdf8] hover:bg-[#0284c7] text-black font-black text-xs transition-all shadow-[0_0_15px_rgba(56,189,248,0.4)]"
+                    title="Adicionar um produto e sabor com quantidade inicial ao estoque da Zona Norte"
+                  >
+                    <Plus className="w-4 h-4 text-black" />
+                    <span>Adicionar Produto na ZN</span>
+                  </button>
+
+                  <button
                     onClick={carregarEstoqueZN}
                     disabled={carregandoZN}
                     className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-slate-200 text-xs font-bold transition-all disabled:opacity-50"
@@ -3798,13 +3870,13 @@ export default function Admin() {
                   <button
                     onClick={handleSincronizarSaboresZN}
                     disabled={sincronizandoZN}
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#38bdf8] hover:bg-[#0284c7] text-black font-black text-xs transition-all shadow-[0_0_15px_rgba(56,189,248,0.4)] disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-[#38bdf8]/40 text-[#38bdf8] font-bold text-xs transition-all disabled:opacity-50"
                     title="Importa sabores de todos os produtos ativos do catálogo com saldo 0 para preenchimento de contagem"
                   >
                     {sincronizandoZN ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin text-black" />
+                      <Loader2 className="w-3.5 h-3.5 animate-spin text-[#38bdf8]" />
                     ) : (
-                      <Sparkles className="w-3.5 h-3.5 text-black" />
+                      <Sparkles className="w-3.5 h-3.5 text-[#38bdf8]" />
                     )}
                     <span>{sincronizandoZN ? 'Sincronizando...' : 'Preparar Sabores do Catálogo'}</span>
                   </button>
@@ -3872,17 +3944,28 @@ export default function Admin() {
                 <div className="space-y-1">
                   <h3 className="text-base font-bold text-white">Nenhum estoque cadastrado na Zona Norte ainda</h3>
                   <p className="text-xs text-slate-400 max-w-md mx-auto">
-                    A tabela física da Zona Norte está vazia e pronta para a contagem. Clique abaixo para carregar todos os 
-                    produtos ativos com saldo zero para você digitar os números reais.
+                    A tabela física da Zona Norte está vazia e pronta para a contagem. Clique abaixo para adicionar produtos 
+                    individualmente ou inicializar todos os sabores do catálogo com saldo zero.
                   </p>
                 </div>
-                <button
-                  onClick={handleSincronizarSaboresZN}
-                  disabled={sincronizandoZN}
-                  className="px-5 py-2.5 rounded-xl bg-[#38bdf8] text-black font-black text-xs hover:bg-[#0284c7] transition-all shadow-[0_0_20px_rgba(56,189,248,0.4)]"
-                >
-                  {sincronizandoZN ? 'Preparando...' : 'Carregar Sabores do Catálogo (Inicializar)'}
-                </button>
+                <div className="flex flex-wrap items-center justify-center gap-3">
+                  <button
+                    onClick={() => abrirModalAdicionarZN()}
+                    className="px-5 py-2.5 rounded-xl bg-[#38bdf8] text-black font-black text-xs hover:bg-[#0284c7] transition-all shadow-[0_0_20px_rgba(56,189,248,0.4)] flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4 text-black" />
+                    <span>Adicionar Produto na ZN</span>
+                  </button>
+
+                  <button
+                    onClick={handleSincronizarSaboresZN}
+                    disabled={sincronizandoZN}
+                    className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-[#38bdf8]/40 text-[#38bdf8] font-bold text-xs transition-all flex items-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4 text-[#38bdf8]" />
+                    <span>{sincronizandoZN ? 'Preparando...' : 'Carregar Todos os Sabores (Inicializar)'}</span>
+                  </button>
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
@@ -3953,8 +4036,18 @@ export default function Admin() {
                             </div>
                           </div>
 
-                          <div className="flex items-center gap-3 self-end sm:self-center">
-                            <span className="text-xs text-slate-400 font-bold">Total na ZN:</span>
+                          <div className="flex items-center gap-2.5 self-end sm:self-center">
+                            {!produto.estoque_ilimitado && (
+                              <button
+                                onClick={() => abrirModalAdicionarZN(produto.id)}
+                                className="px-2.5 py-1 rounded-lg bg-[#38bdf8]/10 hover:bg-[#38bdf8]/20 border border-[#38bdf8]/30 text-[#38bdf8] text-xs font-bold transition-all flex items-center gap-1"
+                                title="Adicionar mais um sabor a este produto na Zona Norte"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>+ Sabor</span>
+                              </button>
+                            )}
+                            <span className="text-xs text-slate-400 font-bold ml-1">Total na ZN:</span>
                             <span className={`px-3 py-1 rounded-full text-xs font-black ${
                               produto.estoque_ilimitado
                                 ? 'bg-amber-500/20 text-amber-300'
@@ -7786,6 +7879,160 @@ CREATE POLICY "Apenas usuários autenticados podem modificar configurações" ON
                 >
                   {salvandoCliente ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
                   Salvar Cliente
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Adicionar Produto / Sabor no Estoque da Zona Norte */}
+      {modalAdicionarZN && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="glass-morphism p-5 sm:p-6 rounded-2xl max-w-lg w-full border border-[#38bdf8]/40 shadow-[0_0_50px_rgba(56,189,248,0.2)] my-auto animate-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-[#38bdf8]/20 border border-[#38bdf8]/40 text-[#38bdf8]">
+                  <Box className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-white font-['Outfit'] flex items-center gap-2">
+                    Adicionar Produto na Zona Norte
+                  </h3>
+                  <p className="text-[11px] text-slate-400">
+                    Cadastre ou abasteça produtos e sabores no estoque exclusivo da ZN
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setModalAdicionarZN(false)}
+                className="p-1 text-slate-400 hover:text-white rounded-lg hover:bg-white/10 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAdicionarItemZN} className="space-y-4 mt-4">
+              {/* Seleção do Produto */}
+              <div>
+                <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                  Produto do Catálogo *
+                </label>
+                <select
+                  value={produtoSelecionadoZN}
+                  onChange={(e) => {
+                    const id = e.target.value;
+                    setProdutoSelecionadoZN(id);
+                    const prod = produtos.find(p => p.id === id);
+                    const primSabor = prod?.sabores?.[0] || 'Original';
+                    setSaborSelecionadoZN(primSabor);
+                    setSaborCustomizadoZN('');
+                  }}
+                  className="w-full bg-black/60 border border-[#38bdf8]/40 text-slate-100 px-3 py-2.5 rounded-xl outline-none text-xs focus:border-[#38bdf8]"
+                  required
+                >
+                  <option value="">Selecione um produto...</option>
+                  {produtos.map(p => (
+                    <option key={p.id} value={p.id}>
+                      {p.marca} — {p.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Informações do Produto Selecionado */}
+              {(() => {
+                const prod = produtos.find(p => p.id === produtoSelecionadoZN);
+                if (!prod) return null;
+                const saboresConhecidos = (prod.sabores && prod.sabores.length > 0) ? prod.sabores : ['Original'];
+
+                return (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/10">
+                      {prod.imagem_url ? (
+                        <img src={prod.imagem_url} alt={prod.nome} className="w-10 h-10 object-cover rounded-lg border border-white/10 bg-black/40" />
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center text-slate-500">
+                          <Box className="w-4 h-4" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-[10px] font-black uppercase text-[#38bdf8] block truncate">{prod.marca}</span>
+                        <h4 className="text-xs font-bold text-white truncate">{prod.nome}</h4>
+                      </div>
+                    </div>
+
+                    {/* Seleção ou digitação de Sabor */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                        Sabor *
+                      </label>
+                      <div className="space-y-2">
+                        <select
+                          value={saborSelecionadoZN}
+                          onChange={(e) => setSaborSelecionadoZN(e.target.value)}
+                          className="w-full bg-black/60 border border-[#38bdf8]/40 text-slate-100 px-3 py-2 rounded-xl outline-none text-xs focus:border-[#38bdf8]"
+                        >
+                          {saboresConhecidos.map(s => (
+                            <option key={s} value={s}>{s}</option>
+                          ))}
+                          <option value="__outro__">─ Digitar outro sabor... ─</option>
+                        </select>
+
+                        {saborSelecionadoZN === '__outro__' && (
+                          <input
+                            type="text"
+                            value={saborCustomizadoZN}
+                            onChange={(e) => setSaborCustomizadoZN(e.target.value)}
+                            placeholder="Digite o novo sabor..."
+                            required
+                            className="w-full bg-black/60 border border-[#38bdf8]/40 text-slate-100 px-3 py-2 rounded-xl outline-none text-xs focus:border-[#38bdf8]"
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Quantidade Inicial */}
+                    <div>
+                      <label className="block text-xs font-bold text-slate-300 uppercase mb-1">
+                        Quantidade Física Inicial na Zona Norte *
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={quantidadeInicialZN}
+                        onChange={(e) => setQuantidadeInicialZN(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                        required
+                        className="w-full bg-black/60 border border-[#38bdf8]/40 text-slate-100 px-3 py-2 rounded-xl outline-none text-xs focus:border-[#38bdf8]"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">
+                        Pode ser ajustado a qualquer momento pelos botões +1, -1, +5 ou contagem direta.
+                      </p>
+                    </div>
+                  </div>
+                );
+              })()}
+
+              <div className="flex gap-3 pt-3 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setModalAdicionarZN(false)}
+                  className="w-1/3 py-2.5 bg-white/5 hover:bg-white/10 text-slate-300 rounded-xl text-xs font-bold border border-white/10"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  disabled={salvandoNovoItemZN || !produtoSelecionadoZN}
+                  className="flex-1 py-2.5 bg-[#38bdf8] hover:bg-[#0284c7] text-black font-black rounded-xl text-xs flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(56,189,248,0.4)] disabled:opacity-50"
+                >
+                  {salvandoNovoItemZN ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-black" />
+                  ) : (
+                    <Plus className="w-4 h-4 text-black" />
+                  )}
+                  <span>Adicionar ao Estoque ZN</span>
                 </button>
               </div>
             </form>
