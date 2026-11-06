@@ -2078,15 +2078,16 @@ export default function Admin() {
   };
 
   const handleExportarPedidos = () => {
-    const pedidosParaExportar = subAbaPedidos === 'ativos' ? pedidos : pedidosExcluidos;
+    // Exporta pedidos respeitando o filtro de região (Zona Norte, Recife, etc.) ou aba ativa
+    const pedidosParaExportar = pedidosFiltrados;
     
     if (pedidosParaExportar.length === 0) {
-      alert('Nenhum pedido para exportar nesta aba');
+      alert('Nenhum pedido para exportar com os filtros atuais');
       return;
     }
 
-    // Simplificando relatório de vendas: removendo modelos e puxadas
-    const headers = ['DATA', 'PEDIDO #', 'CLIENTE', 'WHATSAPP', 'INDICAÇÃO', 'ITENS', 'QTD TOTAL', 'DESCONTO', 'VALOR TOTAL', 'STATUS'];
+    // Relatório de vendas completo incluindo a coluna de REGIÃO
+    const headers = ['DATA', 'PEDIDO #', 'CLIENTE', 'WHATSAPP', 'REGIÃO', 'INDICAÇÃO', 'ITENS', 'QTD TOTAL', 'DESCONTO', 'VALOR TOTAL', 'STATUS'];
     
     const rows: any[] = [];
     pedidosParaExportar.forEach(p => {
@@ -2106,6 +2107,7 @@ export default function Admin() {
         p.numero_pedido,
         p.nome_cliente.toUpperCase(),
         p.telefone_cliente,
+        (p.zona || 'RECIFE').toUpperCase(),
         (p.indicacao || 'NENHUMA').toUpperCase(),
         itensFormatados,
         qtdTotal,
@@ -2126,6 +2128,42 @@ export default function Admin() {
     link.setAttribute('href', url);
     const prefixo = subAbaPedidos === 'ativos' ? 'vendas' : 'lixeira';
     link.setAttribute('download', `${prefixo}_hc_sql_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Exportar relatório consolidado de estoque da Zona Norte para CSV
+  const handleExportarEstoqueZN = () => {
+    if (estoqueZN.length === 0) {
+      alert('Nenhum estoque cadastrado na Zona Norte para exportar.');
+      return;
+    }
+
+    const headers = ['PRODUTO', 'MARCA', 'SABOR', 'QUANTIDADE', 'STATUS'];
+    const rows: any[] = [];
+
+    estoqueZN.forEach(item => {
+      const prod = produtos.find(p => p.id === item.produto_id);
+      rows.push([
+        (prod?.nome || 'PRODUTO').toUpperCase(),
+        (prod?.marca || 'N/A').toUpperCase(),
+        item.sabor.toUpperCase(),
+        item.quantidade,
+        item.quantidade > 0 ? 'DISPONÍVEL' : 'ESGOTADO'
+      ]);
+    });
+
+    const csvContent = [
+      headers.join(';'),
+      ...rows.map(r => r.join(';'))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `estoque_zona_norte_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -2384,7 +2422,10 @@ export default function Admin() {
         setSucesso('Troca registrada com sucesso!');
       }
 
-      await carregarProdutos();
+      await Promise.all([
+        carregarProdutos(),
+        carregarEstoqueZN()
+      ]);
       fecharModalTroca();
       setTimeout(() => setSucesso(null), 3000);
     } catch (err: any) {
@@ -2395,14 +2436,18 @@ export default function Admin() {
     }
   };
 
-  // Cancelar registro de troca (com estorno automático via RPC estornar_troca)
+  // Cancelar registro de troca (com estorno automático via RPC estornar_troca correspondente à zona)
   const handleDeletarTroca = async (id: string, cliente: string) => {
     if (!window.confirm(`Deseja realmente cancelar e estornar o registro de troca de ${cliente}?`)) {
       return;
     }
     try {
-      await trocasService.cancelar(id);
-      await carregarProdutos();
+      const trocaObj = trocas.find(t => t.id === id);
+      await trocasService.cancelar(id, trocaObj?.zona);
+      await Promise.all([
+        carregarProdutos(),
+        carregarEstoqueZN()
+      ]);
       setTrocas(prev => prev.map(t => t.id === id ? { ...t, status: 'cancelada' } : t));
       setSucesso('Registro de troca cancelado e estoque estornado!');
       setTimeout(() => setSucesso(null), 3000);
@@ -3879,6 +3924,16 @@ export default function Admin() {
                       <Sparkles className="w-3.5 h-3.5 text-[#38bdf8]" />
                     )}
                     <span>{sincronizandoZN ? 'Sincronizando...' : 'Preparar Sabores do Catálogo'}</span>
+                  </button>
+
+                  <button
+                    onClick={handleExportarEstoqueZN}
+                    disabled={estoqueZN.length === 0}
+                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-slate-200 text-xs font-bold transition-all disabled:opacity-40"
+                    title="Exportar planilha CSV do estoque da Zona Norte"
+                  >
+                    <Download className="w-3.5 h-3.5 text-[#38bdf8]" />
+                    <span>Exportar CSV</span>
                   </button>
                 </div>
               </div>
