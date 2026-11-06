@@ -1646,7 +1646,7 @@ REVOKE EXECUTE ON FUNCTION public.registrar_troca_zona_norte(TEXT, TEXT, TEXT, T
 -- Blindagem adicional de segurança: fechar privilégio padrão de PUBLIC/anon nas funções legadas
 REVOKE EXECUTE ON FUNCTION public.baixar_estoque_pedido(UUID, TEXT) FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.estornar_estoque_pedido(UUID, TEXT) FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.registrar_troca(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, UUID, BOOLEAN, TEXT, TIMESTAMPTZ) FROM PUBLIC, anon;
+REVOKE EXECUTE ON FUNCTION public.registrar_troca(TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, TEXT, UUID, VARCHAR, BOOLEAN, TEXT, TIMESTAMPTZ) FROM PUBLIC, anon;
 REVOKE EXECUTE ON FUNCTION public.estornar_troca(UUID, TEXT) FROM PUBLIC, anon;
 
 -- 11. Recarregar cache de schema do PostgREST imediatamente
